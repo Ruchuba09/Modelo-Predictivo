@@ -58,7 +58,7 @@ services:
       - "443:443"
       - "8080:8080"
     volumes:
-      - laravel:/var/www/app
+      - ../app:/var/www/app
       - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - laravel-app
@@ -70,7 +70,7 @@ services:
     command: npm run dev -- --host 0.0.0.0
     restart: no
     volumes:
-      - laravel:/var/www/app
+      - ../app:/var/www/app
     environment:
       - VITE_HMR_HOST=localhost
       - VITE_HMR_PORT=3000
@@ -101,12 +101,13 @@ services:
       - pgadmin:/var/lib/pgadmin
 
   postgres:
-    image: postgres:alpine
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
       POSTGRES_DB: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
       TZ: "America/Santiago"
     volumes:
       - postgres:/var/lib/postgresql/data
