@@ -1,0 +1,10 @@
+# Environment files - never commit
+.env
+php/.env
+.env.local
+.env.*.local
+
+# IDE and OS files
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,125 @@
+x-laravel-base: &laravel-base
+  build:
+    context: ./php
+    dockerfile: Dockerfile
+    secrets:
+      - github_token
+    args:
+      URL_REPOSITORIO:  ${URL_REPOSITORIO}
+      RAMA:             ${RAMA}
+      CORREO:           ${CORREO}
+      NOMBRE:           ${NOMBRE}
+  restart: unless-stopped
+  working_dir: /var/www/app
+  volumes:
+    - ../app:/var/www/app
+    - ./php/php.ini:/usr/local/etc/php/php.ini
+  depends_on:
+    - redis
+
+x-laravel-worker: &laravel-worker
+  <<: *laravel-base
+  depends_on:
+    - laravel-app
+
+services:
+  laravel-app:
+    <<: *laravel-base
+    image: laravel-app:local
+
+  worker-schedule:
+    <<: *laravel-worker
+    image: laravel-worker-schedule:local
+    command: php artisan schedule:work
+
+  worker-cola-normal:
+    <<: *laravel-worker
+    image: laravel-worker-cola-normal:local
+    command: php artisan queue:listen --queue=cola,cola-errores
+
+  worker-cola-pesada:
+    <<: *laravel-worker
+    image: laravel-worker-cola-pesada:local
+    command: php artisan queue:listen --queue=cola-pesada --timeout=3600
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    volumes:
+      - redis:/data
+
+  nginx-dev:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - laravel:/var/www/app
+      - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - laravel-app
+      - phpmyadmin-dev
+
+  vite:
+    image: node:alpine
+    working_dir: /var/www/app
+    command: npm run dev -- --host 0.0.0.0
+    restart: no
+    volumes:
+      - laravel:/var/www/app
+    environment:
+      - VITE_HMR_HOST=localhost
+      - VITE_HMR_PORT=3000
+      - NODE_OPTIONS=--max_old_space_size=512
+    ports:
+      - "3000:3000"
+    depends_on:
+      - laravel-app
+
+  phpmyadmin-dev:
+    image: phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mariadb
+      PMA_USER: root
+      PMA_PASSWORD: password
+      UPLOAD_LIMIT: 1024M
+
+  pgadmin-dev:
+    image: dpage/pgadmin4:9.5.0
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pg@ava.cl
+      PGADMIN_DEFAULT_PASSWORD: postgres
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+
+  postgres:
+    image: postgres:alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      TZ: "America/Santiago"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  laravel:
+  mariadb:
+  postgres:
+  redis:
+  pgadmin:
+
+secrets:
+  github_token:
+    environment: GITHUB_TOKEN
