@@ -61,13 +61,13 @@ export default function Login({ status, canResetPassword }: LoginProps) {
     };
 
     return (
-        <AuthLayout title="Log in to your account" description="Enter your rut and password below to log in">
+        <AuthLayout title="Acceso a su cuenta AVA" >
             <Head title="Log in" />
 
             <form className="flex flex-col gap-6" onSubmit={submit}>
                 <div className="grid gap-6">
                     <div className="grid gap-2">
-                        <Label htmlFor="rut">RUT</Label>
+                        <Label htmlFor="rut">RUT o EMAIL</Label>
                         <Input
                             id="rut"
                             type="text"
