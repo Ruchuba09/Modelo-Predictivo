@@ -61,7 +61,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
     };
 
     return (
-        <AuthLayout title="Acceso a su cuenta AVA" >
+        <AuthLayout title="Acceso a su cuenta AVA" description='Ingrese sus credenciales para iniciar sesión' >
             <Head title="Log in" />
 
             <form className="flex flex-col gap-6" onSubmit={submit}>
