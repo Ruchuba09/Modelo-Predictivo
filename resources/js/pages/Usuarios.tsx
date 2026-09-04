@@ -1,6 +1,6 @@
-// resources/js/Pages/Usuarios.tsx
+// resources/js/pages/Usuarios.tsx
 
-export default function Usuarios() {
+export default function usuarios() {
     return (
         <div>
             <h1>Usuarios</h1>
