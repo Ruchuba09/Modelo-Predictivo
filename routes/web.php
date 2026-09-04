@@ -8,7 +8,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/usuarios', function () {
-    return Inertia::render('Usuarios');
+    return Inertia::render('usuarios');
 });
 
 Route::middleware(['auth'])->group(function () {
