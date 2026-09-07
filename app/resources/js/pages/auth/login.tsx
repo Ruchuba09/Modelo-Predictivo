@@ -68,20 +68,15 @@ export default function Login({ status, canResetPassword }: LoginProps) {
         <div className="min-h-screen w-full flex bg-black text-white font-sans">
             <Head title="Acceso Plataforma - AVA Montajes" />
 
-            {/* PANEL IZQUIERDO - IMAGEN Y TEXTOS */}
-            {/* Se oculta en móviles, se muestra a la mitad en pantallas grandes */}
             <div className="hidden lg:flex lg:w-1/2 relative bg-[#2D3238] flex-col justify-center p-12 overflow-hidden">
-                {/* Imagen de fondo (puedes cambiar la URL por una foto de faena de AVA real) */}
                 <div 
                     className="absolute inset-0 z-0 bg-cover bg-center opacity-40" 
                     style={{ backgroundImage: "url('https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2000&auto=format&fit=crop')" }}
                 ></div>
                 
-                {/* Capa de degradado para que el texto resalte */}
                 <div className="absolute inset-0 z-10 bg-gradient-to-r from-black/80 to-transparent"></div>
 
                 <div className="relative z-20 max-w-lg">
-                    {/* Logotipo AVA Blanco original desde CDN */}
                     <img 
                         src="https://cdn.intrava.cl/v2/logos/Logotipo-isotipo-02.svg" 
                         alt="AVA Montajes" 
@@ -101,7 +96,6 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                 </div>
             </div>
 
-            {/* PANEL DERECHO - FORMULARIO DE LOGIN */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-[#0a0a0a]">
                 <div className="w-full max-w-md space-y-8">
                     
@@ -113,13 +107,11 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                     {status && <div className="mb-4 text-sm font-medium text-[#A0F700]">{status}</div>}
 
                     <form onSubmit={submit} className="space-y-6">
-                        {/* INPUT RUT / USUARIO */}
                         <div className="space-y-2">
                             <label htmlFor="rut" className="text-xs font-semibold tracking-wider text-[#7A7F85] uppercase">
                                 Rut Empresa / Correo Corporativo
                             </label>
                             <div className="relative">
-                                {/* Ícono de usuario genérico */}
                                 <svg className="absolute left-3 top-3 h-5 w-5 text-[#7A7F85]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
@@ -138,7 +130,6 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             <InputError message={validacionLocal || errors.rut} />
                         </div>
 
-                        {/* INPUT CONTRASEÑA */}
                         <div className="space-y-2">
                             <label htmlFor="password" className="text-xs font-semibold tracking-wider text-[#7A7F85] uppercase">
                                 Contraseña
@@ -156,7 +147,6 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             <InputError message={errors.password} />
                         </div>
 
-                        {/* RECORDAR SESIÓN & RECUPERAR CLAVE */}
                         <div className="flex items-center justify-between mt-2">
                             <div className="flex items-center space-x-2">
                                 <Checkbox 
@@ -177,7 +167,6 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             )}
                         </div>
 
-                        {/* BOTÓN DE INGRESO (Verde Corporativo) */}
                         <button 
                             type="submit" 
                             disabled={processing}
