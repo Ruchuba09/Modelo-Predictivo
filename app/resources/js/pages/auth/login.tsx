@@ -34,11 +34,24 @@ export default function Login({ status, canResetPassword }: LoginProps) {
     const handleRutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
 
-        if (/^[0-9kK]+$/.test(value) || value === '') {
-            value = format(value);
-        }
+        const esIntentoDeCorreo = /[a-jA-Jl-zL-Z@]/.test(value);
 
-        setData('rut', value);
+        if (esIntentoDeCorreo) {
+
+            setData('rut', value);
+             
+        }else{
+
+            const valorLimpio = value.replace(/[^0-9kK]/gi, '');
+
+            const valorRecortado = valorLimpio.slice(0, 9);
+
+            if (valorRecortado.length > 1) {
+                setData('rut', format(valorRecortado));
+        }else{
+            setData('rut', valorRecortado);
+        }
+    }
         setValidacionLocal('');
         clearErrors('rut');
     };
@@ -74,7 +87,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             required
                             autoFocus
                             tabIndex={1}
-                            autoComplete="email"
+                            autoComplete="Nombre de usuario"
                             value={data.rut}
                             onChange={handleRutChange}
                             placeholder="12.345.678-9 o usuario@avamontajes.cl"
