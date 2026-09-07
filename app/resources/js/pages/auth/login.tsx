@@ -1,15 +1,10 @@
 import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
+import { LoaderCircle, ArrowRight } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 import { format, validate } from 'rut.js';
 
 import InputError from '@/components/input-error';
-import TextLink from '@/components/text-link';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import AuthLayout from '@/layouts/auth-layout';
 
 interface LoginForm {
     rut: string;
@@ -31,27 +26,23 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
     const [validacionLocal, setValidacionLocal] = useState('');
 
+    // Lógica perfecta de RUT/Correo
     const handleRutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
-
         const esIntentoDeCorreo = /[a-jA-Jl-zL-Z@]/.test(value);
 
         if (esIntentoDeCorreo) {
-
             setData('rut', value);
-             
-        }else{
-
+        } else {
             const valorLimpio = value.replace(/[^0-9kK]/gi, '');
-
             const valorRecortado = valorLimpio.slice(0, 9);
 
             if (valorRecortado.length > 1) {
                 setData('rut', format(valorRecortado));
-        }else{
-            setData('rut', valorRecortado);
+            } else {
+                setData('rut', valorRecortado);
+            }
         }
-    }
         setValidacionLocal('');
         clearErrors('rut');
     };
@@ -74,67 +65,136 @@ export default function Login({ status, canResetPassword }: LoginProps) {
     };
 
     return (
-        <AuthLayout title="Acceso a su cuenta AVA" description='Ingrese sus credenciales para iniciar sesión' >
-            <Head title="Log in" />
+        <div className="min-h-screen w-full flex bg-black text-white font-sans">
+            <Head title="Acceso Plataforma - AVA Montajes" />
 
-            <form className="flex flex-col gap-6" onSubmit={submit}>
-                <div className="grid gap-6">
-                    <div className="grid gap-2">
-                        <Label htmlFor="rut">RUT o EMAIL</Label>
-                        <Input
-                            id="rut"
-                            type="text"
-                            required
-                            autoFocus
-                            tabIndex={1}
-                            autoComplete="Nombre de usuario"
-                            value={data.rut}
-                            onChange={handleRutChange}
-                            placeholder="12.345.678-9 o usuario@avamontajes.cl"
-                        />
-                        <InputError message={validacionLocal || errors.rut} />
+            {/* PANEL IZQUIERDO - IMAGEN Y TEXTOS */}
+            {/* Se oculta en móviles, se muestra a la mitad en pantallas grandes */}
+            <div className="hidden lg:flex lg:w-1/2 relative bg-[#2D3238] flex-col justify-center p-12 overflow-hidden">
+                {/* Imagen de fondo (puedes cambiar la URL por una foto de faena de AVA real) */}
+                <div 
+                    className="absolute inset-0 z-0 bg-cover bg-center opacity-40" 
+                    style={{ backgroundImage: "url('https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2000&auto=format&fit=crop')" }}
+                ></div>
+                
+                {/* Capa de degradado para que el texto resalte */}
+                <div className="absolute inset-0 z-10 bg-gradient-to-r from-black/80 to-transparent"></div>
+
+                <div className="relative z-20 max-w-lg">
+                    {/* Logotipo AVA Blanco original desde CDN */}
+                    <img 
+                        src="https://cdn.intrava.cl/v2/logos/Logotipo-isotipo-02.svg" 
+                        alt="AVA Montajes" 
+                        className="h-10 mb-20"
+                    />
+                    
+                    <h1 className="text-5xl font-bold mb-4 tracking-tight">
+                        Modelo Predictivo Integral
+                    </h1>
+                    <p className="text-[#7A7F85] text-lg leading-relaxed">
+                        Inteligencia predictiva y control operacional SGI para la gestión activa de riesgos en faenas mineras e industriales.
+                    </p>
+                </div>
+                
+                <div className="absolute bottom-8 left-12 z-20">
+                    <p className="text-xs text-[#7A7F85]">© 2026 AVA Montajes S.A. Todos los derechos reservados.</p>
+                </div>
+            </div>
+
+            {/* PANEL DERECHO - FORMULARIO DE LOGIN */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-[#0a0a0a]">
+                <div className="w-full max-w-md space-y-8">
+                    
+                    <div className="mb-10">
+                        <h2 className="text-3xl font-semibold mb-2">Acceso Plataforma</h2>
+                        <p className="text-[#7A7F85] text-sm">Ingresa las credenciales autorizadas por SGI.</p>
                     </div>
 
-                    <div className="grid gap-2">
-                        <div className="flex items-center">
-                            <Label htmlFor="password">Contraseña</Label>
+                    {status && <div className="mb-4 text-sm font-medium text-[#A0F700]">{status}</div>}
+
+                    <form onSubmit={submit} className="space-y-6">
+                        {/* INPUT RUT / USUARIO */}
+                        <div className="space-y-2">
+                            <label htmlFor="rut" className="text-xs font-semibold tracking-wider text-[#7A7F85] uppercase">
+                                Rut Empresa / Correo Corporativo
+                            </label>
+                            <div className="relative">
+                                {/* Ícono de usuario genérico */}
+                                <svg className="absolute left-3 top-3 h-5 w-5 text-[#7A7F85]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                <input
+                                    id="rut"
+                                    type="text"
+                                    required
+                                    autoFocus
+                                    tabIndex={1}
+                                    value={data.rut}
+                                    onChange={handleRutChange}
+                                    placeholder="12.345.678-9"
+                                    className="w-full bg-transparent border border-[#2D3238] rounded-md py-2.5 pl-10 pr-4 text-white placeholder:text-[#2D3238] focus:border-[#A0F700] focus:ring-1 focus:ring-[#A0F700] transition-colors"
+                                />
+                            </div>
+                            <InputError message={validacionLocal || errors.rut} />
+                        </div>
+
+                        {/* INPUT CONTRASEÑA */}
+                        <div className="space-y-2">
+                            <label htmlFor="password" className="text-xs font-semibold tracking-wider text-[#7A7F85] uppercase">
+                                Contraseña
+                            </label>
+                            <input
+                                id="password"
+                                type="password"
+                                required
+                                tabIndex={2}
+                                value={data.password}
+                                onChange={(e) => setData('password', e.target.value)}
+                                placeholder="••••••••"
+                                className="w-full bg-transparent border border-[#2D3238] rounded-md py-2.5 px-4 text-white placeholder:text-[#2D3238] focus:border-[#A0F700] focus:ring-1 focus:ring-[#A0F700] transition-colors"
+                            />
+                            <InputError message={errors.password} />
+                        </div>
+
+                        {/* RECORDAR SESIÓN & RECUPERAR CLAVE */}
+                        <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox 
+                                    id="remember" 
+                                    checked={data.remember}
+                                    onCheckedChange={(checked) => setData('remember', checked as boolean)}
+                                    className="border-[#7A7F85] data-[state=checked]:bg-[#A0F700] data-[state=checked]:text-black"
+                                />
+                                <label htmlFor="remember" className="text-sm text-[#7A7F85] cursor-pointer hover:text-white transition-colors">
+                                    Recordar sesión
+                                </label>
+                            </div>
+
                             {canResetPassword && (
-                                <TextLink href={route('password.request')} className="ml-auto text-sm" tabIndex={5}>
-                                    ¿Olvidaste tu contraseña?
-                                </TextLink>
+                                <a href={route('password.request')} className="text-sm text-[#A0F700] hover:text-[#C1F75E] transition-colors">
+                                    Recuperar Clave
+                                </a>
                             )}
                         </div>
-                        <Input
-                            id="password"
-                            type="password"
-                            required
-                            tabIndex={2}
-                            autoComplete="current-password"
-                            value={data.password}
-                            onChange={(e) => setData('password', e.target.value)}
-                            placeholder="********"
-                        />
-                        <InputError message={errors.password} />
-                    </div>
 
-                    <div className="flex items-center space-x-3">
-                        <Checkbox id="remember" 
-                        name="remember" 
-                        tabIndex={3}
-                        checked={data.remember}
-                        onCheckedChange={(checked) => setData('remember', checked as boolean)}
-                        />
-                        <Label htmlFor="remember">Recordar mi sesión</Label>
-                    </div>
-
-                    <Button type="submit" className="mt-4 w-full" tabIndex={4} disabled={processing}>
-                        {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                        Iniciar sesión
-                    </Button>
+                        {/* BOTÓN DE INGRESO (Verde Corporativo) */}
+                        <button 
+                            type="submit" 
+                            disabled={processing}
+                            className="w-full mt-6 bg-[#A0F700] hover:bg-[#86CF00] text-black font-semibold py-3 px-4 rounded-md flex items-center justify-center transition-all disabled:opacity-50"
+                        >
+                            {processing ? (
+                                <LoaderCircle className="h-5 w-5 animate-spin" />
+                            ) : (
+                                <>
+                                    <ArrowRight className="h-5 w-5 mr-2" />
+                                    Ingresar SGI
+                                </>
+                            )}
+                        </button>
+                    </form>
                 </div>
-            </form>
-
-            {status && <div className="mb-4 text-center text-sm font-medium text-green-600">{status}</div>}
-        </AuthLayout>
+            </div>
+        </div>
     );
 }
