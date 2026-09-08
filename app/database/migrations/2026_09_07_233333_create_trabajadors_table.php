@@ -20,8 +20,8 @@ return new class extends Migration
             $table->string("cargo");
             $table->string("id_tipo_trabajador");
             $table->string("rut")->unique();
-            $table->timestamp('created_at')->nullable();
-            $table->timestamp('updated_at')->nullable();
+            //$table->timestamp('created_at')->nullable();
+            //$table->timestamp('updated_at')->nullable();
             $table->timestamps();
         });
     }

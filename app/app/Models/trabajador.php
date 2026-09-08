@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class trabajador extends Model
 {
-    protected $connection = "trabajadores";
+    protected $connection = "usuarios";
     protected $table = "trabajadors";
     public $timestamps = false;
 
