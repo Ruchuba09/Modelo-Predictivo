@@ -26,7 +26,6 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
     const [validacionLocal, setValidacionLocal] = useState('');
 
-    // Lógica perfecta de RUT/Correo
     const handleRutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
         const esIntentoDeCorreo = /[a-jA-Jl-zL-Z@]/.test(value);
