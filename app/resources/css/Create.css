@@ -1,0 +1,91 @@
+.create-page {
+  max-width: 480px;
+  margin: 2rem auto;
+  padding: 1.5rem 2rem;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #1f2937;
+}
+
+.create-page h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: #111827;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.create-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.create-form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.create-input {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.create-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.create-error {
+  color: #dc2626;
+  font-size: 0.8rem;
+}
+
+.create-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.create-btn-guardar {
+  padding: 0.55rem 1.1rem;
+  border-radius: 6px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.create-btn-guardar:hover {
+  background: #1d4ed8;
+}
+
+.create-btn-guardar:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+.create-link-cancelar {
+  color: #6b7280;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.create-link-cancelar:hover {
+  text-decoration: underline;
+}

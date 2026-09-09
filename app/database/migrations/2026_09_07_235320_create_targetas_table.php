@@ -12,9 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('targetas', function (Blueprint $table) {
-            $table->id();
+            $table->id('id_tarjeta');
+            $table->string("id_modelo_tarjeta")->foreignId('id_modelo_tarjeta')->constrained('modelo_tarjeta')->onDelete('cascade');
             $table->string("rut")->foreignId('rut')->constrained('trabajador')->onDelete('cascade');
             $table->string("medida")->foreignId('medida')->constrained('medida')->onDelete('cascade');
+            $table->string("id_escala_riesgo")->foreignId('id_escala_riesgo')->constrained('escala_riesgo')->onDelete('cascade');
+            $table->string('ubicacion', 255)->nullable();
+            $table->text('descripcion');
+            $table->string('estado', 50)->default('abierta');
+            $table->timestamp('fecha_reporte')->useCurrent();
             $table->timestamps();
         });
     }
