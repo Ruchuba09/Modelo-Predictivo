@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\TrabajadorController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -10,6 +11,8 @@ Route::get('/', function () {
 Route::get('/login2', function () {
     return Inertia::render('login2');
 })->name('login2');
+
+Route::resource('trabajadores', TrabajadorController::class);
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', function () {
