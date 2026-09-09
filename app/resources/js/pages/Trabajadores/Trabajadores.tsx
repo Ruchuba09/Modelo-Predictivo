@@ -1,5 +1,6 @@
 import React from "react";
 import { Head, Link, router } from "@inertiajs/react";
+import "../../../css/Trabajadores.css";
 
 interface Trabajador {
     id: number;
@@ -27,13 +28,13 @@ const Trabajadores: React.FC<TrabajadoresProps> = ({ trabajadores }) => {
         <>
             <Head title="Trabajadores" />
 
-            <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="trabajadores-page">
+                <div className="trabajadores-header">
                     <h2>Trabajadores</h2>
-                    <Link href={route("trabajadores.create")}>+ Nuevo trabajador</Link>
+                    <Link className="trabajadores-link-nuevo" href={route("trabajadores.create")}>+ Nuevo trabajador</Link>
                 </div>
 
-                <table>
+                <table className="trabajadores-tabla">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -56,9 +57,9 @@ const Trabajadores: React.FC<TrabajadoresProps> = ({ trabajadores }) => {
                                 <td>{trabajador.id_tipo_trabajador}</td>
                                 <td>{trabajador.rut}</td>
                                 <td>
-                                    <Link href={route("trabajadores.show", trabajador.id)}>Ver</Link>{" | "}
-                                    <Link href={route("trabajadores.edit", trabajador.id)}>Editar</Link>{" | "}
-                                    <button onClick={() => eliminar(trabajador.id)}>Eliminar</button>
+                                    <Link className="trabajadores-link-accion" href={route("trabajadores.show", trabajador.id)}>Ver</Link>{" | "}
+                                    <Link className="trabajadores-link-accion" href={route("trabajadores.edit", trabajador.id)}>Editar</Link>{" | "}
+                                    <button className="trabajadores-btn-eliminar" onClick={() => eliminar(trabajador.id)}>Eliminar</button>
                                 </td>
                             </tr>
                         ))}

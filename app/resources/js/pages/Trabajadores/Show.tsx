@@ -1,5 +1,6 @@
 import React from "react";
 import { Head, Link } from "@inertiajs/react";
+import "../../../css/Show.css";
 
 interface Trabajador {
     id: number;
@@ -22,10 +23,10 @@ const Show: React.FC<ShowProps> = ({ trabajador }) => {
         <>
             <Head title="Detalle trabajador" />
 
-            <div>
+            <div className="show-page">
                 <h2>Detalle del trabajador</h2>
 
-                <ul>
+                <ul className="show-lista">
                     <li><strong>ID:</strong> {trabajador.id}</li>
                     <li><strong>Nombre:</strong> {trabajador.nombre_1} {trabajador.nombre_2}</li>
                     <li><strong>Apellido:</strong> {trabajador.apellido_1} {trabajador.apellido_2}</li>
@@ -35,8 +36,8 @@ const Show: React.FC<ShowProps> = ({ trabajador }) => {
                     <li><strong>Email:</strong> {trabajador.email}</li>
                 </ul>
 
-                <Link href={route("trabajadores.edit", trabajador.id)}>Editar</Link>{" | "}
-                <Link href={route("trabajadores.index")}>Volver al listado</Link>
+                <Link className="show-link-accion" href={route("trabajadores.edit", trabajador.id)}>Editar</Link>{" | "}
+                <Link className="show-link-accion" href={route("trabajadores.index")}>Volver al listado</Link>
             </div>
         </>
     );

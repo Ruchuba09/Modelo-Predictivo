@@ -12,8 +12,9 @@ Route::get('/login2', function () {
     return Inertia::render('login2');
 })->name('login2');
 
-Route::resource('trabajadores', TrabajadorController::class);
-
+Route::resource('trabajadores', TrabajadorController::class)
+    ->parameters(['trabajadores' => 'trabajador']);
+    
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
