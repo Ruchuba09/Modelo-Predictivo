@@ -26,7 +26,6 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
     const [validacionLocal, setValidacionLocal] = useState('');
 
-    // Lógica perfecta de RUT/Correo
     const handleRutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
         const esIntentoDeCorreo = /[a-jA-Jl-zL-Z@]/.test(value);
@@ -80,7 +79,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                     <img 
                         src="https://cdn.intrava.cl/v2/logos/Logotipo-isotipo-02.svg" 
                         alt="AVA Montajes" 
-                        className="h-10 mb-20"
+                        className="h-30 mb-10"
                     />
                     
                     <h1 className="text-5xl font-bold mb-4 tracking-tight">
