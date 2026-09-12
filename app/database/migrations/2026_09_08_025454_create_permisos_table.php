@@ -6,14 +6,16 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    protected $connection = "usuarios";
     /**
      * Run the migrations.
      */
     public function up(): void
     {
         Schema::create('permisos', function (Blueprint $table) {
-            $table->id();
-            $table->string('nivel');
+            $table->id('id_permiso');
+            $table->string('nombre');
+            $table->string('nivel')->nullable();
             $table->timestamps();
         });
     }

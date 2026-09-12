@@ -8,9 +8,10 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     use Notifiable;
+    protected $connection = "usuarios";
 
     protected $table = "users";
-
+    protected $primaryKey = "id_user";
     protected $fillable = [
         "rut",
         "email",
@@ -37,9 +38,9 @@ class User extends Authenticatable
     public function roles()
     {
         return $this->belongsToMany(
-            Role::class,
-            "usuarios_tienen_roles",
-            "id_usuario",
+            Rol::class,
+            "usuario_rols",
+            "id_user",
             "id_rol"
         );
     }

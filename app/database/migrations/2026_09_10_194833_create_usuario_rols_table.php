@@ -6,21 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    protected $connection = "usuarios";
+
     /**
      * Run the migrations.
      */
     public function up(): void
     {
         Schema::create('usuario_rols', function (Blueprint $table) {
-            $table->foreignId("user_id")
-                ->constrained("users")
+            $table->foreignId("id_user")
+                ->constrained("users", "id_user")
                 ->onDelete("cascade");
 
-            $table->foreignId("role_id")
-                ->constrained("roles")
+            $table->foreignId("id_rol")
+                ->constrained("roles", "id_rol")
                 ->onDelete("cascade");
 
-            $table->primary(["user_id", "role_id"]);
+            $table->primary(["id_user", "id_rol"]);
             $table->timestamps();
         });
     }

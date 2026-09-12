@@ -6,19 +6,22 @@ use Illuminate\Database\Eloquent\Model;
 
 class Rol extends Model
 {
-    protected $table = "roles";
+    protected $connection = "usuarios";
 
+    protected $table = "roles";
+    protected $primaryKey = "id_rol";
     protected $fillable = [
         "nombre",
     ];
 
-    public function users()
+    // Rol.php
+    public function usuarios()
     {
         return $this->belongsToMany(
             User::class,
-            "usuarios_tienen_roles",
-            "id_rol",
-            "id_usuario"
+            "usuario_rols",
+            "id_rol",   // FK de este modelo en la pivote
+            "id_user"   // FK del modelo relacionado en la pivote
         );
     }
 
@@ -26,7 +29,7 @@ class Rol extends Model
     {
         return $this->belongsToMany(
             Permiso::class,
-            "roles_tienen_permisos",
+            "rol_permisos",
             "id_rol",
             "id_permiso"
         );
