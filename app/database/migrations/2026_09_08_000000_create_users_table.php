@@ -8,9 +8,6 @@ return new class extends Migration
 {
     protected $connection = "usuarios";
 
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create("users", function (Blueprint $table) {
@@ -26,6 +23,7 @@ return new class extends Migration
                 ->references("rut")
                 ->on("trabajadors")
                 ->onDelete("cascade");
+
             $table->timestamps();
         });
 
@@ -45,9 +43,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists("users");

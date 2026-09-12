@@ -8,9 +8,6 @@ return new class extends Migration
 {
     protected $connection = "usuarios";
 
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('usuario_rols', function (Blueprint $table) {
@@ -27,9 +24,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('usuario_rols');

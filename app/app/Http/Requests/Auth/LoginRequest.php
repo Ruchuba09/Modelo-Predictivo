@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Support\Rut;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -19,30 +20,23 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'login' => ['required', 'string'],
+            'rut' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
 
-    /**
-     * Determina si el valor ingresado es un email o un rut
-     * y arma las credenciales correspondientes.
-     */
     protected function credentials(): array
     {
-        $login = $this->input('login');
+        $login = $this->input('rut');
 
         $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'rut';
 
         return [
-            $field => $login,
+            $field => $field === 'rut' ? Rut::clean($login) : $login,
             'password' => $this->input('password'),
         ];
     }
 
-    /**
-     * Attempt to authenticate the request's credentials.
-     */
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
@@ -51,7 +45,7 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'login' => trans('auth.failed'),
+                'rut' => trans('auth.failed'),
             ]);
         }
 
@@ -69,7 +63,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'login' => trans('auth.throttle', [
+            'rut' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -78,6 +72,10 @@ class LoginRequest extends FormRequest
 
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->input('login')).'|'.$this->ip());
+        $login = filter_var($this->input('rut'), FILTER_VALIDATE_EMAIL)
+            ? Str::lower($this->input('rut'))
+            : Rut::clean($this->input('rut'));
+
+        return Str::transliterate($login.'|'.$this->ip());
     }
 }
