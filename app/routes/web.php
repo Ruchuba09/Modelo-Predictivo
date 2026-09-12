@@ -14,7 +14,10 @@ Route::get('/login2', function () {
 
 Route::resource('trabajadores', TrabajadorController::class)
     ->parameters(['trabajadores' => 'trabajador']);
-    
+
+#Route::post("/usuarios", [UsuarioController::class, "store"])
+#    ->middleware(["auth", "permission:usuarios.crear"]);
+
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
