@@ -23,6 +23,11 @@ export default function MainLayout({ children }: PropsWithChildren) {
                     <Link href="/dashboard" className={getLinkClass('/dashboard')}>Dashboard</Link>
                     <Link href="/reportes" className={getLinkClass('/reportes')}>Reportes</Link>
                     <Link href="/usuarios" className={getLinkClass('/usuarios')}>Usuarios</Link>
+                    <Link href="/roles" className={getLinkClass('/roles')}>Roles</Link>
+                    <Link href="/permisos" className={getLinkClass('/permisos')}>Permisos</Link>
+                    <Link href="/modelotarjetapare" className={getLinkClass('/modelotarjetapare')}>modelotarjetapare</Link>
+                    <Link href="/tarjetapare" className={getLinkClass('/tarjetapare')}>tarjetapare</Link>
+                    <Link href="/escalariesgo" className={getLinkClass('/escalariesgo')}>escalariesgo</Link>
                 </nav>
 
                 <div className="flex items-center gap-6">

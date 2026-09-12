@@ -4,62 +4,75 @@ namespace App\Http\Controllers;
 
 use App\Models\escala_riesgo;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class EscalaRiesgoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        return Inertia::render('EscalaRiesgo/Index', [
+            'escalas' => escala_riesgo::orderBy('valor')->get(),
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return Inertia::render('EscalaRiesgo/EscalaRiesgoCrear');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'nivel' => ['required', 'string', 'max:50', 'unique:usuarios.escala_riesgo,nivel'],
+            'valor' => ['required', 'integer', 'unique:usuarios.escala_riesgo,valor'],
+            'color_hex' => ['nullable', 'string', 'max:7'],
+            'descripcion' => ['nullable', 'string'],
+        ]);
+
+        escala_riesgo::create($validated);
+
+        return redirect()->route('escala-riesgo.index')
+            ->with('success', 'Escala de riesgo creada correctamente.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(escala_riesgo $escala_riesgo)
+    public function show(escala_riesgo $escala)
     {
-        //
+        return Inertia::render('EscalaRiesgo/EscalaRiesgoMostrar', [
+            'escala' => $escala,
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(escala_riesgo $escala_riesgo)
+    public function edit(escala_riesgo $escala)
     {
-        //
+        return Inertia::render('EscalaRiesgo/EscalaRiesgoEditar', [
+            'escala' => $escala,
+        ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, escala_riesgo $escala_riesgo)
+    public function update(Request $request, escala_riesgo $escala)
     {
-        //
+        $validated = $request->validate([
+            'nivel' => ['required', 'string', 'max:50', 'unique:usuarios.escala_riesgo,nivel,' . $escala->id . ',id'],
+            'valor' => ['required', 'integer', 'unique:usuarios.escala_riesgo,valor,' . $escala->id . ',id'],
+            'color_hex' => ['nullable', 'string', 'max:7'],
+            'descripcion' => ['nullable', 'string'],
+        ]);
+
+        $escala->update($validated);
+
+        return redirect()->route('escala-riesgo.index')
+            ->with('success', 'Escala de riesgo actualizada correctamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(escala_riesgo $escala_riesgo)
+    public function destroy(escala_riesgo $escala)
     {
-        //
+        try {
+            $escala->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', 'No se puede eliminar: hay tarjetas PARE que usan esta escala de riesgo.');
+        }
+
+        return redirect()->route('escala-riesgo.index')
+            ->with('success', 'Escala de riesgo eliminada correctamente.');
     }
 }
