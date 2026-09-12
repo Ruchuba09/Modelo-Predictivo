@@ -15,14 +15,25 @@ Route::get('/login2', function () {
 Route::resource('trabajadores', TrabajadorController::class)
     ->parameters(['trabajadores' => 'trabajador']);
 
-#Route::post("/usuarios", [UsuarioController::class, "store"])
+    #Route::post("/usuarios", [UsuarioController::class, "store"])
 #    ->middleware(["auth", "permission:usuarios.crear"]);
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+Route::get('/portal', function () {
+        return Inertia::render('portal');
+    });
+    
+Route::get('dashboard', function () {
+    return Inertia::render('dashboard');
+})->name('dashboard');
+
+Route::get('/usuarios', function () {
+    return Inertia::render('usuarios');
+})->name('usuarios');
+
+Route::get('/reportes', function () {
+    return Inertia::render('reportes');
 });
+
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
