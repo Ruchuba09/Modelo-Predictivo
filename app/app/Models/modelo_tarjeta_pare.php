@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class modelo_tarjeta_pare extends Model
 {
-    protected $connection = "usuarios";
+    protected $connection = "public";
     protected $table = "modelo_tarjeta_pare";
     protected $fillable = ["nombre", "descripcion"];
     public $timestamps = false;

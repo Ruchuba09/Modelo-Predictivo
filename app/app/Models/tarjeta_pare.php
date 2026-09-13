@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class tarjeta_pare extends Model
 {
-    protected $connection = "usuarios";
-    protected $table = "tarjetas_pare";
+    protected $connection = "pgsql";
+    protected $table = "tarjeta_pares";
     protected $fillable = [
         "id_trabajador",
         "id_modelo",

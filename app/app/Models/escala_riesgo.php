@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class escala_riesgo extends Model
 {
     protected $connection = "usuarios";
-    protected $table = "escala_riesgo";
+    protected $table = "escala_riesgos";
     protected $fillable = ["nivel", "valor", "color_hex", "descripcion"];
     public $timestamps = false;
 
