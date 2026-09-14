@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class trabajador extends Model
 {
-    protected $connection = "usuarios";
     protected $table = "trabajadors";
     public $timestamps = false;
 

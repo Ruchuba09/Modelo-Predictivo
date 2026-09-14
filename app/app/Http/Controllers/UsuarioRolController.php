@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\targeta;
+use App\Models\usuarioRol;
 use Illuminate\Http\Request;
 
-class TargetaController extends Controller
+class UsuarioRolController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -34,7 +34,7 @@ class TargetaController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(targeta $targeta)
+    public function show(usuarioRol $usuarioRol)
     {
         //
     }
@@ -42,7 +42,7 @@ class TargetaController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(targeta $targeta)
+    public function edit(usuarioRol $usuarioRol)
     {
         //
     }
@@ -50,7 +50,7 @@ class TargetaController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, targeta $targeta)
+    public function update(Request $request, usuarioRol $usuarioRol)
     {
         //
     }
@@ -58,7 +58,7 @@ class TargetaController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(targeta $targeta)
+    public function destroy(usuarioRol $usuarioRol)
     {
         //
     }

@@ -13,9 +13,12 @@ export default function MainLayout({ children }: PropsWithChildren) {
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col" style={{ fontFamily: "'Poppins', sans-serif" }}>
             <header className="h-16 bg-[#111111] border-b border-[#2d3238] flex items-center justify-between px-6 sticky top-0 z-50 shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="bg-[#a0f700] text-black font-black text-sm px-2 py-0.5 rounded-sm tracking-tight">AVA</div>
-                    <span className="font-bold text-sm tracking-widest text-gray-200">MONTAJES S.A.</span>
+                <div className="flex items-center">
+                    <img 
+                        src="https://cdn.intrava.cl/v2/logos/Logotipo-isotipo-02.svg" 
+                        alt="AVA Montajes" 
+                        className="h-14 mb-11 mt-11"
+                    />
                 </div>
 
                 <nav className="hidden md:flex h-full">
@@ -23,6 +26,11 @@ export default function MainLayout({ children }: PropsWithChildren) {
                     <Link href="/dashboard" className={getLinkClass('/dashboard')}>Dashboard</Link>
                     <Link href="/reportes" className={getLinkClass('/reportes')}>Reportes</Link>
                     <Link href="/usuarios" className={getLinkClass('/usuarios')}>Usuarios</Link>
+                    <Link href="/roles" className={getLinkClass('/roles')}>Roles</Link>
+                    <Link href="/permisos" className={getLinkClass('/permisos')}>Permisos</Link>
+                    <Link href="/modelo-tarjeta" className={getLinkClass('/modelotarjetapare')}>modelotarjetapare</Link>
+                    <Link href="/tarjetas-pare" className={getLinkClass('/tarjetas-pare')}>tarjetapare</Link>
+                    <Link href="/escala-riesgo" className={getLinkClass('/escalariesgo')}>escalariesgo</Link>
                 </nav>
 
                 <div className="flex items-center gap-6">

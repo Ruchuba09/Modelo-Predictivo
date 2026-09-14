@@ -18,24 +18,14 @@ export default function Reportes() {
                 <div className="bg-[#141414] border border-[#2d3238] rounded-2xl p-8 shadow-2xl">
                     
                     <div className="mb-8">
-                        <h1 className="text-2xl font-bold text-white mb-2">Ingreso de Reporte de Terreno SGI</h1>
+                        <h1 className="text-2xl font-bold text-white mb-2">Ingreso de Reporte Tarjeta Pare</h1>
                         <p className="text-[#7a7f85] text-sm">Registra desviaciones, no conformidades o incidentes críticos en obra.</p>
                     </div>
 
                     <form className="space-y-6">
-                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">Tipo de Reporte</label>
-                                <select defaultValue="" className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] appearance-none transition-colors">
-                                    <option value="">Seleccione una opción</option>
-                                    <option>Tarjeta Pare</option>
-                                    <option>Incidente Ambiental</option>
-                                    <option>No Conformidad</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">Obra / Proyecto Destino</label>
+                                <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">OBRA / FAENA DESTINO</label>
                                 <select defaultValue="" className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] appearance-none transition-colors">
                                     <option value="">Seleccione una opción</option>
                                     <option>Antofagasta Fase 2</option>
@@ -56,7 +46,7 @@ export default function Reportes() {
                                 </select>
                             </div>
                         <div>
-                                <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">Fecha del Evento</label>
+                            <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">Fecha del Evento</label>
                                 <input 
                                     type="date" 
                                     defaultValue={fechaActual} 
@@ -68,10 +58,7 @@ export default function Reportes() {
 
                         <div>
                             <div className="flex justify-between items-end mb-3">
-                                <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85]">Nivel de Criticidad (1 A 10)</label>
-                                <span className={`text-xs font-bold tracking-wide ${criticidad >= 7 ? 'text-red-500' : 'text-[#a0f700]'}`}>
-                                    Valor Estimado: {criticidad} - {criticidad >= 8 ? 'Crítica' : criticidad >= 7 ? 'Alta' : criticidad >= 4 ? 'Media' : 'Baja'}
-                                </span>
+                                <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85]">Condiciones de uso (1 a 10)</label>
                             </div>
                             <div className="flex gap-2">
                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -83,14 +70,12 @@ export default function Reportes() {
                                             criticidad === num
                                                 ? 'bg-[#a0f700] text-black shadow-lg shadow-[#a0f700]/20'
                                                 : 'bg-[#0a0a0a] border border-[#2d3238] text-white hover:border-[#7a7f85]'
-                                        }`}
-                                    >
+                                        }`}>
                                         {num}
                                     </button>
                                 ))}
                             </div>
                         </div>
-
                         <div>
                             <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">Descripción Detallada del Hallazgo</label>
                             <textarea

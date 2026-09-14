@@ -15,7 +15,11 @@ export default function Welcome({ auth }: Props) {
 
             <header className="h-24 px-8 md:px-16 flex items-center justify-between relative z-10 border-b border-[#2d3238]/30">
                 <div className="flex items-center gap-4">
-                    <div className="bg-[#a0f700] text-black font-black text-xl px-3 py-1 rounded-sm tracking-tight">AVA</div>
+                    <img 
+                        src="https://cdn.intrava.cl/v2/logos/Logotipo-isotipo-02.svg" 
+                        alt="AVA Montajes" 
+                        className="h-15 mb-7 mt-5"
+                    />
                     <div>
                         <span className="font-bold text-lg tracking-widest text-white block leading-none">MONTAJES</span>
                         <span className="text-[10px] text-[#7a7f85] font-bold tracking-[0.2em] uppercase">Ingeniería & Construcción</span>
@@ -43,7 +47,7 @@ export default function Welcome({ auth }: Props) {
                     href={auth?.user ? "/portal" : "/login"} 
                     className="group bg-[#a0f700] hover:bg-[#86cf00] text-black px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center gap-3 shadow-[0_0_40px_-10px_rgba(160,247,0,0.5)] hover:scale-105"
                 >
-                    {auth?.user ? 'Ir al Portal' : 'Iniciar Sesión Segura'}
+                    {auth?.user ? 'Ir al Portal' : 'Portal de Acceso'}
                     <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                 </Link>
             </main>
