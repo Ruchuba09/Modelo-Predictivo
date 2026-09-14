@@ -83,14 +83,12 @@ export default function Reportes() {
                                             criticidad === num
                                                 ? 'bg-[#a0f700] text-black shadow-lg shadow-[#a0f700]/20'
                                                 : 'bg-[#0a0a0a] border border-[#2d3238] text-white hover:border-[#7a7f85]'
-                                        }`}
-                                    >
+                                        }`}>
                                         {num}
                                     </button>
                                 ))}
                             </div>
                         </div>
-
                         <div>
                             <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">Descripción Detallada del Hallazgo</label>
                             <textarea
