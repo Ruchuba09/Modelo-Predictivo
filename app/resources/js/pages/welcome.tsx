@@ -15,7 +15,11 @@ export default function Welcome({ auth }: Props) {
 
             <header className="h-24 px-8 md:px-16 flex items-center justify-between relative z-10 border-b border-[#2d3238]/30">
                 <div className="flex items-center gap-4">
-                    <div className="bg-[#a0f700] text-black font-black text-xl px-3 py-1 rounded-sm tracking-tight">AVA</div>
+                    <img 
+                        src="https://cdn.intrava.cl/v2/logos/Logotipo-isotipo-02.svg" 
+                        alt="AVA Montajes" 
+                        className="h-15 mb-7 mt-5"
+                    />
                     <div>
                         <span className="font-bold text-lg tracking-widest text-white block leading-none">MONTAJES</span>
                         <span className="text-[10px] text-[#7a7f85] font-bold tracking-[0.2em] uppercase">Ingeniería & Construcción</span>
