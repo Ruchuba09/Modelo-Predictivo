@@ -43,7 +43,7 @@ export default function Welcome({ auth }: Props) {
                     href={auth?.user ? "/portal" : "/login"} 
                     className="group bg-[#a0f700] hover:bg-[#86cf00] text-black px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center gap-3 shadow-[0_0_40px_-10px_rgba(160,247,0,0.5)] hover:scale-105"
                 >
-                    {auth?.user ? 'Ir al Portal' : 'Iniciar Sesión Segura'}
+                    {auth?.user ? 'Ir al Portal' : 'Iniciar Sesión'}
                     <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                 </Link>
             </main>
