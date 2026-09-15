@@ -1,4 +1,5 @@
-import { Head, useState, Link } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 
 export default function Index() {
