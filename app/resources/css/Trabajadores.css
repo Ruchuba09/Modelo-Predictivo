@@ -1,0 +1,89 @@
+.trabajadores-page {
+  max-width: 960px;
+  margin: 2rem auto;
+  padding: 1.5rem 2rem;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #1f2937;
+}
+
+.trabajadores-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.trabajadores-header h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.trabajadores-link-nuevo {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.trabajadores-link-nuevo:hover {
+  text-decoration: underline;
+}
+
+.trabajadores-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.trabajadores-tabla thead th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  background: #f3f4f6;
+  color: #374151;
+  font-weight: 600;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.trabajadores-tabla tbody td {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.trabajadores-tabla tbody tr:hover {
+  background: #f9fafb;
+}
+
+.trabajadores-tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.trabajadores-link-accion {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.trabajadores-link-accion:hover {
+  text-decoration: underline;
+}
+
+.trabajadores-btn-eliminar {
+  display: inline-block;
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid #dc2626;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.trabajadores-btn-eliminar:hover {
+  background: #fef2f2;
+}
