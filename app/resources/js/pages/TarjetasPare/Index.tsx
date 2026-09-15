@@ -37,7 +37,7 @@ export default function Index() {
 
                 <div className="bg-[#141414] border border-[#2d3238] rounded-xl overflow-hidden">
                     <div className="p-5 border-b border-[#2d3238] flex justify-between items-center bg-[#111111]">
-                        <h2 className="text-sm font-bold text-white uppercase tracking-wider">Detenciones Activas (Requieren Acción)</h2>
+                        <h2 className="text-sm font-bold text-white uppercase tracking-wider">Detenciones Activas</h2>
                         <span className="bg-red-500/20 text-red-500 px-3 py-1 rounded-full text-xs font-bold animate-pulse">
                             1 Alerta Crítica
                         </span>
@@ -49,7 +49,7 @@ export default function Index() {
                                 <tr className="border-b border-[#2d3238] text-[10px] uppercase tracking-widest text-[#7a7f85] bg-[#1a1a1a]">
                                     <th className="px-6 py-4 font-medium">ID / Fecha</th>
                                     <th className="px-6 py-4 font-medium">Faena / Zona</th>
-                                    <th className="px-6 py-4 font-medium">Condición de Uso (Causal)</th>
+                                    <th className="px-6 py-4 font-medium">Condición de Uso</th>
                                     <th className="px-6 py-4 font-medium text-right">Acción</th>
                                 </tr>
                             </thead>
@@ -73,7 +73,7 @@ export default function Index() {
                                             onClick={() => setModalAbierto(true)}
                                             className="bg-[#a0f700] hover:bg-[#86cf00] text-black px-4 py-2 rounded-md text-xs font-bold transition-colors shadow-lg shadow-[#a0f700]/10"
                                         >
-                                            Resolver y Habilitar
+                                            Resolver
                                         </button>
                                     </td>
                                 </tr>
