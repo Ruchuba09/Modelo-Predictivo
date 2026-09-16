@@ -35,7 +35,8 @@ export default function UsuariosEditar() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        put(`/usuarios/${usuario.id_user}`);
+        console.log('PUT a:', `/usuarios/${usuario.id_user}`, 'id_user=', usuario.id_user, typeof usuario.id_user);
+        put(`/usuarios/1`);
     };
 
     return (
