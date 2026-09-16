@@ -70,12 +70,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/tarjetas-pare/{tarjeta}/editar', [TarjetaPareController::class, 'edit'])->name('tarjetas-pare.editar');
     Route::put('/tarjetas-pare/{tarjeta}', [TarjetaPareController::class, 'update'])->name('tarjetas-pare.update');
     Route::delete('/tarjetas-pare/{tarjeta}', [TarjetaPareController::class, 'destroy'])->name('tarjetas-pare.destroy');
-});
 
-
-
-Route::resource('trabajadores', TrabajadorController::class)
+    Route::resource('/trabajadores', TrabajadorController::class)
     ->parameters(['trabajadores' => 'trabajador']);
+});
 
 Route::get('/portal', function () {
     return Inertia::render('portal');
