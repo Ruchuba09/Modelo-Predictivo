@@ -1,136 +1,148 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
-import { FormEventHandler } from 'react';
 
-interface Trabajador { id: number; nombre_1: string; apellido_1: string; rut: string; }
-interface Modelo { id: number; nombre: string; }
-interface Escala { id: number; nivel: string; color_hex: string | null; }
-interface ProyectoT { id: number; nombre: string; alias: string | null; }
+export default function Reportes() {
 
-export default function TarjetasPareCrear() {
-    const { trabajadores, modelos, escalas, proyectos } = usePage().props as unknown as {
-        trabajadores: Trabajador[]; modelos: Modelo[]; escalas: Escala[]; proyectos: ProyectoT[];
-    };
+    const hoy = new Date();
+    const fechaActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
-    const { data, setData, post, processing, errors } = useForm({
-        id_trabajador: '',
-        id_modelo: '',
-        id_escala_riesgo: '',
-        id_proyecto: '',
-        ubicacion: '',
-        descripcion: '',
-        estado: 'abierta',
+    const {data, setData, post, processing} = useForm({
+        tipo_reporte : '',
+        obra_faena: '',
+        zona_trabajo: '',
+        fecha_evento: fechaActual,
+        condicion_pare: 0,
+        descripcion: ''
     });
 
-    const submit: FormEventHandler = (e) => {
+    const condicionesPare: {[key: number]: string} = {
+        1: "Si las condiciones de trabajo NO son seguras.",
+        2: "Si NO tiene las herramientas adecuadas o están en mal estado.",
+        3: "Si NO tiene los EPP adecuados.",
+        4: "Si NO sabe o no está capacitado / autorizado para realizar la actividad.",
+        5: "Si NO hay un procedimiento / instructivo asociado a la actividad o si este existe pero no ha sido difundido.",
+        6: "NO contar con el apoyo de recursos humanos y/o materiales necesarios para realizar la actividad.",
+        7: "NO contar con AST, VATS, ERT.",
+        8: "NO contar con el o los permisos exigidos para realizar la actividad.",
+        9: "NO encontrarse en condiciones físicas o emocionales para realizar la actividad.",
+        10: "Otras condiciones no consideradas que impliquen un riesgo no controlado."
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post('/tarjetas-pare');
+
+        if (data.condicion_pare === 0) {
+            alert("Por favor, seleccione una condición de uso (1 a 10).");
+            return;
+        }
     };
 
     return (
         <MainLayout>
-            <Head title="Crear Tarjeta PARE | AVA" />
+            <Head title="Ingreso de Reporte | AVA" />
+            <div className="max-w-[800px] mx-auto p-6 lg:p-8 mt-4 lg:mt-8">
+                <div className="bg-[#141414] border border-[#2d3238] rounded-2xl p-8 shadow-2xl">
+                
+                    <div className="mb-8">
+                        <h1 className="text-2xl font-bold text-white mb-2">Ingreso de Reporte Tarjeta Pare</h1>
+                        <p className="text-[#7a7f85] text-sm">Registra incidentes críticos en obra.</p>
+                    </div>
 
-            <div className="max-w-[800px] mx-auto p-6 lg:p-8">
+                    <form onSubmit={handleSubmit}className="space-y-6" >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">Obra / Faena</label>
+                                <input 
+                                    type="text"
+                                    value={data.obra_faena}
+                                    onChange={e => setData('obra_faena', e.target.value)}
+                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">Zona / Área de Trabajo</label>
+                                <input 
+                                    type="text"
+                                    value={data.zona_trabajo}
+                                    onChange={e => setData('zona_trabajo', e.target.value)}
+                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors"
+                                />
+                            </div>
+                        </div>
 
-                <div className="flex items-center gap-3 mb-8">
-                    <Link href="/tarjetas-pare" className="text-[#7a7f85] hover:text-white transition-colors text-sm">← Volver</Link>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">Fecha del Evento</label>
+                                <input 
+                                    type="date" 
+                                    value={data.fecha_evento}
+                                    disabled
+                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3 text-sm text-[#7a7f85] opacity-60 cursor_not-allowed" 
+                                    style={{ colorScheme: 'dark' }} 
+                                />
+                            </div>
+                        </div>
+
+                        <div className="bg-[#0a0a0a] p-5 rounded-xl border border-[#2d3238]">
+                            <div className="flex justify-between items-end mb-4">
+                                <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85]">Condición de Uso - Tarjeta PARE</label>
+                                {data.condicion_pare > 0 && (
+                                    <span className="text-xs font-bold tracking-wide text-[#a0f700]">
+                                        Condición #{data.condicion_pare} Seleccionada
+                                    </span>
+                                )}
+                            </div>
+                            
+                            <div className="flex gap-2 mb-2">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                    <button
+                                        key={num}
+                                        type="button"
+                                        onClick={() => setData('condicion_pare', num)}
+                                        className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${
+                                            data.condicion_pare === num
+                                                ? 'bg-[#a0f700] text-black shadow-[0_0_15px_-3px_rgba(160,247,0,0.4)]'
+                                                : 'bg-[#141414] border border-[#2d3238] text-white hover:border-[#7a7f85]'
+                                        }`}
+                                    >
+                                        {num}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="min-h-[20px] mt-3">
+                                {data.condicion_pare > 0 && (
+                                    <p className="text-[#00000] text-sm font-medium">
+                                        {condicionesPare[data.condicion_pare]}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] uppercase tracking-wider text-[#7a7f85] mb-2">Descripción Detallada del Hallazgo</label>
+                            <textarea
+                                rows={4}
+                                value={data.descripcion}
+                                onChange={e => setData('descripcion', e.target.value)}
+                                placeholder="Describa el contexto de la detención..."
+                                className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] resize-none transition-colors"
+                            ></textarea>
+                        </div>
+
+                        <div className="flex justify-end gap-4 pt-6 border-t border-[#2d3238] mt-8">
+                            <button 
+                                type="submit" 
+                                disabled={processing}
+                                className="px-6 py-3 rounded-lg text-sm font-bold bg-[#a0f700] hover:bg-[#86cf00] text-black transition-colors shadow-lg shadow-[#a0f700]/20 flex items-center gap-2 disabled:opacity-50"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                </svg>
+                                {processing ? 'Guardando...' : 'Guardar Reporte'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-white mb-1">Crear Tarjeta PARE</h1>
-                    <p className="text-[#7a7f85] text-sm">Registra un nuevo reporte de seguridad.</p>
-                </div>
-
-                <form onSubmit={submit} className="bg-[#15181c] border border-white/5 rounded-xl p-6 lg:p-8 space-y-6">
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                            <label className="block text-sm font-medium text-white mb-2">Trabajador</label>
-                            <select value={data.id_trabajador} onChange={(e) => setData('id_trabajador', e.target.value)}
-                                className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors">
-                                <option value="">Selecciona un trabajador</option>
-                                {trabajadores?.map((t) => (
-                                    <option key={t.id} value={t.id}>{t.nombre_1} {t.apellido_1} — {t.rut}</option>
-                                ))}
-                            </select>
-                            {errors.id_trabajador && <p className="text-red-400 text-xs mt-1">{errors.id_trabajador}</p>}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-white mb-2">Modelo de tarjeta</label>
-                            <select value={data.id_modelo} onChange={(e) => setData('id_modelo', e.target.value)}
-                                className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors">
-                                <option value="">Selecciona un modelo</option>
-                                {modelos?.map((m) => (
-                                    <option key={m.id} value={m.id}>{m.nombre}</option>
-                                ))}
-                            </select>
-                            {errors.id_modelo && <p className="text-red-400 text-xs mt-1">{errors.id_modelo}</p>}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                            <label className="block text-sm font-medium text-white mb-2">Escala de riesgo</label>
-                            <select value={data.id_escala_riesgo} onChange={(e) => setData('id_escala_riesgo', e.target.value)}
-                                className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors">
-                                <option value="">Selecciona un nivel</option>
-                                {escalas?.map((esc) => (
-                                    <option key={esc.id} value={esc.id}>{esc.nivel}</option>
-                                ))}
-                            </select>
-                            {errors.id_escala_riesgo && <p className="text-red-400 text-xs mt-1">{errors.id_escala_riesgo}</p>}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-white mb-2">Proyecto (opcional)</label>
-                            <select value={data.id_proyecto} onChange={(e) => setData('id_proyecto', e.target.value)}
-                                className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors">
-                                <option value="">Sin proyecto asociado</option>
-                                {proyectos?.map((p) => (
-                                    <option key={p.id} value={p.id}>{p.nombre}{p.alias ? ` (${p.alias})` : ''}</option>
-                                ))}
-                            </select>
-                            {errors.id_proyecto && <p className="text-red-400 text-xs mt-1">{errors.id_proyecto}</p>}
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-white mb-2">Ubicación</label>
-                        <input type="text" value={data.ubicacion} onChange={(e) => setData('ubicacion', e.target.value)}
-                            className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors"
-                            placeholder="Ej. Sala de máquinas, Piso 3" />
-                        {errors.ubicacion && <p className="text-red-400 text-xs mt-1">{errors.ubicacion}</p>}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-white mb-2">Descripción del hallazgo</label>
-                        <textarea value={data.descripcion} onChange={(e) => setData('descripcion', e.target.value)} rows={4}
-                            className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors" />
-                        {errors.descripcion && <p className="text-red-400 text-xs mt-1">{errors.descripcion}</p>}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-white mb-2">Estado</label>
-                        <select value={data.estado} onChange={(e) => setData('estado', e.target.value)}
-                            className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors">
-                            <option value="abierta">Abierta</option>
-                            <option value="en_proceso">En proceso</option>
-                            <option value="cerrada">Cerrada</option>
-                        </select>
-                        {errors.estado && <p className="text-red-400 text-xs mt-1">{errors.estado}</p>}
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-                        <Link href="/tarjetas-pare" className="px-5 py-2.5 rounded-lg text-sm font-medium text-[#7a7f85] hover:text-white transition-colors">Cancelar</Link>
-                        <button type="submit" disabled={processing} className="bg-[#a0f700] hover:bg-[#86cf00] disabled:opacity-50 text-black px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-[#a0f700]/10">
-                            {processing ? 'Creando...' : 'Crear Tarjeta'}
-                        </button>
-                    </div>
-
-                </form>
-
             </div>
         </MainLayout>
     );
