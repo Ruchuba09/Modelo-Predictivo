@@ -30,6 +30,12 @@ class User extends Authenticatable
             "password" => "hashed",
         ];
     }
+    public function trabajadorOrFail(): Trabajador
+    {
+        return $this->trabajador ?? throw new \Illuminate\Auth\Access\AuthorizationException(
+            'El usuario autenticado no está vinculado a un trabajador.'
+        );
+    }
 
     // ============================================================
     // ROLES
