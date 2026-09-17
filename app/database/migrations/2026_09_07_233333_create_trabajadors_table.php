@@ -13,13 +13,15 @@ return new class extends Migration
     {
         Schema::create('trabajadors', function (Blueprint $table) {
             $table->id();
+            $table->string("rut")->unique();
             $table->string("nombre_1");
             $table->string("nombre_2");
             $table->string("apellido_1");
             $table->string("apellido_2");
-            $table->string("cargo");
-            $table->string("id_tipo_trabajador");
-            $table->string("rut")->unique();
+            $table->string("fecha_creacion");
+            $table->string("ultima_act");
+            $table->string("estado");
+            $table->string("cargo");   
             //$table->timestamp('created_at')->nullable();
             //$table->timestamp('updated_at')->nullable();
             $table->timestamps();
