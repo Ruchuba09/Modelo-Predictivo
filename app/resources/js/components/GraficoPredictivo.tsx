@@ -1,5 +1,9 @@
 import { useState, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { 
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    BarChart, Bar,
+    AreaChart, Area
+} from 'recharts';
 
 // SETS DE DATOS SIMULADOS
 const datosDias = [
@@ -32,12 +36,11 @@ const datosMeses = [
 
 export default function GraficoPredictivo() {
     const [tipoTiempo, setTipoTiempo] = useState('semanas'); 
-    const [cantidadVista, setCantidadVista] = useState(6);
+    const [tipoGrafico, setTipoGrafico] = useState('linea'); 
+    const [fechaInicio, setFechaInicio] = useState('');
+    const [fechaFin, setFechaFin] = useState('');
     const [metricaY, setMetricaY] = useState('hallazgos');
     
-    // Estado de Drag & Drop
-    const [isDraggingOver, setIsDraggingOver] = useState(false);
-
     const [verSeguridad, setVerSeguridad] = useState(true);
     const [verCalidad, setVerCalidad] = useState(true);
     const [verAmbiental, setVerAmbiental] = useState(true);
@@ -47,8 +50,7 @@ export default function GraficoPredictivo() {
     if (tipoTiempo === 'meses') datosBase = datosMeses;
 
     const datosTransformados = useMemo(() => {
-        const datosRecortados = datosBase.slice(0, cantidadVista);
-        return datosRecortados.map(d => {
+        return datosBase.map(d => {
             if (metricaY === 'cumplimiento') {
                 return {
                     ...d,
@@ -66,24 +68,75 @@ export default function GraficoPredictivo() {
             }
             return d;
         });
-    }, [datosBase, cantidadVista, metricaY]);
+    }, [datosBase, metricaY, fechaInicio, fechaFin]);
 
-    const cambiarTiempo = (nuevoTiempo: string, maximo: number) => {
-        setTipoTiempo(nuevoTiempo);
-        setCantidadVista(maximo);
-    };
-
-    // FUNCIONES DE DRAG & DROP
     const handleDragStart = (e: React.DragEvent, metrica: string) => {
         e.dataTransfer.setData('metrica', metrica);
     };
 
     const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDraggingOver(false);
+        e.preventDefault(); 
         const metricaSoltada = e.dataTransfer.getData('metrica');
         if (metricaSoltada) {
             setMetricaY(metricaSoltada);
+        }
+    };
+
+    // NUEVA FUNCIÓN DE EXPORTACIÓN
+    const exportarGrafico = () => {
+        window.print();
+    };
+
+    const renderizarGrafico = () => {
+        const comunesProps = {
+            data: datosTransformados,
+            margin: { top: 10, right: 10, left: -20, bottom: 0 }
+        };
+
+        const ejesYTooltip = (
+            <>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2D3238" vertical={false} />
+                <XAxis dataKey="periodo" stroke="#7A7F85" fontSize={11} tickLine={false} axisLine={false} dy={10} />
+                <YAxis stroke="#7A7F85" fontSize={11} tickLine={false} axisLine={false} dx={-10} 
+                    tickFormatter={(value) => metricaY === 'cumplimiento' ? `${value}%` : value} 
+                />
+                <Tooltip 
+                    contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#2D3238', borderRadius: '8px' }} 
+                    itemStyle={{ color: '#fff', fontSize: '13px' }}
+                    formatter={(value: number) => metricaY === 'cumplimiento' ? `${value.toFixed(1)}%` : value}
+                />
+            </>
+        );
+
+        switch (tipoGrafico) {
+            case 'barras':
+                return (
+                    <BarChart {...comunesProps}>
+                        {ejesYTooltip}
+                        {verSeguridad && <Bar name="Seguridad (SSO)" dataKey="riesgoSeguridad" fill="#A0F700" radius={[4, 4, 0, 0]} animationDuration={400} />}
+                        {verCalidad && <Bar name="Calidad" dataKey="riesgoCalidad" fill="#FFCB00" radius={[4, 4, 0, 0]} animationDuration={400} />}
+                        {verAmbiental && <Bar name="Medio Ambiente" dataKey="riesgoAmbiental" fill="#00D1FF" radius={[4, 4, 0, 0]} animationDuration={400} />}
+                    </BarChart>
+                );
+            case 'area':
+                return (
+                    <AreaChart {...comunesProps}>
+                        {ejesYTooltip}
+                        {verSeguridad && <Area type="monotone" name="Seguridad (SSO)" dataKey="riesgoSeguridad" stroke="#A0F700" fill="#A0F700" fillOpacity={0.3} strokeWidth={2} animationDuration={400} />}
+                        {verCalidad && <Area type="monotone" name="Calidad" dataKey="riesgoCalidad" stroke="#FFCB00" fill="#FFCB00" fillOpacity={0.3} strokeWidth={2} animationDuration={400} />}
+                        {verAmbiental && <Area type="monotone" name="Medio Ambiente" dataKey="riesgoAmbiental" stroke="#00D1FF" fill="#00D1FF" fillOpacity={0.3} strokeWidth={2} animationDuration={400} />}
+                    </AreaChart>
+                );
+            case 'linea':
+            default:
+                return (
+                    <LineChart {...comunesProps}>
+                        {ejesYTooltip}
+                        {verSeguridad && <Line type="monotone" name="Seguridad (SSO)" dataKey="riesgoSeguridad" stroke="#A0F700" strokeWidth={3} dot={{ r: 4, fill: '#0a0a0a', stroke: '#A0F700', strokeWidth: 2 }} activeDot={{ r: 6 }} animationDuration={400} />}
+                        {verCalidad && <Line type="monotone" name="Calidad" dataKey="riesgoCalidad" stroke="#FFCB00" strokeWidth={3} dot={{ r: 4, fill: '#0a0a0a', stroke: '#FFCB00', strokeWidth: 2 }} activeDot={{ r: 6 }} animationDuration={400} />}
+                        {verAmbiental && <Line type="monotone" name="Medio Ambiente" dataKey="riesgoAmbiental" stroke="#00D1FF" strokeWidth={3} dot={{ r: 4, fill: '#0a0a0a', stroke: '#00D1FF', strokeWidth: 2 }} activeDot={{ r: 6 }} animationDuration={400} />}
+                    </LineChart>
+                );
         }
     };
 
@@ -97,25 +150,39 @@ export default function GraficoPredictivo() {
                 </div>
                 
                 <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4">
+                    {/* BOTÓN DE EXPORTAR */}
+                    <button 
+                        onClick={exportarGrafico}
+                        className="flex items-center gap-2 bg-[#A0F700]/10 border border-[#A0F700] text-[#A0F700] px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#A0F700] hover:text-[#0a0a0a] transition-all"
+                        title="Exportar como PDF"
+                    >
+                        📥 Exportar
+                    </button>
+
+                    {/* SELECTOR DE TIPO DE GRÁFICO */}
                     <div className="flex bg-[#0a0a0a] rounded-lg border border-[#2D3238] p-1">
-                        <button onClick={() => cambiarTiempo('dias', datosDias.length)} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoTiempo === 'dias' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>Días</button>
-                        <button onClick={() => cambiarTiempo('semanas', datosSemanas.length)} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoTiempo === 'semanas' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>Semanas</button>
-                        <button onClick={() => cambiarTiempo('meses', datosMeses.length)} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoTiempo === 'meses' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>Meses</button>
+                        <button onClick={() => setTipoGrafico('linea')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoGrafico === 'linea' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>📈 Líneas</button>
+                        <button onClick={() => setTipoGrafico('barras')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoGrafico === 'barras' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>📊 Barras</button>
+                        <button onClick={() => setTipoGrafico('area')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoGrafico === 'area' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>⛰️ Área</button>
                     </div>
 
-                    <div className="flex items-center gap-3 bg-[#0a0a0a] px-4 py-1.5 rounded-lg border border-[#2D3238]">
-                        <label className="text-[#7A7F85] text-sm font-medium whitespace-nowrap">
-                            Rango temporal: <span className="text-[#A0F700] text-base ml-1">{cantidadVista}</span>
-                        </label>
-                        <input 
-                            type="range" min="2" max={datosBase.length} value={cantidadVista}
-                            onChange={(e) => setCantidadVista(Number(e.target.value))}
-                            className="w-20 sm:w-24 accent-[#A0F700] cursor-pointer"
-                        />
+                    {/* SELECTOR DE AGRUPACIÓN (Días, Semanas, Meses) */}
+                    <div className="flex bg-[#0a0a0a] rounded-lg border border-[#2D3238] p-1">
+                        <button onClick={() => setTipoTiempo('dias')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoTiempo === 'dias' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>Días</button>
+                        <button onClick={() => setTipoTiempo('semanas')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoTiempo === 'semanas' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>Semanas</button>
+                        <button onClick={() => setTipoTiempo('meses')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoTiempo === 'meses' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>Meses</button>
+                    </div>
+
+                    {/* FILTRO DE FECHAS */}
+                    <div className="flex items-center gap-2 bg-[#0a0a0a] px-3 py-1.5 rounded-lg border border-[#2D3238]">
+                        <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} className="bg-transparent text-[#7A7F85] text-xs outline-none cursor-pointer [color-scheme:dark]" />
+                        <span className="text-[#7A7F85] font-bold">-</span>
+                        <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} className="bg-transparent text-[#7A7F85] text-xs outline-none cursor-pointer [color-scheme:dark]" />
                     </div>
                 </div>
             </div>
 
+            {/* BOTONES DE FILTRO DE ÁREAS */}
             <div className="mb-6 flex flex-wrap gap-3">
                 <button onClick={() => setVerSeguridad(!verSeguridad)} className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${verSeguridad ? 'bg-[#A0F700]/10 border-[#A0F700] text-[#A0F700]' : 'bg-[#0a0a0a] border-[#2D3238] text-[#7A7F85]'}`}>
                     <span className="inline-block w-2 h-2 rounded-full bg-[#A0F700] mr-2"></span>SSO
@@ -128,106 +195,37 @@ export default function GraficoPredictivo() {
                 </button>
             </div>
 
-            {/* CONTENEDOR PRINCIPAL: GRÁFICO + CUADRADOS DE MÉTRICAS */}
             <div className="flex flex-col lg:flex-row gap-6">
-                
-                {/* ZONA DE CAÍDA (DROP ZONE) YA CORREGIDA */}
-                <div 
-                    className={`flex-1 h-[320px] rounded-xl border-2 transition-all duration-300 relative ${
-                        isDraggingOver ? 'border-[#A0F700] bg-[#A0F700]/5 scale-[1.01]' : 'border-transparent'
-                    }`}
-                    onDragEnter={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
-                    onDragOver={(e) => e.preventDefault()} 
-                    onDragLeave={() => setIsDraggingOver(false)}
-                    onDrop={handleDrop}
-                >
-                    {/* Indicador visual al arrastrar */}
-                    {isDraggingOver && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                            <span className="bg-[#A0F700] text-black px-6 py-2 rounded-full font-bold shadow-lg">
-                                Soltar aquí para aplicar métrica
-                            </span>
-                        </div>
-                    )}
-
+                <div className="flex-1 h-[320px] rounded-xl relative" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={datosTransformados} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2D3238" vertical={false} />
-                            <XAxis dataKey="periodo" stroke="#7A7F85" fontSize={11} tickLine={false} axisLine={false} dy={10} />
-                            <YAxis stroke="#7A7F85" fontSize={11} tickLine={false} axisLine={false} dx={-10} 
-                                tickFormatter={(value) => metricaY === 'cumplimiento' ? `${value}%` : value} 
-                            />
-                            <Tooltip 
-                                contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#2D3238', borderRadius: '8px' }} 
-                                itemStyle={{ color: '#fff', fontSize: '13px' }}
-                                formatter={(value: number) => metricaY === 'cumplimiento' ? `${value.toFixed(1)}%` : value}
-                            />
-                            
-                            {verSeguridad && <Line type="monotone" name="Seguridad (SSO)" dataKey="riesgoSeguridad" stroke="#A0F700" strokeWidth={3} dot={{ r: 4, fill: '#0a0a0a', stroke: '#A0F700', strokeWidth: 2 }} activeDot={{ r: 6 }} animationDuration={400} />}
-                            {verCalidad && <Line type="monotone" name="Calidad" dataKey="riesgoCalidad" stroke="#FFCB00" strokeWidth={3} dot={{ r: 4, fill: '#0a0a0a', stroke: '#FFCB00', strokeWidth: 2 }} activeDot={{ r: 6 }} animationDuration={400} />}
-                            {verAmbiental && <Line type="monotone" name="Medio Ambiente" dataKey="riesgoAmbiental" stroke="#00D1FF" strokeWidth={3} dot={{ r: 4, fill: '#0a0a0a', stroke: '#00D1FF', strokeWidth: 2 }} activeDot={{ r: 6 }} animationDuration={400} />}
-                        </LineChart>
+                        {renderizarGrafico()}
                     </ResponsiveContainer>
                 </div>
 
-                {/* CAJA LATERAL: CUADRADOS ARRASTRABLES */}
                 <div className="w-full lg:w-56 flex flex-col gap-3">
                     <p className="text-[#7A7F85] text-xs font-bold uppercase tracking-wider mb-1 text-center lg:text-left">
                         Métrica (Arrastrar al gráfico)
                     </p>
-
-                    <DraggableCard 
-                        id="hallazgos" 
-                        titulo="Cant. Hallazgos" 
-                        descripcion="Nº bruto de desvíos" 
-                        icono="📊"
-                        activo={metricaY === 'hallazgos'} 
-                        onDragStart={handleDragStart} 
-                    />
-                    <DraggableCard 
-                        id="cumplimiento" 
-                        titulo="% Cumplimiento" 
-                        descripcion="Adherencia a la norma" 
-                        icono="✅"
-                        activo={metricaY === 'cumplimiento'} 
-                        onDragStart={handleDragStart} 
-                    />
-                    <DraggableCard 
-                        id="gravedad" 
-                        titulo="Índice Gravedad" 
-                        descripcion="Escala de severidad (0-5)" 
-                        icono="⚠️"
-                        activo={metricaY === 'gravedad'} 
-                        onDragStart={handleDragStart} 
-                    />
+                    <DraggableCard id="hallazgos" titulo="Cant. Hallazgos" descripcion="Nº bruto de desvíos" icono="📊" activo={metricaY === 'hallazgos'} onDragStart={handleDragStart} />
+                    <DraggableCard id="cumplimiento" titulo="% Cumplimiento" descripcion="Adherencia a la norma" icono="✅" activo={metricaY === 'cumplimiento'} onDragStart={handleDragStart} />
+                    <DraggableCard id="gravedad" titulo="Índice Gravedad" descripcion="Escala de severidad (0-5)" icono="⚠️" activo={metricaY === 'gravedad'} onDragStart={handleDragStart} />
                 </div>
             </div>
         </div>
     );
 }
 
-// COMPONENTE SECUNDARIO: La Tarjetita Arrastrable
 function DraggableCard({ id, titulo, descripcion, icono, activo, onDragStart }: any) {
     return (
-        <div 
-            draggable
-            onDragStart={(e) => onDragStart(e, id)}
-            className={`p-3 rounded-lg border-2 cursor-grab active:cursor-grabbing transition-all duration-200 transform hover:-translate-y-1 ${
-                activo 
-                ? 'bg-[#A0F700]/10 border-[#A0F700]' 
-                : 'bg-[#0a0a0a] border-[#2D3238] hover:border-[#7A7F85]'
-            }`}
-        >
-            <div className="flex items-center gap-3">
+        <div draggable onDragStart={(e) => onDragStart(e, id)} className={`p-3 rounded-lg border-2 cursor-grab active:cursor-grabbing transition-all duration-200 ${activo ? 'bg-[#A0F700]/10 border-[#A0F700]' : 'bg-[#0a0a0a] border-[#2D3238] hover:border-[#7A7F85]'}`}>
+            <div className="flex items-center gap-3 pointer-events-none">
                 <div className="text-xl">{icono}</div>
                 <div>
                     <h4 className={`text-sm font-bold ${activo ? 'text-[#A0F700]' : 'text-white'}`}>{titulo}</h4>
                     <p className="text-[#7A7F85] text-xs mt-0.5">{descripcion}</p>
                 </div>
             </div>
-            
-            {/* Pequeño indicador de "arrastrable" */}
-            <div className="mt-2 flex justify-center">
+            <div className="mt-2 flex justify-center pointer-events-none">
                 <div className="w-8 h-1 rounded-full bg-[#2D3238]"></div>
             </div>
         </div>
