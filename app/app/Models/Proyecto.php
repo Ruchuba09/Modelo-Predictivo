@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 
 class Proyecto extends Model {
-    protected $connection = "usuarios";
+    //protected $connection = "usuarios";
     protected $table = "proyectos";
     public $timestamps = false;
 

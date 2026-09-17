@@ -2,19 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\UsuarioData;
+use App\Http\Resources\UsuarioResource;
 use App\Models\User;
 use App\Models\Rol;
+use App\http\Services\UserService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class UserController extends Controller
 {
+    public function __construct(protected UserService $userService)
+    {
+    }
+
     public function index()
     {
-        $usuarios = User::with('roles')->latest()->get();
-
         return Inertia::render('Usuarios/Index', [
-            'usuarios' => $usuarios,
+            'usuarios' => UsuarioResource::collection($this->userService->listarConRoles()),
         ]);
     }
 
@@ -35,13 +40,7 @@ class UserController extends Controller
             'roles.*' => ['exists:usuarios.roles,id_rol'],
         ]);
 
-        $usuario = User::create([
-            'rut' => $validated['rut'],
-            'email' => $validated['email'],
-            'password' => $validated['password'],
-        ]);
-
-        $usuario->roles()->sync($validated['roles']);
+        $this->userService->crear(UsuarioData::fromArray($validated));
 
         return redirect()->route('usuarios.index')
             ->with('success', 'Usuario creado correctamente.');
@@ -50,14 +49,14 @@ class UserController extends Controller
     public function show(User $usuario)
     {
         return Inertia::render('Usuarios/UsuariosMostrar', [
-            'usuario' => $usuario->load('roles'),
+            'usuario' => new UsuarioResource($this->userService->obtenerConRoles($usuario)),
         ]);
     }
 
     public function edit(User $usuario)
     {
         return Inertia::render('Usuarios/UsuariosEditar', [
-            'usuario' => $usuario->load('roles'),
+            'usuario' => new UsuarioResource($this->userService->obtenerConRoles($usuario)),
             'roles' => Rol::select('id_rol', 'nombre')->get(),
         ]);
     }
@@ -72,15 +71,7 @@ class UserController extends Controller
             'roles.*' => ['exists:usuarios.roles,id_rol'],
         ]);
 
-        $usuario->rut = $validated['rut'];
-        $usuario->email = $validated['email'];
-
-        if (!empty($validated['password'])) {
-            $usuario->password = $validated['password'];
-        }
-
-        $usuario->save();
-        $usuario->roles()->sync($validated['roles']);
+        $this->userService->actualizar($usuario, UsuarioData::fromArray($validated));
 
         return redirect()->route('usuarios.index')
             ->with('success', 'Usuario actualizado correctamente.');
@@ -88,8 +79,7 @@ class UserController extends Controller
 
     public function destroy(User $usuario)
     {
-        $usuario->roles()->detach();
-        $usuario->delete();
+        $this->userService->eliminar($usuario);
 
         return redirect()->route('usuarios.index')
             ->with('success', 'Usuario eliminado correctamente.');

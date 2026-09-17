@@ -1,22 +1,6 @@
-import InputError from '@/components/input-error';
-import AppLayout from '@/layouts/app-layout';
-import SettingsLayout from '@/layouts/settings/layout';
-import { type BreadcrumbItem } from '@/types';
-import { Transition } from '@headlessui/react';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler, useRef } from 'react';
-
-import HeadingSmall from '@/components/heading-small';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Password settings',
-        href: '/settings/password',
-    },
-];
+import MainLayout from '../../layouts/MainLayout';
 
 export default function Password() {
     const passwordInput = useRef<HTMLInputElement>(null);
@@ -28,10 +12,10 @@ export default function Password() {
         password_confirmation: '',
     });
 
-    const updatePassword: FormEventHandler = (e) => {
+    const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        put(route('password.update'), {
+        put('/settings/password', {
             preserveScroll: true,
             onSuccess: () => reset(),
             onError: (errors) => {
@@ -39,7 +23,6 @@ export default function Password() {
                     reset('password', 'password_confirmation');
                     passwordInput.current?.focus();
                 }
-
                 if (errors.current_password) {
                     reset('current_password');
                     currentPasswordInput.current?.focus();
@@ -49,80 +32,79 @@ export default function Password() {
     };
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Profile settings" />
+        <MainLayout>
+            <Head title="Cambiar Contraseña | AVA" />
 
-            <SettingsLayout>
-                <div className="space-y-6">
-                    <HeadingSmall title="Update password" description="Ensure your account is using a long, random password to stay secure" />
+            <div className="max-w-2xl mx-auto p-6 lg:p-8">
+                <div className="mb-8">
+                    <h1 className="text-2xl font-bold text-white mb-1">Cambiar Contraseña</h1>
+                    <p className="text-[#7a7f85] text-sm">Usa una contraseña larga y única para mantener tu cuenta segura.</p>
+                </div>
 
-                    <form onSubmit={updatePassword} className="space-y-6">
-                        <div className="grid gap-2">
-                            <Label htmlFor="current_password">Current password</Label>
-
-                            <Input
+                <div className="bg-[#15181c] border border-white/5 rounded-xl p-6 lg:p-8">
+                    <form onSubmit={submit} className="space-y-6">
+                        <div>
+                            <label htmlFor="current_password" className="block text-sm font-medium text-[#7a7f85] mb-2">
+                                Contraseña actual
+                            </label>
+                            <input
                                 id="current_password"
                                 ref={currentPasswordInput}
+                                type="password"
                                 value={data.current_password}
                                 onChange={(e) => setData('current_password', e.target.value)}
-                                type="password"
-                                className="mt-1 block w-full"
                                 autoComplete="current-password"
-                                placeholder="Current password"
+                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700]/50 transition-colors"
                             />
-
-                            <InputError message={errors.current_password} />
+                            {errors.current_password && <p className="mt-2 text-sm text-red-400">{errors.current_password}</p>}
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="password">New password</Label>
-
-                            <Input
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-[#7a7f85] mb-2">
+                                Nueva contraseña
+                            </label>
+                            <input
                                 id="password"
                                 ref={passwordInput}
+                                type="password"
                                 value={data.password}
                                 onChange={(e) => setData('password', e.target.value)}
-                                type="password"
-                                className="mt-1 block w-full"
                                 autoComplete="new-password"
-                                placeholder="New password"
+                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700]/50 transition-colors"
                             />
-
-                            <InputError message={errors.password} />
+                            {errors.password && <p className="mt-2 text-sm text-red-400">{errors.password}</p>}
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="password_confirmation">Confirm password</Label>
-
-                            <Input
+                        <div>
+                            <label htmlFor="password_confirmation" className="block text-sm font-medium text-[#7a7f85] mb-2">
+                                Confirmar contraseña
+                            </label>
+                            <input
                                 id="password_confirmation"
+                                type="password"
                                 value={data.password_confirmation}
                                 onChange={(e) => setData('password_confirmation', e.target.value)}
-                                type="password"
-                                className="mt-1 block w-full"
                                 autoComplete="new-password"
-                                placeholder="Confirm password"
+                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700]/50 transition-colors"
                             />
-
-                            <InputError message={errors.password_confirmation} />
+                            {errors.password_confirmation && <p className="mt-2 text-sm text-red-400">{errors.password_confirmation}</p>}
                         </div>
 
-                        <div className="flex items-center gap-4">
-                            <Button disabled={processing}>Save password</Button>
-
-                            <Transition
-                                show={recentlySuccessful}
-                                enter="transition ease-in-out"
-                                enterFrom="opacity-0"
-                                leave="transition ease-in-out"
-                                leaveTo="opacity-0"
+                        <div className="flex items-center gap-4 pt-2">
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className="bg-[#a0f700] hover:bg-[#86cf00] disabled:opacity-50 text-black px-5 py-2.5 rounded-lg text-sm font-bold transition-colors"
                             >
-                                <p className="text-sm text-neutral-600">Saved</p>
-                            </Transition>
+                                Guardar contraseña
+                            </button>
+                            {recentlySuccessful && (
+                                <span className="text-sm text-[#a0f700]">Guardado correctamente</span>
+                            )}
                         </div>
                     </form>
                 </div>
-            </SettingsLayout>
-        </AppLayout>
+            </div>
+        </MainLayout>
     );
 }

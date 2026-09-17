@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class usuarioRol extends Pivot
 {
-    protected $connection = "usuarios";
+    //protected $connection = "usuarios";
 
     protected $table = "usuario_rols";
 
