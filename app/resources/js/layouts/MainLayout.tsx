@@ -35,7 +35,9 @@ export default function MainLayout({ children }: PropsWithChildren) {
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3 border-l border-[#2d3238] pl-6">
                         <div className="w-8 h-8 rounded-full bg-[#2d3238] overflow-hidden border border-[#7a7f85]/30">
-                            <img src="https://ui-avatars.com/api/?name=Carlos+Mendoza&background=2d3238&color=fff" alt="Perfil" />
+                            <Link href="/settings/profile" className="w-8 h-8 rounded-full bg-[#2d3238] overflow-hidden border border-[#7a7f85]/30 hover:border-[#a0f700]/50 transition-colors">
+                                <img src="https://ui-avatars.com/api/?name=Carlos+Mendoza&background=2d3238&color=fff" alt="Perfil" />
+                            </Link>
                         </div>
                     </div>
                 </div>

@@ -21,7 +21,7 @@
         "laravel/ui": "^4.6",
         "livewire/livewire": "^4.2",
         "maatwebsite/excel": "^3.1",
-        "predis/predis": "^3.4",
+        "predis/predis": "*",
         "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/pdf-to-image": "^1.2",
         "tightenco/ziggy": "^2.4"
