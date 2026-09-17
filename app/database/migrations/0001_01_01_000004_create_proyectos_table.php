@@ -20,12 +20,6 @@ return new class extends Migration
             $table->text("alias")->unique();
         });
 
-        Schema::create("usuarios_tienen_proyectos", function (Blueprint $table) {
-            $table->id();
-            $table->foreignId("id_usuario")->constrained("users");
-            $table->foreignId("id_proyecto")->constrained("proyectos");
-            $table->unique(["id_usuario", "id_proyecto"]);
-        });
     }
 
     /**
@@ -33,7 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists("usuarios_tienen_proyectos");
         Schema::dropIfExists("proyectos");
     }
 };

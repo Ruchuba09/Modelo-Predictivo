@@ -8,24 +8,22 @@ return new class extends Migration
 {
     protected $connection = "usuarios";
 
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create("users", function (Blueprint $table) {
-            $table->id();
-            $table->string("nombre_1");
-            $table->string("nombre_2");
-            $table->string("apellido_1");
-            $table->string("apellido_2");
-            $table->string("cargo");
-            $table->string("rut")->unique();
+            $table->id('id_user');
+            $table->string("rut");
 
             $table->string("email")->unique();
             $table->timestamp("email_verified_at")->nullable();
             $table->string("password");
             $table->rememberToken();
+
+            $table->foreign("rut")
+                ->references("rut")
+                ->on("trabajadors")
+                ->onDelete("cascade");
+
             $table->timestamps();
         });
 
@@ -45,9 +43,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists("users");

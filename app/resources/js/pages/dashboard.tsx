@@ -1,35 +1,58 @@
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
-import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
+import AuthenticatedLayout from '../layouts/MainLayout';
 import { Head } from '@inertiajs/react';
-
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/dashboard',
-    },
-];
+import GraficoPredictivo from '../components/GraficoPredictivo';
 
 export default function Dashboard() {
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <AuthenticatedLayout>
             <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="border-sidebar-border/70 dark:border-sidebar-border relative aspect-video overflow-hidden rounded-xl border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+            <div className="py-8">
+                <div className="max-w-screen-2xl mx-auto sm:px-6 lg:px-8 space-y-6">
+                    
+                    <div className="bg-[#1e2329] overflow-hidden shadow-sm sm:rounded-xl border border-[#2D3238]">
+                        <div className="p-6 text-white text-lg font-medium flex items-center justify-between">
+                            <span>Panel de Control - Sistema de Gestión Integrado (SGI)</span>
+                        </div>
                     </div>
-                    <div className="border-sidebar-border/70 dark:border-sidebar-border relative aspect-video overflow-hidden rounded-xl border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="border-sidebar-border/70 dark:border-sidebar-border relative aspect-video overflow-hidden rounded-xl border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+                    <div className="grid grid-cols-1 xl:grid-cols-1 gap-6">
+                        <div className="grid grid-cols-4 gap-4">
+                                <div className="bg-[#1e2329] border border-[#2D3238] p-5 rounded-xl shadow-lg">
+                                    <p className="text-[#7A7F85] text-xs font-bold uppercase tracking-wider mb-2">Media Riesgo SSO</p>
+                                    <div className="flex items-end gap-2">
+                                        <span className="text-3xl font-bold text-white">24.5</span>
+                                        <span className="text-[#A0F700] text-sm font-medium mb-1">↓ 12%</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-[#1e2329] border border-[#2D3238] p-5 rounded-xl shadow-lg">
+                                    <p className="text-[#7A7F85] text-xs font-bold uppercase tracking-wider mb-2">No Conformidades</p>
+                                    <div className="flex items-end gap-2">
+                                        <span className="text-3xl font-bold text-white">18</span>
+                                        <span className="text-red-500 text-sm font-medium mb-1">↑ 3</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-[#1e2329] border border-[#2D3238] p-5 rounded-xl shadow-lg">
+                                    <p className="text-[#7A7F85] text-xs font-bold uppercase tracking-wider mb-2">Índice Ambiental</p>
+                                    <div className="flex items-end gap-2">
+                                        <span className="text-3xl font-bold text-white">98%</span>
+                                        <span className="text-[#A0F700] text-sm font-medium mb-1">Óptimo</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-[#1e2329] border border-[#2D3238] p-5 rounded-xl shadow-lg">
+                                    <p className="text-[#7A7F85] text-xs font-bold uppercase tracking-wider mb-2">Días sin Incidentes</p>
+                                    <div className="flex items-end gap-2">
+                                        <span className="text-3xl font-bold text-[#A0F700]">142</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="xl:col-span-2">
+                            <GraficoPredictivo/>
+                        </div>
                     </div>
                 </div>
-                <div className="border-sidebar-border/70 dark:border-sidebar-border relative min-h-[100vh] flex-1 rounded-xl border md:min-h-min">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                </div>
-            </div>
-        </AppLayout>
+        </AuthenticatedLayout>
     );
 }
