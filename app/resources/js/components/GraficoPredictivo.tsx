@@ -1,143 +1,127 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import html2canvas from 'html2canvas';
 import { 
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     BarChart, Bar,
     AreaChart, Area
 } from 'recharts';
 
-// SETS DE DATOS SIMULADOS
-const datosDias = [
-    { periodo: 'Lun', riesgoSeguridad: 12, riesgoCalidad: 5, riesgoAmbiental: 2 },
-    { periodo: 'Mar', riesgoSeguridad: 15, riesgoCalidad: 8, riesgoAmbiental: 3 },
-    { periodo: 'Mié', riesgoSeguridad: 10, riesgoCalidad: 6, riesgoAmbiental: 2 },
-    { periodo: 'Jue', riesgoSeguridad: 22, riesgoCalidad: 12, riesgoAmbiental: 5 },
-    { periodo: 'Vie', riesgoSeguridad: 18, riesgoCalidad: 10, riesgoAmbiental: 4 },
-    { periodo: 'Sáb', riesgoSeguridad: 8, riesgoCalidad: 4, riesgoAmbiental: 1 },
-    { periodo: 'Dom', riesgoSeguridad: 5, riesgoCalidad: 2, riesgoAmbiental: 0 },
+const CONDICIONES = [
+    { id: 'c1', nombre: '1. Cond. Inseguras', color: '#FF4B4B' }, 
+    { id: 'c2', nombre: '2. Herramientas', color: '#FF9100' },   
+    { id: 'c3', nombre: '3. Falta EPP', color: '#FFCB00' },       
+    { id: 'c4', nombre: '4. Capacitación', color: '#A0F700' },   
+    { id: 'c5', nombre: '5. Procedimientos', color: '#00E676' }, 
+    { id: 'c6', nombre: '6. Recursos', color: '#00D1FF' },        
+    { id: 'c7', nombre: '7. AST/VATS/ERT', color: '#29B6F6' },    
+    { id: 'c8', nombre: '8. Permisos', color: '#9D4EDD' },        
+    { id: 'c9', nombre: '9. Est. Físico/Mental', color: '#F48FB1' }, 
+    { id: 'c10', nombre: '10. Otros', color: '#E0E0E0' },         
 ];
 
+// DATOS SIMULADOS
 const datosSemanas = [
-    { periodo: 'Semana 1', riesgoSeguridad: 15, riesgoCalidad: 10, riesgoAmbiental: 5 },
-    { periodo: 'Semana 2', riesgoSeguridad: 25, riesgoCalidad: 12, riesgoAmbiental: 8 },
-    { periodo: 'Semana 3', riesgoSeguridad: 20, riesgoCalidad: 15, riesgoAmbiental: 10 },
-    { periodo: 'Semana 4', riesgoSeguridad: 35, riesgoCalidad: 18, riesgoAmbiental: 12 },
-    { periodo: 'Semana 5', riesgoSeguridad: 30, riesgoCalidad: 25, riesgoAmbiental: 15 },
-    { periodo: 'Semana 6', riesgoSeguridad: 45, riesgoCalidad: 22, riesgoAmbiental: 18 },
-];
-
-const datosMeses = [
-    { periodo: 'Enero', riesgoSeguridad: 85, riesgoCalidad: 40, riesgoAmbiental: 20 },
-    { periodo: 'Febrero', riesgoSeguridad: 92, riesgoCalidad: 45, riesgoAmbiental: 25 },
-    { periodo: 'Marzo', riesgoSeguridad: 78, riesgoCalidad: 35, riesgoAmbiental: 15 },
-    { periodo: 'Abril', riesgoSeguridad: 105, riesgoCalidad: 60, riesgoAmbiental: 30 },
-    { periodo: 'Mayo', riesgoSeguridad: 110, riesgoCalidad: 55, riesgoAmbiental: 28 },
-    { periodo: 'Junio', riesgoSeguridad: 95, riesgoCalidad: 50, riesgoAmbiental: 22 },
+    { periodo: 'Semana 1', c1: 15, c2: 4, c3: 2, c4: 0, c5: 5, c6: 1, c7: 3, c8: 0, c9: 1, c10: 2 },
+    { periodo: 'Semana 2', c1: 12, c2: 6, c3: 1, c4: 1, c5: 4, c6: 2, c7: 2, c8: 1, c9: 0, c10: 1 },
+    { periodo: 'Semana 3', c1: 18, c2: 3, c3: 4, c4: 0, c5: 2, c6: 0, c7: 5, c8: 0, c9: 2, c10: 0 },
+    { periodo: 'Semana 4', c1: 10, c2: 5, c3: 3, c4: 2, c5: 3, c6: 1, c7: 1, c8: 2, c9: 0, c10: 3 },
 ];
 
 export default function GraficoPredictivo() {
-    const [tipoTiempo, setTipoTiempo] = useState('semanas'); 
+    const chartRef = useRef<HTMLDivElement>(null); 
     const [tipoGrafico, setTipoGrafico] = useState('linea'); 
-    const [fechaInicio, setFechaInicio] = useState('');
-    const [fechaFin, setFechaFin] = useState('');
     const [metricaY, setMetricaY] = useState('hallazgos');
     
-    const [verSeguridad, setVerSeguridad] = useState(true);
-    const [verCalidad, setVerCalidad] = useState(true);
-    const [verAmbiental, setVerAmbiental] = useState(true);
+    const [menuExportarAbierto, setMenuExportarAbierto] = useState(false);
+    
+    const [visibilidad, setVisibilidad] = useState<Record<string, boolean>>(
+        CONDICIONES.reduce((acc, cond) => ({ ...acc, [cond.id]: true }), {})
+    );
 
-    let datosBase = datosSemanas;
-    if (tipoTiempo === 'dias') datosBase = datosDias;
-    if (tipoTiempo === 'meses') datosBase = datosMeses;
+    const toggleVisibilidad = (id: string) => {
+        setVisibilidad(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     const datosTransformados = useMemo(() => {
-        return datosBase.map(d => {
-            if (metricaY === 'cumplimiento') {
-                return {
-                    ...d,
-                    riesgoSeguridad: Math.max(0, 100 - (d.riesgoSeguridad * 0.8)),
-                    riesgoCalidad: Math.max(0, 100 - (d.riesgoCalidad * 1.2)),
-                    riesgoAmbiental: Math.max(0, 100 - (d.riesgoAmbiental * 1.5)),
-                };
-            } else if (metricaY === 'gravedad') {
-                return {
-                    ...d,
-                    riesgoSeguridad: Number((d.riesgoSeguridad / 15).toFixed(1)),
-                    riesgoCalidad: Number((d.riesgoCalidad / 15).toFixed(1)),
-                    riesgoAmbiental: Number((d.riesgoAmbiental / 15).toFixed(1)),
-                };
+        return datosSemanas.map(d => {
+            if (metricaY === 'gravedad') {
+                const nuevoDato: any = { periodo: d.periodo };
+                CONDICIONES.forEach(c => {
+                    nuevoDato[c.id] = Number(((d as any)[c.id] * 0.8).toFixed(1)); 
+                });
+                return nuevoDato;
             }
             return d;
         });
-    }, [datosBase, metricaY, fechaInicio, fechaFin]);
+    }, [metricaY]);
 
-    const handleDragStart = (e: React.DragEvent, metrica: string) => {
-        e.dataTransfer.setData('metrica', metrica);
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault(); 
-        const metricaSoltada = e.dataTransfer.getData('metrica');
-        if (metricaSoltada) {
-            setMetricaY(metricaSoltada);
+    const exportarGraficoPNG = async () => {
+        setMenuExportarAbierto(false); 
+        if (chartRef.current) {
+            const canvas = await html2canvas(chartRef.current, { 
+                backgroundColor: '#1e2329', 
+                scale: 2 
+            });
+            const image = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.href = image;
+            link.download = `Grafico_Tarjeta_Pare_${new Date().toLocaleDateString()}.png`;
+            link.click();
         }
     };
 
-    // NUEVA FUNCIÓN DE EXPORTACIÓN
-    const exportarGrafico = () => {
-        window.print();
+    const solicitarReportePDF = () => {
+        setMenuExportarAbierto(false);
+        // Aquí tu compañero conectará Laravel DomPDF / Spatie PDF
+        alert('Aviso para Backend: Aquí se debe llamar a la ruta de Laravel que genera el PDF formal.');
+    };
+
+    const solicitarDatosExcel = () => {
+        setMenuExportarAbierto(false);
+        // Aquí tu compañero conectará Laravel Excel
+        alert('Aviso para Backend: Aquí se debe llamar a la ruta de Laravel que descarga el Excel (.xlsx).');
+    };
+
+    const handleDragStart = (e: React.DragEvent, metrica: string) => e.dataTransfer.setData('metrica', metrica);
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault(); 
+        const metricaSoltada = e.dataTransfer.getData('metrica');
+        if (metricaSoltada) setMetricaY(metricaSoltada);
     };
 
     const renderizarGrafico = () => {
-        const comunesProps = {
-            data: datosTransformados,
-            margin: { top: 10, right: 10, left: -20, bottom: 0 }
-        };
-
+        const comunesProps = { data: datosTransformados, margin: { top: 10, right: 10, left: -20, bottom: 0 } };
         const ejesYTooltip = (
             <>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2D3238" vertical={false} />
                 <XAxis dataKey="periodo" stroke="#7A7F85" fontSize={11} tickLine={false} axisLine={false} dy={10} />
-                <YAxis stroke="#7A7F85" fontSize={11} tickLine={false} axisLine={false} dx={-10} 
-                    tickFormatter={(value) => metricaY === 'cumplimiento' ? `${value}%` : value} 
-                />
-                <Tooltip 
-                    contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#2D3238', borderRadius: '8px' }} 
-                    itemStyle={{ color: '#fff', fontSize: '13px' }}
-                    formatter={(value: number) => metricaY === 'cumplimiento' ? `${value.toFixed(1)}%` : value}
-                />
+                <YAxis stroke="#7A7F85" fontSize={11} tickLine={false} axisLine={false} dx={-10} />
+                <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#2D3238', borderRadius: '8px' }} itemStyle={{ color: '#fff', fontSize: '13px' }} />
             </>
         );
 
-        switch (tipoGrafico) {
-            case 'barras':
-                return (
-                    <BarChart {...comunesProps}>
-                        {ejesYTooltip}
-                        {verSeguridad && <Bar name="Seguridad (SSO)" dataKey="riesgoSeguridad" fill="#A0F700" radius={[4, 4, 0, 0]} animationDuration={400} />}
-                        {verCalidad && <Bar name="Calidad" dataKey="riesgoCalidad" fill="#FFCB00" radius={[4, 4, 0, 0]} animationDuration={400} />}
-                        {verAmbiental && <Bar name="Medio Ambiente" dataKey="riesgoAmbiental" fill="#00D1FF" radius={[4, 4, 0, 0]} animationDuration={400} />}
-                    </BarChart>
-                );
-            case 'area':
-                return (
-                    <AreaChart {...comunesProps}>
-                        {ejesYTooltip}
-                        {verSeguridad && <Area type="monotone" name="Seguridad (SSO)" dataKey="riesgoSeguridad" stroke="#A0F700" fill="#A0F700" fillOpacity={0.3} strokeWidth={2} animationDuration={400} />}
-                        {verCalidad && <Area type="monotone" name="Calidad" dataKey="riesgoCalidad" stroke="#FFCB00" fill="#FFCB00" fillOpacity={0.3} strokeWidth={2} animationDuration={400} />}
-                        {verAmbiental && <Area type="monotone" name="Medio Ambiente" dataKey="riesgoAmbiental" stroke="#00D1FF" fill="#00D1FF" fillOpacity={0.3} strokeWidth={2} animationDuration={400} />}
-                    </AreaChart>
-                );
-            case 'linea':
-            default:
-                return (
-                    <LineChart {...comunesProps}>
-                        {ejesYTooltip}
-                        {verSeguridad && <Line type="monotone" name="Seguridad (SSO)" dataKey="riesgoSeguridad" stroke="#A0F700" strokeWidth={3} dot={{ r: 4, fill: '#0a0a0a', stroke: '#A0F700', strokeWidth: 2 }} activeDot={{ r: 6 }} animationDuration={400} />}
-                        {verCalidad && <Line type="monotone" name="Calidad" dataKey="riesgoCalidad" stroke="#FFCB00" strokeWidth={3} dot={{ r: 4, fill: '#0a0a0a', stroke: '#FFCB00', strokeWidth: 2 }} activeDot={{ r: 6 }} animationDuration={400} />}
-                        {verAmbiental && <Line type="monotone" name="Medio Ambiente" dataKey="riesgoAmbiental" stroke="#00D1FF" strokeWidth={3} dot={{ r: 4, fill: '#0a0a0a', stroke: '#00D1FF', strokeWidth: 2 }} activeDot={{ r: 6 }} animationDuration={400} />}
-                    </LineChart>
-                );
+        if (tipoGrafico === 'barras') {
+            return (
+                <BarChart {...comunesProps}>
+                    {ejesYTooltip}
+                    {CONDICIONES.map(c => visibilidad[c.id] && <Bar key={c.id} name={c.nombre} dataKey={c.id} fill={c.color} radius={[2, 2, 0, 0]} />)}
+                </BarChart>
+            );
+        } else if (tipoGrafico === 'area') {
+            return (
+                <AreaChart {...comunesProps}>
+                    {ejesYTooltip}
+                    {CONDICIONES.map(c => visibilidad[c.id] && <Area key={c.id} type="monotone" name={c.nombre} dataKey={c.id} stroke={c.color} fill={c.color} fillOpacity={0.2} />)}
+                </AreaChart>
+            );
         }
+        
+        return (
+            <LineChart {...comunesProps}>
+                {ejesYTooltip}
+                {CONDICIONES.map(c => visibilidad[c.id] && <Line key={c.id} type="monotone" name={c.nombre} dataKey={c.id} stroke={c.color} strokeWidth={2} dot={{ r: 3, fill: '#0a0a0a', stroke: c.color }} activeDot={{ r: 5 }} />)}
+            </LineChart>
+        );
     };
 
     return (
@@ -145,58 +129,72 @@ export default function GraficoPredictivo() {
             
             <div className="mb-6 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-6">
                 <div>
-                    <h3 className="text-xl font-bold">Monitoreo de Riesgos SGI</h3>
-                    <p className="text-sm text-[#7A7F85]">Análisis de rendimiento por área</p>
+                    <h3 className="text-xl font-bold">Registro Tarjeta Pare</h3>
+                    <p className="text-sm text-[#7A7F85]">Análisis de detenciones por condición</p>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4">
-                    {/* BOTÓN DE EXPORTAR */}
-                    <button 
-                        onClick={exportarGrafico}
-                        className="flex items-center gap-2 bg-[#A0F700]/10 border border-[#A0F700] text-[#A0F700] px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#A0F700] hover:text-[#0a0a0a] transition-all"
-                        title="Exportar como PDF"
-                    >
-                        📥 Exportar
-                    </button>
+                <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 relative">
+                    
+                    {/* BOTÓN DESPLEGABLE DE EXPORTACIÓN */}
+                    <div className="relative">
+                        <button 
+                            onClick={() => setMenuExportarAbierto(!menuExportarAbierto)}
+                            className="flex items-center gap-2 bg-[#A0F700]/10 border border-[#A0F700] text-[#A0F700] px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#A0F700] hover:text-[#0a0a0a] transition-all cursor-pointer"
+                        >
+                            ⬇️ Exportar Data
+                        </button>
 
-                    {/* SELECTOR DE TIPO DE GRÁFICO */}
+                        {/* SUBMENÚ FLOTANTE */}
+                        {menuExportarAbierto && (
+                            <div className="absolute right-0 mt-2 w-48 bg-[#0a0a0a] border border-[#2D3238] rounded-lg shadow-xl z-50 overflow-hidden flex flex-col">
+                                <button onClick={exportarGraficoPNG} className="text-left px-4 py-2.5 text-sm text-white hover:bg-[#1e2329] transition-colors border-b border-[#2D3238]">
+                                    📸 Gráfico (PNG)
+                                </button>
+                                <button onClick={solicitarReportePDF} className="text-left px-4 py-2.5 text-sm text-[#7A7F85] hover:bg-[#1e2329] hover:text-white transition-colors border-b border-[#2D3238]">
+                                    📄 Reporte Formal (PDF)
+                                </button>
+                                <button onClick={solicitarDatosExcel} className="text-left px-4 py-2.5 text-sm text-[#7A7F85] hover:bg-[#1e2329] hover:text-white transition-colors">
+                                    📊 Datos Brutos (Excel)
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="flex bg-[#0a0a0a] rounded-lg border border-[#2D3238] p-1">
                         <button onClick={() => setTipoGrafico('linea')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoGrafico === 'linea' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>📈 Líneas</button>
                         <button onClick={() => setTipoGrafico('barras')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoGrafico === 'barras' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>📊 Barras</button>
                         <button onClick={() => setTipoGrafico('area')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoGrafico === 'area' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>⛰️ Área</button>
                     </div>
-
-                    {/* SELECTOR DE AGRUPACIÓN (Días, Semanas, Meses) */}
-                    <div className="flex bg-[#0a0a0a] rounded-lg border border-[#2D3238] p-1">
-                        <button onClick={() => setTipoTiempo('dias')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoTiempo === 'dias' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>Días</button>
-                        <button onClick={() => setTipoTiempo('semanas')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoTiempo === 'semanas' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>Semanas</button>
-                        <button onClick={() => setTipoTiempo('meses')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoTiempo === 'meses' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>Meses</button>
-                    </div>
-
-                    {/* FILTRO DE FECHAS */}
-                    <div className="flex items-center gap-2 bg-[#0a0a0a] px-3 py-1.5 rounded-lg border border-[#2D3238]">
-                        <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} className="bg-transparent text-[#7A7F85] text-xs outline-none cursor-pointer [color-scheme:dark]" />
-                        <span className="text-[#7A7F85] font-bold">-</span>
-                        <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} className="bg-transparent text-[#7A7F85] text-xs outline-none cursor-pointer [color-scheme:dark]" />
-                    </div>
                 </div>
             </div>
 
-            {/* BOTONES DE FILTRO DE ÁREAS */}
-            <div className="mb-6 flex flex-wrap gap-3">
-                <button onClick={() => setVerSeguridad(!verSeguridad)} className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${verSeguridad ? 'bg-[#A0F700]/10 border-[#A0F700] text-[#A0F700]' : 'bg-[#0a0a0a] border-[#2D3238] text-[#7A7F85]'}`}>
-                    <span className="inline-block w-2 h-2 rounded-full bg-[#A0F700] mr-2"></span>SSO
-                </button>
-                <button onClick={() => setVerCalidad(!verCalidad)} className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${verCalidad ? 'bg-[#FFCB00]/10 border-[#FFCB00] text-[#FFCB00]' : 'bg-[#0a0a0a] border-[#2D3238] text-[#7A7F85]'}`}>
-                    <span className="inline-block w-2 h-2 rounded-full bg-[#FFCB00] mr-2"></span>Calidad
-                </button>
-                <button onClick={() => setVerAmbiental(!verAmbiental)} className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${verAmbiental ? 'bg-[#00D1FF]/10 border-[#00D1FF] text-[#00D1FF]' : 'bg-[#0a0a0a] border-[#2D3238] text-[#7A7F85]'}`}>
-                    <span className="inline-block w-2 h-2 rounded-full bg-[#00D1FF] mr-2"></span>Ambiental
-                </button>
+            {/* BOTONES DE FILTRO: GRID DE 10 CONDICIONES */}
+            <div className="mb-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                {CONDICIONES.map(cond => (
+                    <button 
+                        key={cond.id}
+                        onClick={() => toggleVisibilidad(cond.id)} 
+                        className={`px-2 py-1.5 rounded-md text-[10px] font-medium border transition-colors text-left truncate`}
+                        style={{
+                            backgroundColor: visibilidad[cond.id] ? `${cond.color}15` : '#0a0a0a',
+                            borderColor: visibilidad[cond.id] ? cond.color : '#2D3238',
+                            color: visibilidad[cond.id] ? cond.color : '#7A7F85'
+                        }}
+                        title={cond.nombre}
+                    >
+                        <span className="inline-block w-1.5 h-1.5 rounded-full mr-1.5" style={{ backgroundColor: cond.color }}></span>
+                        {cond.nombre}
+                    </button>
+                ))}
             </div>
 
             <div className="flex flex-col lg:flex-row gap-6">
-                <div className="flex-1 h-[320px] rounded-xl relative" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+                <div 
+                    ref={chartRef}
+                    className="flex-1 h-[360px] rounded-xl relative p-2 bg-[#1e2329]"
+                    onDragOver={(e) => e.preventDefault()} 
+                    onDrop={handleDrop}
+                >
                     <ResponsiveContainer width="100%" height="100%">
                         {renderizarGrafico()}
                     </ResponsiveContainer>
@@ -204,11 +202,10 @@ export default function GraficoPredictivo() {
 
                 <div className="w-full lg:w-56 flex flex-col gap-3">
                     <p className="text-[#7A7F85] text-xs font-bold uppercase tracking-wider mb-1 text-center lg:text-left">
-                        Métrica (Arrastrar al gráfico)
+                        Métrica (Arrastrar)
                     </p>
-                    <DraggableCard id="hallazgos" titulo="Cant. Hallazgos" descripcion="Nº bruto de desvíos" icono="📊" activo={metricaY === 'hallazgos'} onDragStart={handleDragStart} />
-                    <DraggableCard id="cumplimiento" titulo="% Cumplimiento" descripcion="Adherencia a la norma" icono="✅" activo={metricaY === 'cumplimiento'} onDragStart={handleDragStart} />
-                    <DraggableCard id="gravedad" titulo="Índice Gravedad" descripcion="Escala de severidad (0-5)" icono="⚠️" activo={metricaY === 'gravedad'} onDragStart={handleDragStart} />
+                    <DraggableCard id="hallazgos" titulo="Cant. Eventos" descripcion="Nº de Tarjetas Pare" icono="🛑" activo={metricaY === 'hallazgos'} onDragStart={handleDragStart} />
+                    <DraggableCard id="gravedad" titulo="Gravedad" descripcion="Escala de impacto" icono="⚠️" activo={metricaY === 'gravedad'} onDragStart={handleDragStart} />
                 </div>
             </div>
         </div>
