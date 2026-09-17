@@ -68,6 +68,7 @@
         "react-dom": "^19.0.0",
         "react-dropzone": "^15.0.0",
         "react-markdown": "^10.1.0",
+        "recharts": "^3.10.1",
         "rut.js": "^2.1.0",
         "sass": "^1.99.0",
         "select2": "^4.1.0-rc.0",
