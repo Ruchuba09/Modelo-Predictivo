@@ -73,6 +73,10 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('/trabajadores', TrabajadorController::class)
     ->parameters(['trabajadores' => 'trabajador']);
+
+    Route::resource('eventos', EventoController::class);
+    Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])
+    ->name('eventos.cerrar');
 });
 
 Route::get('/portal', function () {

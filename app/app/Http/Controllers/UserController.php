@@ -6,7 +6,7 @@ use App\DataTransferObjects\UsuarioData;
 use App\Http\Resources\UsuarioResource;
 use App\Models\User;
 use App\Models\Rol;
-use App\Services\UserService;
+use App\http\Services\UserService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
