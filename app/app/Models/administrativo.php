@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class administrativo extends Model
+class Administrativo extends Model
 {
     //
 }
