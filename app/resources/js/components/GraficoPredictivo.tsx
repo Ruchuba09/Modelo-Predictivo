@@ -19,7 +19,6 @@ const CONDICIONES = [
     { id: 'c10', nombre: '10. Otros', color: '#E0E0E0' },         
 ];
 
-// DATOS SIMULADOS
 const datosSemanas = [
     { periodo: 'Semana 1', c1: 15, c2: 4, c3: 2, c4: 0, c5: 5, c6: 1, c7: 3, c8: 0, c9: 1, c10: 2 },
     { periodo: 'Semana 2', c1: 12, c2: 6, c3: 1, c4: 1, c5: 4, c6: 2, c7: 2, c8: 1, c9: 0, c10: 1 },
@@ -31,6 +30,7 @@ export default function GraficoPredictivo() {
     const chartRef = useRef<HTMLDivElement>(null); 
     const [tipoGrafico, setTipoGrafico] = useState('linea'); 
     const [metricaY, setMetricaY] = useState('hallazgos');
+    const [rangoFecha, setRangoFecha] = useState('7dias');
     
     const [menuExportarAbierto, setMenuExportarAbierto] = useState(false);
     
@@ -72,13 +72,13 @@ export default function GraficoPredictivo() {
 
     const solicitarReportePDF = () => {
         setMenuExportarAbierto(false);
-        // Aquí tu compañero conectará Laravel DomPDF / Spatie PDF
+        // Backend conectará Laravel DomPDF / Spatie PDF
         alert('Aviso para Backend: Aquí se debe llamar a la ruta de Laravel que genera el PDF formal.');
     };
 
     const solicitarDatosExcel = () => {
         setMenuExportarAbierto(false);
-        // Aquí tu compañero conectará Laravel Excel
+        // Backend conectará Laravel Excel
         alert('Aviso para Backend: Aquí se debe llamar a la ruta de Laravel que descarga el Excel (.xlsx).');
     };
 
@@ -125,26 +125,20 @@ export default function GraficoPredictivo() {
     };
 
     return (
-        <div className="bg-[#1e2329] border border-[#2D3238] p-6 rounded-xl text-white w-full shadow-lg">
-            
+        <div className="bg-[#1e2329] border border-[#2D3238] p-6 rounded-xl text-white w-full shadow-lg"> 
             <div className="mb-6 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-6">
                 <div>
                     <h3 className="text-xl font-bold">Registro Tarjeta Pare</h3>
                     <p className="text-sm text-[#7A7F85]">Análisis de detenciones por condición</p>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 relative">
-                    
-                    {/* BOTÓN DESPLEGABLE DE EXPORTACIÓN */}
+                <div className="flex flex-row items-center gap-4">
                     <div className="relative">
                         <button 
                             onClick={() => setMenuExportarAbierto(!menuExportarAbierto)}
-                            className="flex items-center gap-2 bg-[#A0F700]/10 border border-[#A0F700] text-[#A0F700] px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#A0F700] hover:text-[#0a0a0a] transition-all cursor-pointer"
-                        >
+                            className="flex items-center gap-2 bg-[#A0F700]/10 border border-[#A0F700] text-[#A0F700] px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#A0F700] hover:text-[#0a0a0a] transition-all cursor-pointer">
                             ⬇️ Exportar Data
                         </button>
-
-                        {/* SUBMENÚ FLOTANTE */}
                         {menuExportarAbierto && (
                             <div className="absolute right-0 mt-2 w-48 bg-[#0a0a0a] border border-[#2D3238] rounded-lg shadow-xl z-50 overflow-hidden flex flex-col">
                                 <button onClick={exportarGraficoPNG} className="text-left px-4 py-2.5 text-sm text-white hover:bg-[#1e2329] transition-colors border-b border-[#2D3238]">
@@ -159,6 +153,12 @@ export default function GraficoPredictivo() {
                             </div>
                         )}
                     </div>
+                    <div className="flex bg-[#0a0a0a] rounded-lg border border-[#2D3238] p-1">
+                        <button onClick={() => setRangoFecha('7dias')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${rangoFecha === '7dias' ? 'bg-[#A0F700] text-black shadow' : 'text-[#7A7F85] hover:text-white'}`}>7 Días</button>
+                        <button onClick={() => setRangoFecha('30dias')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${rangoFecha === '30dias' ? 'bg-[#A0F700] text-black shadow' : 'text-[#7A7F85] hover:text-white'}`}>30 Días</button>
+                        <button onClick={() => setRangoFecha('3meses')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${rangoFecha === '3meses' ? 'bg-[#A0F700] text-black shadow' : 'text-[#7A7F85] hover:text-white'}`}>3 Meses</button>
+                        <button onClick={() => setRangoFecha('anual')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${rangoFecha === 'anual' ? 'bg-[#A0F700] text-black shadow' : 'text-[#7A7F85] hover:text-white'}`}>Anual</button>
+                    </div>
 
                     <div className="flex bg-[#0a0a0a] rounded-lg border border-[#2D3238] p-1">
                         <button onClick={() => setTipoGrafico('linea')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tipoGrafico === 'linea' ? 'bg-[#3a3f45] text-white' : 'text-[#7A7F85] hover:text-white'}`}>📈 Líneas</button>
@@ -168,21 +168,18 @@ export default function GraficoPredictivo() {
                 </div>
             </div>
 
-            {/* BOTONES DE FILTRO: GRID DE 10 CONDICIONES */}
             <div className="mb-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                 {CONDICIONES.map(cond => (
                     <button 
                         key={cond.id}
                         onClick={() => toggleVisibilidad(cond.id)} 
-                        className={`px-2 py-1.5 rounded-md text-[10px] font-medium border transition-colors text-left truncate`}
-                        style={{
-                            backgroundColor: visibilidad[cond.id] ? `${cond.color}15` : '#0a0a0a',
-                            borderColor: visibilidad[cond.id] ? cond.color : '#2D3238',
-                            color: visibilidad[cond.id] ? cond.color : '#7A7F85'
-                        }}
+                        className={`px-2 py-1.5 rounded-md text-[10px] font-medium border transition-colors text-left truncate flex items-center ${
+                            visibilidad[cond.id] 
+                                ? 'bg-[#A0F700]/10 border-[#A0F700] text-white' 
+                                : 'bg-[#0a0a0a] border-[#2D3238] text-[#5c636a] opacity-60 hover:opacity-100'
+                        }`}
                         title={cond.nombre}
                     >
-                        <span className="inline-block w-1.5 h-1.5 rounded-full mr-1.5" style={{ backgroundColor: cond.color }}></span>
                         {cond.nombre}
                     </button>
                 ))}
@@ -193,8 +190,10 @@ export default function GraficoPredictivo() {
                     ref={chartRef}
                     className="flex-1 h-[360px] rounded-xl relative p-2 bg-[#1e2329]"
                     onDragOver={(e) => e.preventDefault()} 
-                    onDrop={handleDrop}
-                >
+                    onDrop={handleDrop}>
+                    <div className="absolute top-2 right-4 z-10 text-[#A0F700] text-[10px] font-bold bg-[#A0F700]/10 px-2 py-1 rounded border border-[#A0F700]/20">
+                        {rangoFecha.toUpperCase()}
+                    </div>
                     <ResponsiveContainer width="100%" height="100%">
                         {renderizarGrafico()}
                     </ResponsiveContainer>
