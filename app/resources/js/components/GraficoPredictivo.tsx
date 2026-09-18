@@ -3,7 +3,8 @@ import html2canvas from 'html2canvas';
 import { 
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     BarChart, Bar,
-    AreaChart, Area
+    AreaChart, Area,
+    PieChart, Pie, Cell
 } from 'recharts';
 
 const CONDICIONES = [
@@ -72,13 +73,11 @@ export default function GraficoPredictivo() {
 
     const solicitarReportePDF = () => {
         setMenuExportarAbierto(false);
-        // Backend conectará Laravel DomPDF / Spatie PDF
         alert('Aviso para Backend: Aquí se debe llamar a la ruta de Laravel que genera el PDF formal.');
     };
 
     const solicitarDatosExcel = () => {
         setMenuExportarAbierto(false);
-        // Backend conectará Laravel Excel
         alert('Aviso para Backend: Aquí se debe llamar a la ruta de Laravel que descarga el Excel (.xlsx).');
     };
 
@@ -124,8 +123,15 @@ export default function GraficoPredictivo() {
         );
     };
 
+    const datosTorta = CONDICIONES.filter(c => visibilidad[c.id]).map(cond => {
+        const total = datosTransformados.reduce((suma, item: any) => suma + (Number(item[cond.id]) || 0), 0);
+        return { name: cond.nombre, value: total, color: cond.color };
+    }).filter(d => d.value > 0);
+
     return (
         <div className="bg-[#1e2329] border border-[#2D3238] p-6 rounded-xl text-white w-full shadow-lg"> 
+            
+            {/* Cabecera y Botones de Exportación/Filtros */}
             <div className="mb-6 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-6">
                 <div>
                     <h3 className="text-xl font-bold">Registro Tarjeta Pare</h3>
@@ -168,6 +174,7 @@ export default function GraficoPredictivo() {
                 </div>
             </div>
 
+            {/* Filtros de Condiciones */}
             <div className="mb-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                 {CONDICIONES.map(cond => (
                     <button 
@@ -185,6 +192,7 @@ export default function GraficoPredictivo() {
                 ))}
             </div>
 
+            {/* 1. SECCIÓN SUPERIOR: GRÁFICO PRINCIPAL Y MÉTRICAS */}
             <div className="flex flex-col lg:flex-row gap-6">
                 <div 
                     ref={chartRef}
@@ -207,6 +215,60 @@ export default function GraficoPredictivo() {
                     <DraggableCard id="gravedad" titulo="Gravedad" descripcion="Escala de impacto" icono="⚠️" activo={metricaY === 'gravedad'} onDragStart={handleDragStart} />
                 </div>
             </div>
+
+            {/* 2. SECCIÓN INFERIOR: TORTA Y RESUMEN */}
+            <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 h-auto lg:h-[280px]">
+                
+                <div className="bg-[#0a0a0a] border border-[#2D3238] rounded-xl p-4 flex flex-col">
+                    <h3 className="text-white text-sm font-bold mb-2">Distribución Total por Condición</h3>
+                    <div className="flex-grow min-h-[200px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={datosTorta}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={90}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    stroke="none"
+                                >
+                                    {datosTorta.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip 
+                                    contentStyle={{ backgroundColor: '#1e2329', borderColor: '#2D3238', borderRadius: '8px', color: 'white' }}
+                                    itemStyle={{ color: 'white' }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Panel de Resumen Rápido (KPIs) */}
+                <div className="bg-[#0a0a0a] border border-[#2D3238] rounded-xl p-5 flex flex-col justify-center gap-4">
+                    <h3 className="text-[#7A7F85] text-sm font-bold uppercase tracking-wider">Resumen del Periodo</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-[#1e2329] p-4 rounded-lg border border-[#2D3238]">
+                            <p className="text-[#7A7F85] text-xs font-bold mb-1">Total Eventos</p>
+                            <p className="text-3xl font-bold text-white">
+                                {datosTorta.reduce((acc, curr) => acc + curr.value, 0)}
+                            </p>
+                        </div>
+                        <div className="bg-[#1e2329] p-4 rounded-lg border border-[#2D3238]">
+                            <p className="text-[#7A7F85] text-xs font-bold mb-1">Cond. Principal</p>
+                            <p className="text-lg font-bold text-[#A0F700] truncate">
+                                {datosTorta.length > 0 
+                                    ? datosTorta.reduce((prev, current) => (prev.value > current.value) ? prev : current).name 
+                                    : 'N/A'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     );
 }
