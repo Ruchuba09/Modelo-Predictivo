@@ -24,19 +24,20 @@ export default function MainLayout({ children }: PropsWithChildren) {
                 <nav className="hidden md:flex h-full">
                     <Link href="/portal" className={getLinkClass('/portal')}>Inicio</Link>
                     <Link href="/dashboard" className={getLinkClass('/dashboard')}>Dashboard</Link>
-                    <Link href="/reportes" className={getLinkClass('/reportes')}>Reportes</Link>
+                    <Link href="/ver-cierre" className={getLinkClass('/ver-cierre')}>Reportes</Link>
                     <Link href="/usuarios" className={getLinkClass('/usuarios')}>Usuarios</Link>
                     <Link href="/roles" className={getLinkClass('/roles')}>Roles</Link>
                     <Link href="/permisos" className={getLinkClass('/permisos')}>Permisos</Link>
-                    <Link href="/modelo-tarjeta" className={getLinkClass('/modelotarjetapare')}>modelotarjetapare</Link>
-                    <Link href="/tarjetas-pare" className={getLinkClass('/tarjetas-pare')}>tarjetapare</Link>
-                    <Link href="/escala-riesgo" className={getLinkClass('/escalariesgo')}>escalariesgo</Link>
+                    {/* <Link href="/modelo-tarjeta" className={getLinkClass('/modelotarjetapare')}>modelotarjetapare</Link> */}
+                    {/* <Link href="/escala-riesgo" className={getLinkClass('/escalariesgo')}>escalariesgo</Link> */}
                 </nav>
 
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3 border-l border-[#2d3238] pl-6">
                         <div className="w-8 h-8 rounded-full bg-[#2d3238] overflow-hidden border border-[#7a7f85]/30">
-                            <img src="https://ui-avatars.com/api/?name=Carlos+Mendoza&background=2d3238&color=fff" alt="Perfil" />
+                            <Link href="/settings/profile" className="w-8 h-8 rounded-full bg-[#2d3238] overflow-hidden border border-[#7a7f85]/30 hover:border-[#a0f700]/50 transition-colors">
+                                <img src="https://ui-avatars.com/api/?name=Carlos+Mendoza&background=2d3238&color=fff" alt="Perfil" />
+                            </Link>
                         </div>
                     </div>
                 </div>
