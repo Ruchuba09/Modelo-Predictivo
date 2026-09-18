@@ -4,7 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Administrativo extends Model
+class administrativo extends Model
 {
-    //
+    protected $connection = "usuarios";
+    protected $table = "permisos";
+    protected $primaryKey = "id_permiso";
+    protected $fillable = ["nombre", "nivel"];
 }
