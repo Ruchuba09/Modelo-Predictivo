@@ -18,6 +18,11 @@ class Evento extends Model
         'id_administrativo',
         'tipo',
         'estado',
+        'condicion',
+        'descripcion',
+        'referencia',
+        'evidencia_path',
+        'evidencia_tipo',
         'fecha_cierre',
     ];
 

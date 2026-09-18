@@ -1,5 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import { PropsWithChildren } from 'react';
+
 
 export default function MainLayout({ children }: PropsWithChildren) {
     const { url } = usePage();
@@ -9,6 +11,8 @@ export default function MainLayout({ children }: PropsWithChildren) {
             ? "h-full flex items-center px-4 text-[#a0f700] border-b-2 border-[#a0f700] text-sm font-medium"
             : "h-full flex items-center px-4 text-[#7a7f85] hover:text-white text-sm transition-colors";
     };
+
+    const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col" style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -32,15 +36,42 @@ export default function MainLayout({ children }: PropsWithChildren) {
                     {/* <Link href="/escala-riesgo" className={getLinkClass('/escalariesgo')}>escalariesgo</Link> */}
                 </nav>
 
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-3 border-l border-[#2d3238] pl-6">
-                        <div className="w-8 h-8 rounded-full bg-[#2d3238] overflow-hidden border border-[#7a7f85]/30">
-                            <Link href="/settings/profile" className="w-8 h-8 rounded-full bg-[#2d3238] overflow-hidden border border-[#7a7f85]/30 hover:border-[#a0f700]/50 transition-colors">
-                                <img src="https://ui-avatars.com/api/?name=Carlos+Mendoza&background=2d3238&color=fff" alt="Perfil" />
-                            </Link>
+                <div className="relative">
+                <button 
+                    onClick={() => setMenuPerfilAbierto(!menuPerfilAbierto)}
+                    className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2D3238] hover:ring-2 hover:ring-[#A0F700] transition-all focus:outline-none cursor-pointer"
+                >
+                    <span className="text-[#7A7F85] text-sm font-bold">U</span>
+                </button>
+
+                {menuPerfilAbierto && (
+                    <div className="absolute right-0 mt-2 w-56 bg-[#1e2329] border border-[#2D3238] rounded-lg shadow-xl py-1 z-50 overflow-hidden flex flex-col">
+                        
+                        <div className="px-4 py-3 border-b border-[#2D3238] bg-[#0a0a0a]">
+                            <p className="text-sm text-white font-bold">Mi Cuenta</p>
+                            <p className="text-xs text-[#7A7F85] truncate">admin@avamontajes.cl</p>
                         </div>
+                        
+                        <Link 
+                            href={route('profile.edit')} 
+                            className="block px-4 py-2.5 text-sm text-[#7A7F85] hover:bg-[#2D3238] hover:text-white transition-colors"
+                            onClick={() => setMenuPerfilAbierto(false)}
+                        >
+                            ⚙️ Configuración de cuenta
+                        </Link>
+                        
+                        <Link 
+                            href={route('logout')} 
+                            method="post" 
+                            as="button"
+                            className="block w-full text-left px-4 py-2.5 text-sm text-[#FF4B4B] hover:bg-[#FF4B4B]/10 transition-colors border-t border-[#2D3238]"
+                        >
+                            🚪 Cerrar Sesión
+                        </Link>
+                
                     </div>
-                </div>
+                )}
+        </div>
             </header>
 
             <main className="flex-1">
