@@ -8,7 +8,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     use Notifiable;
-    protected $connection = "usuarios";
+    //protected $connection = "usuarios";
 
     protected $table = "users";
     protected $primaryKey = "id_user";
@@ -30,6 +30,12 @@ class User extends Authenticatable
             "email_verified_at" => "datetime",
             "password" => "hashed",
         ];
+    }
+    public function trabajadorOrFail(): Trabajador
+    {
+        return $this->trabajador ?? throw new \Illuminate\Auth\Access\AuthorizationException(
+            'El usuario autenticado no está vinculado a un trabajador.'
+        );
     }
 
     // ============================================================

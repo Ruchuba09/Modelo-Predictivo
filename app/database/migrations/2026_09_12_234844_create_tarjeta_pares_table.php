@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('tarjeta_pares', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_trabajador')->constrained('trabajadors');
+            $table->foreignId('id_trabajador')->constrained('trabajadors', 'id_trabajador');
             $table->foreignId('id_modelo')->constrained('modelo_tarjeta_pare');
             $table->foreignId('id_escala_riesgo')->constrained('escala_riesgos');
             $table->foreignId('id_proyecto')->nullable()->constrained('proyectos');

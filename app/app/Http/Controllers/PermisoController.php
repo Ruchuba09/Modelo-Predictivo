@@ -14,7 +14,7 @@ class PermisoController extends Controller
             'permisos' => Permiso::with('roles')->latest()->get(),
         ]);
     }
-
+    
     public function create()
     {
         return Inertia::render('Permisos/PermisosCrear');
