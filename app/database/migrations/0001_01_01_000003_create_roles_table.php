@@ -10,10 +10,18 @@ return new class extends Migration
 
     public function up(): void
     {
-        Schema::create("roles", function (Blueprint $table) {
-            $table->id('id_rol');
-            $table->text("nombre");
-        });
+        if (Schema::hasTable("roles") && Schema::hasColumn("roles", "id") && !Schema::hasColumn("roles", "id_rol")) {
+            Schema::table("roles", function (Blueprint $table) {
+                $table->renameColumn("id", "id_rol");
+            });
+        }
+
+        if (!Schema::hasTable("roles")) {
+            Schema::create("roles", function (Blueprint $table) {
+                $table->id('id_rol');
+                $table->text("nombre");
+            });
+        }
     }
 
     public function down(): void

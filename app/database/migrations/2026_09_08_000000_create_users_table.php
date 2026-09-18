@@ -10,22 +10,30 @@ return new class extends Migration
 
     public function up(): void
     {
-        Schema::create("users", function (Blueprint $table) {
-            $table->id('id_user');
-            $table->string("rut");
+        if (Schema::hasTable("users") && Schema::hasColumn("users", "id") && !Schema::hasColumn("users", "id_user")) {
+            Schema::table("users", function (Blueprint $table) {
+                $table->renameColumn("id", "id_user");
+            });
+        }
 
-            $table->string("email")->unique();
-            $table->timestamp("email_verified_at")->nullable();
-            $table->string("password");
-            $table->rememberToken();
+        if (!Schema::hasTable("users")) {
+            Schema::create("users", function (Blueprint $table) {
+                $table->id('id_user');
+                $table->string("rut");
 
-            $table->foreign("rut")
-                ->references("rut")
-                ->on("trabajadors")
-                ->onDelete("cascade");
+                $table->string("email")->unique();
+                $table->timestamp("email_verified_at")->nullable();
+                $table->string("password");
+                $table->rememberToken();
 
-            $table->timestamps();
-        });
+                $table->foreign("rut")
+                    ->references("rut")
+                    ->on("trabajadors")
+                    ->onDelete("cascade");
+
+                $table->timestamps();
+            });
+        }
 
         Schema::create("password_reset_tokens", function (Blueprint $table) {
             $table->string("email")->primary();

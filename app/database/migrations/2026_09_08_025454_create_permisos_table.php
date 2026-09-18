@@ -12,12 +12,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('permisos', function (Blueprint $table) {
-            $table->id('id_permiso');
-            $table->string('nombre');
-            $table->string('nivel')->nullable();
-            $table->timestamps();
-        });
+        if (Schema::hasTable("permisos") && Schema::hasColumn("permisos", "id") && !Schema::hasColumn("permisos", "id_permiso")) {
+            Schema::table("permisos", function (Blueprint $table) {
+                $table->renameColumn("id", "id_permiso");
+            });
+        }
+
+        if (!Schema::hasTable("permisos")) {
+            Schema::create('permisos', function (Blueprint $table) {
+                $table->id('id_permiso');
+                $table->string('nombre');
+                $table->string('nivel')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**
