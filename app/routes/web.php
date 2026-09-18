@@ -8,6 +8,7 @@ use App\Http\Controllers\ModeloTarjetaPareController;
 use App\Http\Controllers\EscalaRiesgoController;
 use App\Http\Controllers\TarjetaPareController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\EventoController;
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -74,9 +75,11 @@ Route::middleware('auth')->group(function () {
     Route::resource('/trabajadores', TrabajadorController::class)
     ->parameters(['trabajadores' => 'trabajador']);
 
-    Route::resource('eventos', EventoController::class);
-    Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])
-    ->name('eventos.cerrar');
+    Route::resource('eventos', EventoController::class)->only(['index', 'create', 'store', 'show']);
+    Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])->name('eventos.tomar');
+    Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])->name('eventos.cerrar');
+        
+    
 });
 
 Route::get('/portal', function () {

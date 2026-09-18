@@ -17,6 +17,11 @@ return new class extends Migration
 
             $table->enum('tipo', ['incidente', 'fatalidad']);
             $table->enum('estado', ['abierta', 'proceso', 'cerrada'])->default('abierta');
+            $table->string('condicion');
+            $table->text('descripcion');
+            $table->string('referencia');
+            $table->string('evidencia_path')->nullable();
+            $table->string('evidencia_tipo')->nullable(); // 'foto' | 'video'
 
             $table->timestamp('fecha_creacion')->useCurrent();
             $table->timestamp('fecha_ult_act')->useCurrent()->useCurrentOnUpdate();
@@ -26,6 +31,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('eventos');
+        Schema::table('eventos', function (Blueprint $table) {
+            $table->dropColumn(['condicion', 'descripcion', 'referencia', 'evidencia_path', 'evidencia_tipo']);
+        });
     }
 };
