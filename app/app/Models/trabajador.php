@@ -11,14 +11,15 @@ class trabajador extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        "rut",
         "nombre_1",
         "nombre_2",
         "apellido_1",
         "apellido_2",
+        "fecha_creacion",
+        "ultima_act",
+        "estado",
         "cargo",
-        "id_tipo_trabajador",
-        "rut",
-        "email",
     ];
 
     public function usuarios(): BelongsToMany
