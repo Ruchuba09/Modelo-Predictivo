@@ -3,31 +3,24 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class trabajador extends Model
+class Trabajador extends Model
 {
-    protected $table = "trabajadors";
-    public $timestamps = false;
+    protected $table = 'trabajadors';
+    protected $primaryKey = 'id_trabajador';
 
     protected $fillable = [
-        "nombre_1",
-        "nombre_2",
-        "apellido_1",
-        "apellido_2",
-        "cargo",
-        "id_tipo_trabajador",
-        "rut",
-        "email",
+        'nombre_1', 'nombre_2', 'apellido_1', 'apellido_2',
+        'cargo', 'id_tipo_trabajador', 'rut',
     ];
 
-    public function usuarios(): BelongsToMany
+    public function usuario()
     {
-        return $this->belongsToMany(User::class, "usuarios_tienen_roles", "id_rol", "id_usuario");
+        return $this->hasOne(User::class, 'rut', 'rut');
     }
 
-    public function permisos(): BelongsToMany
+    public function cuadrilla()
     {
-        return $this->belongsToMany(Permiso::class, "roles_tienen_permisos", "id_rol", "id_permiso");
+        return $this->belongsTo(Cuadrilla::class, 'id_cuadrilla', 'id_cuadrilla');
     }
 }

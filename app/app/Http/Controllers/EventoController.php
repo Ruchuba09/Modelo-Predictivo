@@ -37,18 +37,37 @@ class EventoController extends Controller
     {
         $validated = $request->validate([
             'tipo' => 'required|in:incidente,fatalidad',
+            'condicion' => 'required|string',
             'descripcion' => 'required|string',
-            'fecha_evento' => 'required|date',
+            'referencia' => 'required|string',
+            'evidencia' => 'nullable|file|mimes:jpg,jpeg,png,mp4,mov|max:51200', // 50MB
             'gravedad' => 'required_if:tipo,incidente|string',
             'requiere_investigacion' => 'boolean',
             'causa_muerte' => 'required_if:tipo,fatalidad|string',
-            'id_victima' => 'required_if:tipo,fatalidad|integer|exists:usuarios.usuarios,id_user',
+            'id_victima' => 'required_if:tipo,fatalidad|integer|exists:trabajadors,id_trabajador',
         ]);
 
-        $evento = DB::transaction(function () use ($validated) {
+        $trabajador = $this->trabajadorAutenticado();
+
+        $evento = DB::transaction(function () use ($validated, $trabajador, $request) {
+            $evidenciaPath = null;
+            $evidenciaTipo = null;
+
+            if ($request->hasFile('evidencia')) {
+                $file = $request->file('evidencia');
+                $evidenciaPath = $file->store('eventos/evidencias', 'public');
+                $evidenciaTipo = str_starts_with($file->getMimeType(), 'video') ? 'video' : 'foto';
+            }
+
             $evento = Evento::create([
+                'id_trabajador' => $trabajador->id_trabajador,
+                'tipo' => $validated['tipo'],
+                'estado' => 'abierta',
+                'condicion' => $validated['condicion'],
                 'descripcion' => $validated['descripcion'],
-                'fecha_evento' => $validated['fecha_evento'],
+                'referencia' => $validated['referencia'],
+                'evidencia_path' => $evidenciaPath,
+                'evidencia_tipo' => $evidenciaTipo,
             ]);
 
             if ($validated['tipo'] === 'incidente') {
