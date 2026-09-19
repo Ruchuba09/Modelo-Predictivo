@@ -3,7 +3,7 @@ import { Head, Link, router } from "@inertiajs/react";
 import "../../../css/Trabajadores.css";
 
 interface Trabajador {
-    id: number;
+    id_trabajador: number;
     nombre_1: string;
     nombre_2: string;
     apellido_1: string;
@@ -16,6 +16,12 @@ interface Trabajador {
 interface TrabajadoresProps {
     trabajadores: Trabajador[];
 }
+
+const TIPO_LABELS: Record<string, string> = {
+    obrero: "Obrero",
+    supervisor: "Supervisor",
+    administrativo: "Administrativo",
+};
 
 const Trabajadores: React.FC<TrabajadoresProps> = ({ trabajadores }) => {
     const eliminar = (id: number) => {
@@ -49,17 +55,17 @@ const Trabajadores: React.FC<TrabajadoresProps> = ({ trabajadores }) => {
 
                     <tbody>
                         {trabajadores.map((trabajador) => (
-                            <tr key={trabajador.id}>
-                                <td>{trabajador.id}</td>
+                            <tr key={trabajador.id_trabajador}>
+                                <td>{trabajador.id_trabajador}</td>
                                 <td>{trabajador.nombre_1} {trabajador.nombre_2}</td>
                                 <td>{trabajador.apellido_1} {trabajador.apellido_2}</td>
                                 <td>{trabajador.cargo}</td>
-                                <td>{trabajador.id_tipo_trabajador}</td>
+                                <td>{TIPO_LABELS[trabajador.id_tipo_trabajador] ?? trabajador.id_tipo_trabajador}</td>
                                 <td>{trabajador.rut}</td>
                                 <td>
-                                    <Link className="trabajadores-link-accion" href={route("trabajadores.show", trabajador.id)}>Ver</Link>{" | "}
-                                    <Link className="trabajadores-link-accion" href={route("trabajadores.edit", trabajador.id)}>Editar</Link>{" | "}
-                                    <button className="trabajadores-btn-eliminar" onClick={() => eliminar(trabajador.id)}>Eliminar</button>
+                                    <Link className="trabajadores-link-accion" href={route("trabajadores.show", trabajador.id_trabajador)}>Ver</Link>{" | "}
+                                    <Link className="trabajadores-link-accion" href={route("trabajadores.edit", trabajador.id_trabajador)}>Editar</Link>{" | "}
+                                    <button className="trabajadores-btn-eliminar" onClick={() => eliminar(trabajador.id_trabajador)}>Eliminar</button>
                                 </td>
                             </tr>
                         ))}

@@ -15,7 +15,7 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             $table->string('causa_muerte');
-            $table->foreignId('id_victima')->constrained('trabajadors', 'id_trabajador');
+            $table->foreignId('id_victima')->constrained('obreros', 'id_trabajador');
             $table->timestamps();
         });
     }
