@@ -23,4 +23,18 @@ class Trabajador extends Model
     {
         return $this->belongsTo(Cuadrilla::class, 'id_cuadrilla', 'id_cuadrilla');
     }
+    public function obrero()
+    {
+        return $this->hasOne(Obrero::class, 'id_trabajador', 'id_trabajador');
+    }
+
+    public function administrativo()
+    {
+        return $this->hasOne(Administrativo::class, 'id_trabajador', 'id_trabajador');
+    }
+
+    public function supervisor()
+    {
+        return $this->hasOne(Supervisor::class, 'id_trabajador', 'id_trabajador');
+    }
 }
