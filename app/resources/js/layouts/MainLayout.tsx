@@ -51,6 +51,7 @@ export default function MainLayout({ children }: PropsWithChildren) {
                             <p className="text-xs text-[#7A7F85] truncate">admin@avamontajes.cl</p>
                         </div>
                         
+                        {menuPerfilAbierto && (
                         <Link 
                             href={route('profile.edit')} 
                             className="block px-4 py-2.5 text-sm text-[#7A7F85] hover:bg-[#2D3238] hover:text-white transition-colors"
