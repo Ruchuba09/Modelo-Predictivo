@@ -68,8 +68,21 @@ RAMA            = Nicolas
 CORREO          = # Tu correo asociado a GitHub
 NOMBRE          = # Tu nombre de usuario de GitHub
 ```
+### A.4 Instalación de Biblioteca
 
-### A.4 Levantar los contenedores
+Desde la powershell, un comando a la vez:
+
+```bash
+docker compose exec laravel-app npm install recharts
+```
+```bash
+docker compose exec laravel-app npm install html2canvas
+```
+```bash
+docker compose exce laravel-app npm install telescope 
+```
+
+### A.5 Levantar los contenedores
 
 Desde la carpeta `docker/`:
 
@@ -79,13 +92,13 @@ docker compose up -d --build
 
 Esto va a construir y levantar: Laravel, Nginx, Redis, PostgreSQL, workers de colas, pgAdmin y phpMyAdmin. La primera vez puede tardar varios minutos.
 
-### A.5 Acceder a la aplicación
+### A.6 Acceder a la aplicación
 
 - **URL de la app:** `https://localhost/`
   - El navegador mostrará una advertencia de "La conexión no es privada" porque se usa un certificado local autofirmado. Entra en `Opciones avanzadas` → `Continuar a localhost (no seguro)`.
   - En el primer arranque es normal ver un error `500`. Continúa con el siguiente paso para completar la configuración inicial de Laravel.
 
-### A.6 Configuración inicial de Laravel dentro del contenedor
+### A.7 Configuración inicial de Laravel dentro del contenedor
 
 1. Abre la barra lateral de **Docker** en VS Code.
 2. Busca el contenedor `laravel-app-1`.
@@ -101,7 +114,7 @@ php artisan migrate
 
 6. Recarga `https://localhost/` en el navegador.
 
-### A.7 Acceder a pgAdmin (administrador de PostgreSQL)
+### A.8 Acceder a pgAdmin (administrador de PostgreSQL)
 
 - **URL:** `http://localhost:5050/`
 - **Usuario:** `pg@ava.cl`
@@ -116,7 +129,7 @@ Para registrar la base de datos dentro de pgAdmin:
    - `Username`: `postgres`
    - `Password`: `postgres` (marca `Save password`)
 
-### A.8 Detener y limpiar el entorno
+### A.9 Detener y limpiar el entorno
 
 Para apagar los contenedores:
 
