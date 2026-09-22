@@ -15,12 +15,12 @@ return new class extends Migration
             $table->foreignId('id_supervisor')->nullable()->constrained('supervisors', 'id_trabajador');
             $table->foreignId('id_administrativo')->nullable()->constrained('administrativos', 'id_trabajador');
 
-            $table->enum('tipo', ['incidente', 'fatalidad']);
+            $table->enum('tipo', ['incidente', 'situacionCritica']);
             $table->enum('estado', ['abierta', 'proceso', 'cerrada'])->default('abierta');
 
-            $table->string('condicion');
+            //$table->string('condicion');
             $table->text('descripcion');
-            $table->string('referencia');
+            //$table->string('referencia');
             $table->string('evidencia_path')->nullable();
             $table->string('evidencia_tipo')->nullable();
 

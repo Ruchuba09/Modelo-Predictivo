@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\eventos;
+use App\Models\evidencia;
 use Illuminate\Http\Request;
 
-class EventosController extends Controller
+class EvidenciaController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -34,7 +34,7 @@ class EventosController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(eventos $eventos)
+    public function show(evidencia $evidencia)
     {
         //
     }
@@ -42,7 +42,7 @@ class EventosController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(eventos $eventos)
+    public function edit(evidencia $evidencia)
     {
         //
     }
@@ -50,7 +50,7 @@ class EventosController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, eventos $eventos)
+    public function update(Request $request, evidencia $evidencia)
     {
         //
     }
@@ -58,7 +58,7 @@ class EventosController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(eventos $eventos)
+    public function destroy(evidencia $evidencia)
     {
         //
     }

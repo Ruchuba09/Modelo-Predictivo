@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('asignacions', function (Blueprint $table) {
-             $table->id();
+            $table->id();
 
             $table->foreignId('id_cliente')
-                ->constrained('clientes')
+                ->constrained(table: 'clientes', column: 'id_cliente')
                 ->restrictOnDelete();
 
             $table->foreignId('id_dpto')

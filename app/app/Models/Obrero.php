@@ -11,10 +11,17 @@ class Obrero extends Model
     public $incrementing = false;
     protected $keyType = 'int';
 
+    protected $fillable = [
+        'id_trabajador',
+        'id_cuadrilla',
+        // agrega aquí cualquier otra columna propia de "obreros"
+    ];
+
     public function trabajador()
     {
         return $this->belongsTo(Trabajador::class, 'id_trabajador', 'id_trabajador');
     }
+
     public function cuadrilla()
     {
         return $this->belongsTo(Cuadrilla::class, 'id_cuadrilla', 'id_cuadrilla');

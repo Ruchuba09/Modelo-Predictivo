@@ -15,6 +15,7 @@ class UserSeeder extends Seeder
             [
                 'rut' => '11111111-1',
                 'password' => Hash::make('12345678'),
+                'fecha_creation' => now(),
             ]
         );
 
@@ -23,6 +24,7 @@ class UserSeeder extends Seeder
             [
                 'rut' => '22222222-2',
                 'password' => Hash::make('12345678'),
+                'fecha_creation' => now(),
             ]
         );
 
@@ -31,6 +33,7 @@ class UserSeeder extends Seeder
             [
                 'rut' => '33333333-3',
                 'password' => Hash::make('12345678'),
+                'fecha_creation' => now(),
             ]
         );
     }

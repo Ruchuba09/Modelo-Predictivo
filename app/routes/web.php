@@ -7,6 +7,7 @@ use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\ModeloTarjetaPareController;
 use App\Http\Controllers\EscalaRiesgoController;
 use App\Http\Controllers\TarjetaPareController;
+use App\Http\Controllers\SituacionCriticaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EventoController;
 use Inertia\Inertia;
@@ -79,6 +80,13 @@ Route::middleware('auth')->group(function () {
     Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])->name('eventos.tomar');
     Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])->name('eventos.cerrar');
     
+    Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
+    Route::get('/situacion-criticas/crear', [SituacionCriticaController::class, 'create'])->name('situacion-criticas.crear');
+    Route::post('/situacion-criticas', [SituacionCriticaController::class, 'store'])->name('situacion-criticas.store');
+    Route::get('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'show'])->name('situacion-criticas.show');
+    Route::get('/situacion-criticas/{situacionCritica}/editar', [SituacionCriticaController::class, 'edit'])->name('situacion-criticas.editar');
+    Route::put('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'update'])->name('situacion-criticas.update');
+    Route::delete('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'destroy'])->name('situacion-criticas.destroy');
 });
 
 Route::get('/portal', function () {

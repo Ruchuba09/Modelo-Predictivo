@@ -17,7 +17,7 @@ $table->id('id_trabajador');
             $table->string('rut')->unique();
             $table->string('cargo');
             $table->string('id_tipo_trabajador');
-            $table->string('fecha_creacion');
+            $table->string('fecha_creacion')->useCurrent();
             $table->string('ultima_act');
             $table->string('estado');
             $table->timestamps();

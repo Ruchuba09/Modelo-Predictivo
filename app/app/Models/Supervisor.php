@@ -11,6 +11,11 @@ class Supervisor extends Model
     public $incrementing = false;
     protected $keyType = 'int';
 
+    protected $fillable = [
+        'id_trabajador',
+        // agrega aquí cualquier otra columna propia de "supervisors"
+    ];
+
     public function trabajador()
     {
         return $this->belongsTo(Trabajador::class, 'id_trabajador', 'id_trabajador');

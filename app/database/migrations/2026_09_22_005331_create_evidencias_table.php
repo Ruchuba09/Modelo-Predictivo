@@ -11,17 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('faenas', function (Blueprint $table) {
+        Schema::create('evidencias', function (Blueprint $table) {
             $table->id();
-
-            $table->foreignId('id_cliente')
-                ->constrained(table: 'clientes', column: 'id_cliente')
-                ->restrictOnDelete();
-
-            $table->foreignId('id_dpto')
-                ->constrained('departamentos')
-                ->restrictOnDelete();
-
             $table->timestamps();
         });
     }
@@ -31,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('faenas');
+        Schema::dropIfExists('evidencias');
     }
 };
