@@ -39,7 +39,11 @@ RUN --mount=type=secret,id=github_token \
     GITHUB_TOKEN=$(cat /run/secrets/github_token) && \
     repo_path=$(echo "${URL_REPOSITORIO}" | sed -E "s|^https?://||; s|\\.git$||") && \
     git clone --branch ${RAMA} "https://x-access-token:${GITHUB_TOKEN}@${repo_path}.git" app && \
-    cd app && git remote set-url origin "https://${repo_path}.git"
+    cd app && git remote set-url origin "https://${repo_path}.git" && \
+    if [ -f app/composer.json ]; then \
+        cp -a app/. /var/www/app/ && \
+        rm -rf app; \
+    fi
 WORKDIR /var/www/app
 
 
