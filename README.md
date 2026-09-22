@@ -128,8 +128,13 @@ Para registrar la base de datos dentro de pgAdmin:
    - `Host`: `postgres`
    - `Username`: `postgres`
    - `Password`: `postgres` (marca `Save password`)
+  
+### A.9 Credenciales para el Login (Copia y pega)
 
-### A.9 Detener y limpiar el entorno
+Usuario/RUT: 111111111 
+Contraseña : 12345678 
+
+### A.10 Detener y limpiar el entorno
 
 Para apagar los contenedores:
 
