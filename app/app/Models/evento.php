@@ -34,17 +34,17 @@ class Evento extends Model
 
     public function trabajador()
     {
-        return $this->belongsTo(User::class, 'id_trabajador', 'id_user');
+        return $this->belongsTo(Trabajador::class, 'id_trabajador', 'id_trabajador');
     }
 
     public function supervisor()
     {
-        return $this->belongsTo(User::class, 'id_supervisor', 'id_user');
+        return $this->belongsTo(Trabajador::class, 'id_supervisor', 'id_trabajador');
     }
 
     public function administrativo()
     {
-        return $this->belongsTo(User::class, 'id_administrativo', 'id_user');
+        return $this->belongsTo(Trabajador::class, 'id_administrativo', 'id_trabajador');
     }
 
     public function incidente()
