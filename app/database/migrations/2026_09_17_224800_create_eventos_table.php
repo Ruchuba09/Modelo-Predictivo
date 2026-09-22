@@ -11,17 +11,18 @@ return new class extends Migration
         Schema::create('eventos', function (Blueprint $table) {
             $table->id('id_evento');
 
-            $table->foreignId('id_trabajador')->constrained('trabajadors', 'id_trabajador');
-            $table->foreignId('id_supervisor')->nullable()->constrained('trabajadors', 'id_trabajador');
-            $table->foreignId('id_administrativo')->nullable()->constrained('trabajadors', 'id_trabajador');
+            $table->foreignId('id_trabajador')->constrained('obreros', 'id_trabajador');
+            $table->foreignId('id_supervisor')->nullable()->constrained('supervisors', 'id_trabajador');
+            $table->foreignId('id_administrativo')->nullable()->constrained('administrativos', 'id_trabajador');
 
             $table->enum('tipo', ['incidente', 'fatalidad']);
             $table->enum('estado', ['abierta', 'proceso', 'cerrada'])->default('abierta');
+
             $table->string('condicion');
             $table->text('descripcion');
             $table->string('referencia');
             $table->string('evidencia_path')->nullable();
-            $table->string('evidencia_tipo')->nullable(); // 'foto' | 'video'
+            $table->string('evidencia_tipo')->nullable();
 
             $table->timestamp('fecha_creacion')->useCurrent();
             $table->timestamp('fecha_ult_act')->useCurrent()->useCurrentOnUpdate();
@@ -31,8 +32,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('eventos', function (Blueprint $table) {
-            $table->dropColumn(['condicion', 'descripcion', 'referencia', 'evidencia_path', 'evidencia_tipo']);
-        });
+        Schema::dropIfExists('eventos');
     }
 };

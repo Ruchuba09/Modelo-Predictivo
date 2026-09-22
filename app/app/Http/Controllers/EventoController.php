@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Administrativo;
 use App\Models\Evento;
 use App\Models\Fatalidad;
 use App\Models\Incidente;
+use App\Models\Obrero;
+use App\Models\Supervisor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -24,13 +27,32 @@ class EventoController extends Controller
     {
         return Inertia::render('Eventos/Create');
     }
-    private function trabajadorAutenticado()
+
+    private function obreroAutenticado(): Obrero
     {
-        $trabajador = auth()->user()->trabajador;
+        $obrero = auth()->user()->trabajador?->obrero;
 
-        abort_if(! $trabajador, 403, 'El usuario autenticado no está vinculado a un trabajador.');
+        abort_if(! $obrero, 403, 'El usuario autenticado no está registrado como obrero.');
 
-        return $trabajador;
+        return $obrero;
+    }
+
+    private function supervisorAutenticado(): Supervisor
+    {
+        $supervisor = auth()->user()->trabajador?->supervisor;
+
+        abort_if(! $supervisor, 403, 'El usuario autenticado no está registrado como supervisor.');
+
+        return $supervisor;
+    }
+
+    private function administrativoAutenticado(): Administrativo
+    {
+        $administrativo = auth()->user()->trabajador?->administrativo;
+
+        abort_if(! $administrativo, 403, 'El usuario autenticado no está registrado como administrativo.');
+
+        return $administrativo;
     }
 
     public function store(Request $request)
@@ -44,12 +66,12 @@ class EventoController extends Controller
             'gravedad' => 'required_if:tipo,incidente|string',
             'requiere_investigacion' => 'boolean',
             'causa_muerte' => 'required_if:tipo,fatalidad|string',
-            'id_victima' => 'required_if:tipo,fatalidad|integer|exists:trabajadors,id_trabajador',
+            'id_victima' => 'required_if:tipo,fatalidad|integer|exists:obreros,id_trabajador',
         ]);
 
-        $trabajador = $this->trabajadorAutenticado();
+        $obrero = $this->obreroAutenticado();
 
-        $evento = DB::transaction(function () use ($validated, $trabajador, $request) {
+        $evento = DB::transaction(function () use ($validated, $obrero, $request) {
             $evidenciaPath = null;
             $evidenciaTipo = null;
 
@@ -60,7 +82,7 @@ class EventoController extends Controller
             }
 
             $evento = Evento::create([
-                'id_trabajador' => $trabajador->id_trabajador,
+                'id_trabajador' => $obrero->id_trabajador,
                 'tipo' => $validated['tipo'],
                 'estado' => 'abierta',
                 'condicion' => $validated['condicion'],
@@ -92,7 +114,7 @@ class EventoController extends Controller
 
     public function show(Evento $evento)
     {
-        $evento->load(['incidente', 'fatalidad']);
+        $evento->load(['incidente', 'fatalidad', 'trabajador', 'supervisor', 'administrativo']);
 
         return Inertia::render('Eventos/Show', [
             'evento' => $evento,
@@ -107,36 +129,24 @@ class EventoController extends Controller
             'evento' => $evento,
         ]);
     }
-    public function cerrar(Evento $evento)
-    {
-        abort_unless(auth()->user()->tieneRol('administrativo'), 403);
 
-        if ($evento->estado === 'cerrada') {
-            return back()->withErrors(['estado' => 'El evento ya está cerrado.']);
-        }
-
-        $evento->update([
-            'estado' => 'cerrada',
-            'fecha_cierre' => now(),
-        ]);
-
-        return redirect()->route('eventos.show', $evento->id_evento);
-    }
     public function update(Request $request, Evento $evento)
     {
         $validated = $request->validate([
+            'condicion' => 'required|string',
             'descripcion' => 'required|string',
-            'fecha_evento' => 'required|date',
+            'referencia' => 'required|string',
             'gravedad' => 'nullable|string',
             'requiere_investigacion' => 'boolean',
             'causa_muerte' => 'nullable|string',
-            'id_victima' => 'nullable|integer|exists:usuarios.usuarios,id_user',
+            'id_victima' => 'nullable|integer|exists:obreros,id_trabajador',
         ]);
 
         DB::transaction(function () use ($evento, $validated) {
             $evento->update([
+                'condicion' => $validated['condicion'],
                 'descripcion' => $validated['descripcion'],
-                'fecha_evento' => $validated['fecha_evento'],
+                'referencia' => $validated['referencia'],
             ]);
 
             if ($evento->incidente) {
@@ -153,6 +163,38 @@ class EventoController extends Controller
                 ]);
             }
         });
+
+        return redirect()->route('eventos.show', $evento->id_evento);
+    }
+
+    public function tomarReporte(Evento $evento)
+    {
+        $supervisor = $this->supervisorAutenticado();
+        $cuadrillaObrero = $evento->trabajador->cuadrilla;
+
+        abort_if(! $cuadrillaObrero, 422, 'El trabajador no tiene cuadrilla asignada.');
+        abort_unless($cuadrillaObrero->id_supervisor === $supervisor->id_trabajador, 403, 'No eres el supervisor asignado a esta cuadrilla.');
+        abort_if($evento->estado !== 'abierta', 422, 'El evento ya fue tomado o cerrado.');
+
+        $evento->update([
+            'id_supervisor' => $supervisor->id_trabajador,
+            'estado' => 'proceso',
+        ]);
+
+        return redirect()->route('eventos.show', $evento->id_evento);
+    }
+
+    public function cerrar(Evento $evento)
+    {
+        $administrativo = $this->administrativoAutenticado();
+
+        abort_if($evento->estado !== 'proceso', 422, 'El evento debe estar en proceso antes de cerrarse.');
+
+        $evento->update([
+            'id_administrativo' => $administrativo->id_trabajador,
+            'estado' => 'cerrada',
+            'fecha_cierre' => now(),
+        ]);
 
         return redirect()->route('eventos.show', $evento->id_evento);
     }

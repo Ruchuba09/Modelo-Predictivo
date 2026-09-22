@@ -77,11 +77,21 @@ const Create: React.FC = () => {
 
                     <div className="create-form-group">
                         <label>Tipo trabajador</label>
-                        <input
+                        <select
                             className="create-input"
                             value={data.id_tipo_trabajador}
                             onChange={(e) => setData("id_tipo_trabajador", e.target.value)}
-                        />
+                        >
+                            <option value="" disabled>
+                                Selecciona un tipo
+                            </option>
+                            <option value="obrero">Obrero</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="administrativo">Administrativo</option>
+                        </select>
+                        {errors.id_tipo_trabajador && (
+                            <div className="create-error">{errors.id_tipo_trabajador}</div>
+                        )}
                     </div>
 
                     <div className="create-form-group">

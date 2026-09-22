@@ -39,12 +39,12 @@ class Evento extends Model
 
     public function supervisor()
     {
-        return $this->belongsTo(Trabajador::class, 'id_supervisor', 'id_trabajador');
+        return $this->belongsTo(Supervisor::class, 'id_supervisor', 'id_trabajador');
     }
 
     public function administrativo()
     {
-        return $this->belongsTo(Trabajador::class, 'id_administrativo', 'id_trabajador');
+        return $this->belongsTo(Administrativo::class, 'id_administrativo', 'id_trabajador');
     }
 
     public function incidente()

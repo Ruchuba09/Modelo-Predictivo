@@ -28,28 +28,19 @@ export default function MainLayout({ children }: PropsWithChildren) {
                 <nav className="hidden md:flex h-full">
                     <Link href="/portal" className={getLinkClass('/portal')}>Inicio</Link>
                     <Link href="/dashboard" className={getLinkClass('/dashboard')}>Dashboard</Link>
-                    <Link href="/ver-cierre" className={getLinkClass('/ver-cierre')}>Reportes</Link>
+                    <Link href="/tarjetas-pare" className={getLinkClass('/tarjetas-pare')}>Reportes</Link>
                     <Link href="/usuarios" className={getLinkClass('/usuarios')}>Usuarios</Link>
                     <Link href="/roles" className={getLinkClass('/roles')}>Roles</Link>
                     <Link href="/permisos" className={getLinkClass('/permisos')}>Permisos</Link>
-                    {/* <Link href="/modelo-tarjeta" className={getLinkClass('/modelotarjetapare')}>modelotarjetapare</Link> */}
-                    {/* <Link href="/escala-riesgo" className={getLinkClass('/escalariesgo')}>escalariesgo</Link> */}
+                    <Link href="/trabajadores" className={getLinkClass('/trabajadores')}>trabajadores</Link>
                 </nav>
 
-                <div className="relative">
-                <button 
-                    onClick={() => setMenuPerfilAbierto(!menuPerfilAbierto)}
-                    className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2D3238] hover:ring-2 hover:ring-[#A0F700] transition-all focus:outline-none cursor-pointer"
-                >
-                    <span className="text-[#7A7F85] text-sm font-bold">U</span>
-                </button>
-
-                {menuPerfilAbierto && (
-                    <div className="absolute right-0 mt-2 w-56 bg-[#1e2329] border border-[#2D3238] rounded-lg shadow-xl py-1 z-50 overflow-hidden flex flex-col">
-                        
-                        <div className="px-4 py-3 border-b border-[#2D3238] bg-[#0a0a0a]">
-                            <p className="text-sm text-white font-bold">Mi Cuenta</p>
-                            <p className="text-xs text-[#7A7F85] truncate">admin@avamontajes.cl</p>
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3 border-l border-[#2d3238] pl-6">
+                        <div className="w-8 h-8 rounded-full bg-[#2d3238] overflow-hidden border border-[#7a7f85]/30">
+                            <Link href="/settings/profile" className="w-8 h-8 rounded-full bg-[#2d3238] overflow-hidden border border-[#7a7f85]/30 hover:border-[#a0f700]/50 transition-colors">
+                                <img src="https://ui-avatars.com/api/?name=Carlos+Mendoza&background=2d3238&color=fff" alt="Perfil" />
+                            </Link>
                         </div>
                         
                         <Link 
