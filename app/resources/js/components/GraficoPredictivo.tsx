@@ -131,7 +131,6 @@ export default function GraficoPredictivo() {
     return (
         <div className="bg-[#1e2329] border border-[#2D3238] p-6 rounded-xl text-white w-full shadow-lg"> 
             
-            {/* Cabecera y Botones de Exportación/Filtros */}
             <div className="mb-6 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-6">
                 <div>
                     <h3 className="text-xl font-bold">Registro Tarjeta Pare</h3>
@@ -174,7 +173,6 @@ export default function GraficoPredictivo() {
                 </div>
             </div>
 
-            {/* Filtros de Condiciones */}
             <div className="mb-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                 {CONDICIONES.map(cond => (
                     <button 
@@ -192,7 +190,6 @@ export default function GraficoPredictivo() {
                 ))}
             </div>
 
-            {/* 1. SECCIÓN SUPERIOR: GRÁFICO PRINCIPAL Y MÉTRICAS */}
             <div className="flex flex-col lg:flex-row gap-6">
                 <div 
                     ref={chartRef}
@@ -216,7 +213,6 @@ export default function GraficoPredictivo() {
                 </div>
             </div>
 
-            {/* 2. SECCIÓN INFERIOR: TORTA Y RESUMEN */}
             <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 h-auto lg:h-[280px]">
                 
                 <div className="bg-[#0a0a0a] border border-[#2D3238] rounded-xl p-4 flex flex-col">
@@ -247,7 +243,6 @@ export default function GraficoPredictivo() {
                     </div>
                 </div>
 
-                {/* Panel de Resumen Rápido (KPIs) */}
                 <div className="bg-[#0a0a0a] border border-[#2D3238] rounded-xl p-5 flex flex-col justify-center gap-4">
                     <h3 className="text-[#7A7F85] text-sm font-bold uppercase tracking-wider">Resumen del Periodo</h3>
                     <div className="grid grid-cols-2 gap-4">
