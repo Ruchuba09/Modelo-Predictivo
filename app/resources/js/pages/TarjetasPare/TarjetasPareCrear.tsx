@@ -8,7 +8,7 @@ export default function TarjetasPareCrear() {
 
     const { data, setData, post, processing } = useForm({
         referencia: '',
-        condicion_pare: 0,
+        condicion: 0,
         fecha_evento: fechaActual,
         descripcion: ''
     });
@@ -29,12 +29,12 @@ export default function TarjetasPareCrear() {
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
 
-        if (data.condicion_pare === 0) {
+        if (data.condicion === 0) {
             alert("Por favor, seleccione una condición de uso (1 a 10).");
             return;
         }
 
-        post('/tarjetas-pare');
+        post('/tarjetas-pare')
     };
 
     return (
@@ -57,12 +57,12 @@ export default function TarjetasPareCrear() {
                                     <div 
                                         key={num} 
                                         className={`p-3 rounded-lg border text-lg leading-relaxed transition-colors duration-300 flex gap-3 ${
-                                            data.condicion_pare === num 
+                                            data.condicion === num 
                                                 ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner' 
                                                 : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85]'
                                         }`}
                                     >
-                                        <div className={`font-black shrink-0 ${data.condicion_pare === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
+                                        <div className={`font-black shrink-0 ${data.condicion === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
                                             {num.toString().padStart(2, '0')}.
                                         </div>
                                         <div>{condicionesPare[num]}</div>
@@ -107,9 +107,9 @@ export default function TarjetasPareCrear() {
                             <div className="bg-[#0a0a0a] p-5 rounded-xl border border-[#2d3238]">
                                 <div className="flex justify-between items-end mb-4">
                                     <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85]">Condición del Evento</label>
-                                    {data.condicion_pare > 0 && (
+                                    {data.condicion > 0 && (
                                         <span className="text-sm font-bold tracking-wide text-[#a0f700]">
-                                            Condición #{data.condicion_pare}
+                                            Condición #{data.condicion}
                                         </span>
                                     )}
                                 </div>
@@ -119,9 +119,9 @@ export default function TarjetasPareCrear() {
                                         <button
                                             key={num}
                                             type="button"
-                                            onClick={() => setData('condicion_pare', num)}
+                                            onClick={() => setData('condicion', num)}
                                             className={`flex-1 min-w-[40px] py-2.5 rounded-md text-sm font-bold transition-all ${
-                                                data.condicion_pare === num
+                                                data.condicion === 0
                                                     ? 'bg-[#a0f700] text-black shadow-[0_0_15px_-3px_rgba(160,247,0,0.4)]'
                                                     : 'bg-[#141414] border border-[#2d3238] text-white hover:border-[#7a7f85]'
                                             }`}
@@ -169,12 +169,12 @@ export default function TarjetasPareCrear() {
                                     <div 
                                         key={num} 
                                         className={`p-3 rounded-lg border text-lg leading-relaxed transition-colors duration-300 flex gap-3 ${
-                                            data.condicion_pare === num 
+                                            data.condicion === num 
                                                 ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner' 
                                                 : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85]'
                                         }`}
                                     >
-                                        <div className={`font-black shrink-0 ${data.condicion_pare === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
+                                        <div className={`font-black shrink-0 ${data.condicion === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
                                             {num.toString().padStart(2, '0')}.
                                         </div>
                                         <div>{condicionesPare[num]}</div>
