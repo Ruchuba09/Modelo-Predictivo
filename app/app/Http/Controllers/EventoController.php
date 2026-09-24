@@ -42,6 +42,16 @@ class EventoController extends Controller
             'datosGrafico' => $tarjetasPare
         ]);
     }
+    public function index()
+    {
+        $eventos = Evento::with(['tipoEvento', 'proyecto', 'area'])
+            ->orderByDesc('fecha_creacion')
+            ->get();
+
+        return Inertia::render('Eventos/Index', [
+            'eventos' => $eventos,
+        ]);
+    }
     public function indexGrafico()
     {
         // 1. Consultar la base de datos agrupando por fecha
