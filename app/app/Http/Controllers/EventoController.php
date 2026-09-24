@@ -41,18 +41,55 @@ class EventoController extends Controller
         ]);
     }
 
-    private function proyectoActualDelObrero(Obrero $obrero): int
+    private function proyectoActualDelTrabajador()
     {
-        abort_if(! $obrero->id_cuadrilla, 422, 'El obrero no tiene cuadrilla asignada.');
+        $trabajador = auth()->user()->trabajador;
 
-        $asignacion = Asignacion::where('id_cuadrilla', $obrero->id_cuadrilla)
-            ->whereNull('fecha_termino')
-            ->latest('fecha_inicio')
-            ->first();
+        abort_if(! $trabajador, 403, 'El usuario autenticado no está registrado como trabajador.');
 
-        abort_if(! $asignacion, 422, 'La cuadrilla no tiene un proyecto asignado actualmente.');
+        // Administrativo: administra proyectos vía asignaciones directas
+        if ($trabajador->administrativo) {
+            $asignacion = Asignacion::where('id_administrador', $trabajador->id_trabajador)
+                ->whereNull('fecha_termino')
+                ->latest('fecha_inicio')
+                ->first();
 
-        return $asignacion->id_proyecto;
+            abort_if(! $asignacion, 422, 'No tienes un proyecto asignado actualmente.');
+
+            return $asignacion->id_proyecto;
+        }
+
+        // Supervisor: tiene cuadrillas a cargo, las cuadrillas tienen asignaciones
+        if ($trabajador->supervisor) {
+            $cuadrilla = \App\Models\Cuadrilla::where('id_supervisor', $trabajador->id_trabajador)->first();
+
+            abort_if(! $cuadrilla, 422, 'No tienes una cuadrilla asignada.');
+
+            $asignacion = Asignacion::where('id_cuadrilla', $cuadrilla->id_cuadrilla)
+                ->whereNull('fecha_termino')
+                ->latest('fecha_inicio')
+                ->first();
+
+            abort_if(! $asignacion, 422, 'Tu cuadrilla no tiene un proyecto asignado actualmente.');
+
+            return $asignacion->id_proyecto;
+        }
+
+        // Obrero: pertenece a una cuadrilla
+        if ($trabajador->obrero) {
+            abort_if(! $trabajador->obrero->id_cuadrilla, 422, 'No tienes una cuadrilla asignada.');
+
+            $asignacion = Asignacion::where('id_cuadrilla', $trabajador->obrero->id_cuadrilla)
+                ->whereNull('fecha_termino')
+                ->latest('fecha_inicio')
+                ->first();
+
+            abort_if(! $asignacion, 422, 'Tu cuadrilla no tiene un proyecto asignado actualmente.');
+
+            return $asignacion->id_proyecto;
+        }
+
+        abort(403, 'El usuario no tiene un rol válido (obrero, supervisor o administrativo).');
     }
 
     public function store(Request $request)
@@ -61,10 +98,10 @@ class EventoController extends Controller
             'id_tipo_evento' => 'required|integer|exists:tipo_eventos,id_tipo_evento',
             'condicion' => 'required|integer|between:1,10',
             'descripcion' => 'required|string',
+            'referencia' => 'required|string',
         ]);
 
-        $obrero = $this->obreroAutenticado();
-        $idProyecto = $this->proyectoActualDelObrero($obrero);
+        $idProyecto = $this->proyectoActualDelTrabajador();
 
         $evento = Evento::create([
             'id_tipo_evento' => $validated['id_tipo_evento'],
@@ -73,6 +110,7 @@ class EventoController extends Controller
             'id_proyecto' => $idProyecto,
             'descripcion' => $validated['descripcion'],
             'condicion' => $validated['condicion'],
+            'referencia' => $validated['referencia'],
             'estado' => 'abierto',
         ]);
 
@@ -81,7 +119,9 @@ class EventoController extends Controller
 
     public function create()
     {
-        return Inertia::render('Eventos/Create');
+        return Inertia::render('Eventos/Create', [
+            'tiposEvento' => \App\Models\TipoEvento::all(),
+        ]);
     }
 
     private function obreroAutenticado(): Obrero

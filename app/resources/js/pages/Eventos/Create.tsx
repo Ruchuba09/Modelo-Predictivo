@@ -1,15 +1,20 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { FormEvent } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 
-export default function Create() {
-    const hoy = new Date();
-    const fechaActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+interface TipoEvento {
+    id_tipo_evento: number;
+    nombre: string;
+}
 
-    const { data, setData, post, processing } = useForm({
+export default function Create() {
+    const { tiposEvento } = usePage().props as unknown as { tiposEvento: TipoEvento[] };
+
+    const { data, setData, post, processing, errors } = useForm({
         id_tipo_evento: 0,
         condicion: 0,
-        descripcion: ''
+        descripcion: '',
+        referencia: ''
     });
 
     const condicionesPare: {[key: number]: string} = {
@@ -28,8 +33,13 @@ export default function Create() {
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
 
-        if (data.condicion_pare === 0) {
+        if (data.condicion === 0) {
             alert("Por favor, seleccione una condición de uso (1 a 10).");
+            return;
+        }
+
+        if (data.id_tipo_evento === 0) {
+            alert("Por favor, seleccione un tipo de evento.");
             return;
         }
 
@@ -39,11 +49,11 @@ export default function Create() {
     return (
         <MainLayout>
             <Head title="Ingreso de Reporte | AVA" />
-            
+
             <div className="max-w-[1700px] mx-auto p-6 lg:p-8 lg:mt-2 ">
                 <div className="mb-8 pl-146">
                     <h1 className="text-2xl font-bold text-3xl text-white mb-2 pl-24">Ingreso de Reporte</h1>
-                    <p className="text-[#7a7f85] text-sm">Registra una Tarjeta PARE detallando la condición y el lugar del evento.</p>
+                    <p className="text-[#7a7f85] text-sm">Registra un evento detallando la condición y la descripción.</p>
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 mt">
@@ -53,15 +63,15 @@ export default function Create() {
                             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">Guía de Condiciones</h3>
                             <div className="space-y-2.5">
                                 {[1, 2, 3, 4, 5,].map(num => (
-                                    <div 
-                                        key={num} 
+                                    <div
+                                        key={num}
                                         className={`p-3 rounded-lg border text-lg leading-relaxed transition-colors duration-300 flex gap-3 ${
-                                            data.condicion_pare === num 
-                                                ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner' 
+                                            data.condicion === num
+                                                ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner'
                                                 : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85]'
                                         }`}
                                     >
-                                        <div className={`font-black shrink-0 ${data.condicion_pare === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
+                                        <div className={`font-black shrink-0 ${data.condicion === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
                                             {num.toString().padStart(2, '0')}.
                                         </div>
                                         <div>{condicionesPare[num]}</div>
@@ -74,53 +84,65 @@ export default function Create() {
                     {/* Centro */}
                     <div className="xl:col-span-2 bg-[#141414] border border-[#2d3238] rounded-2xl p-8 shadow-2xl h-full flex flex-col">
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
-                                        Referencia (Lugar del evento)
-                                    </label>
-                                    <input 
-                                        type="text"
-                                        required
-                                        value={data.referencia}
-                                        onChange={e => setData('referencia', e.target.value)}
-                                        placeholder="Ej: Chancador primario, Nivel 4..."
-                                        className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
-                                        Fecha del Evento
-                                    </label>
-                                    <input 
-                                        type="date" 
-                                        value={data.fecha_evento}
-                                        disabled
-                                        className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-[#7a7f85] opacity-60 cursor-not-allowed" 
-                                        style={{ colorScheme: 'dark' }} 
-                                    />
-                                </div>
+                            <div>
+                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                    Referencia (Lugar del evento)
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={data.referencia}
+                                    onChange={e => setData('referencia', e.target.value)}
+                                    placeholder="Ej: Chancador primario, Nivel 4..."
+                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors"
+                                />
+                                {errors.referencia && <p className="text-red-400 text-xs mt-1">{errors.referencia}</p>}
                             </div>
+
+                            <div>
+                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                    Tipo de Evento
+                                </label>
+                                <select
+                                    required
+                                    value={data.id_tipo_evento}
+                                    onChange={e => setData('id_tipo_evento', Number(e.target.value))}
+                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors"
+                                >
+                                    <option value={0}>Seleccione un tipo de evento...</option>
+                                    {tiposEvento?.map((tipo) => (
+                                        <option key={tipo.id_tipo_evento} value={tipo.id_tipo_evento}>
+                                            {tipo.nombre}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.id_tipo_evento && <p className="text-red-400 text-xs mt-1">{errors.id_tipo_evento}</p>}
+                            </div>
+
+                            {(errors as any).general && (
+                                <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/30 rounded-lg px-4 py-3">
+                                    {(errors as any).general}
+                                </p>
+                            )}
 
                             <div className="bg-[#0a0a0a] p-5 rounded-xl border border-[#2d3238]">
                                 <div className="flex justify-between items-end mb-4">
                                     <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85]">Condición del Evento</label>
-                                    {data.condicion_pare > 0 && (
+                                    {data.condicion > 0 && (
                                         <span className="text-sm font-bold tracking-wide text-[#a0f700]">
-                                            Condición #{data.condicion_pare}
+                                            Condición #{data.condicion}
                                         </span>
                                     )}
                                 </div>
-                                
+
                                 <div className="flex flex-wrap gap-2">
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                                         <button
                                             key={num}
                                             type="button"
-                                            onClick={() => setData('condicion_pare', num)}
+                                            onClick={() => setData('condicion', num)}
                                             className={`flex-1 min-w-[40px] py-2.5 rounded-md text-sm font-bold transition-all ${
-                                                data.condicion_pare === num
+                                                data.condicion === num
                                                     ? 'bg-[#a0f700] text-black shadow-[0_0_15px_-3px_rgba(160,247,0,0.4)]'
                                                     : 'bg-[#141414] border border-[#2d3238] text-white hover:border-[#7a7f85]'
                                             }`}
@@ -143,11 +165,12 @@ export default function Create() {
                                     placeholder="Describe el contexto del hallazgo..."
                                     className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] resize-none transition-colors"
                                 ></textarea>
+                                {errors.descripcion && <p className="text-red-400 text-xs mt-1">{errors.descripcion}</p>}
                             </div>
 
                             <div className="flex justify-center gap-4 pt-6 border-t border-[#2d3238] mt-8">
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     disabled={processing}
                                     className="px-6 py-3 rounded-lg text-lg font-bold bg-[#a0f700] hover:bg-[#86cf00] text-black transition-colors shadow-lg shadow-[#a0f700]/20 flex items-center gap-2 disabled:opacity-50"
                                 >
@@ -162,25 +185,25 @@ export default function Create() {
 
                     {/* Lado derecho */}
                     <div className="bg-[#111111] border border-[#2d3238] rounded-2xl p-6 shadow-xl sticky top-24 h-full flex flex-col">
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">Guía de Condiciones</h3>
-                            <div className="flex flex-col gap-3">
-                                {[6, 7, 8, 9, 10].map(num => (
-                                    <div 
-                                        key={num} 
-                                        className={`p-3 rounded-lg border text-lg leading-relaxed transition-colors duration-300 flex gap-3 ${
-                                            data.condicion_pare === num 
-                                                ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner' 
-                                                : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85]'
-                                        }`}
-                                    >
-                                        <div className={`font-black shrink-0 ${data.condicion_pare === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
-                                            {num.toString().padStart(2, '0')}.
-                                        </div>
-                                        <div>{condicionesPare[num]}</div>
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">Guía de Condiciones</h3>
+                        <div className="flex flex-col gap-3">
+                            {[6, 7, 8, 9, 10].map(num => (
+                                <div
+                                    key={num}
+                                    className={`p-3 rounded-lg border text-lg leading-relaxed transition-colors duration-300 flex gap-3 ${
+                                        data.condicion === num
+                                            ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner'
+                                            : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85]'
+                                    }`}
+                                >
+                                    <div className={`font-black shrink-0 ${data.condicion === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
+                                        {num.toString().padStart(2, '0')}.
                                     </div>
-                                ))}
-                            </div>
+                                    <div>{condicionesPare[num]}</div>
+                                </div>
+                            ))}
                         </div>
+                    </div>
 
                 </div>
             </div>

@@ -19,6 +19,7 @@ class Evento extends Model
         'id_proyecto',
         'descripcion',
         'condicion',
+        'referencia',
         'estado',
     ];
 
