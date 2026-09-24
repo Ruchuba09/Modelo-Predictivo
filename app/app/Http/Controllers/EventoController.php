@@ -14,12 +14,31 @@ use Inertia\Inertia;
 
 class EventoController extends Controller
 {
-    public function index()
+    public function dashboard()
     {
-        $eventos = Evento::with(['incidente', 'fatalidad'])->get();
+        $tarjetasPare = Evento::select(
+                DB::raw('DATE(created_at) as fecha'),
+                DB::raw("SUM(CASE WHEN condicion = '1' THEN 1 ELSE 0 END) as c1"),
+                DB::raw("SUM(CASE WHEN condicion = '2' THEN 1 ELSE 0 END) as c2"),
+                DB::raw("SUM(CASE WHEN condicion = '3' THEN 1 ELSE 0 END) as c3"),
+                DB::raw("SUM(CASE WHEN condicion = '4' THEN 1 ELSE 0 END) as c4"),
+                DB::raw("SUM(CASE WHEN condicion = '5' THEN 1 ELSE 0 END) as c5"),
+                DB::raw("SUM(CASE WHEN condicion = '6' THEN 1 ELSE 0 END) as c6"),
+                DB::raw("SUM(CASE WHEN condicion = '7' THEN 1 ELSE 0 END) as c7"),
+                DB::raw("SUM(CASE WHEN condicion = '8' THEN 1 ELSE 0 END) as c8"),
+                DB::raw("SUM(CASE WHEN condicion = '9' THEN 1 ELSE 0 END) as c9"),
+                DB::raw("SUM(CASE WHEN condicion = '10' THEN 1 ELSE 0 END) as c10")
+            )
+            ->where('tipo_evento', 4) 
+            ->where('created_at', '>=', now()->subDays(7))
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->orderBy('fecha', 'asc')
+            ->get();
 
-        return Inertia::render('Eventos/Index', [
-            'eventos' => $eventos,
+            dd('¡Sí pasé por el controlador!', $tarjetasPare);
+
+        return Inertia::render('dashboard', [
+            'datosGrafico' => $tarjetasPare
         ]);
     }
 
@@ -83,6 +102,7 @@ class EventoController extends Controller
 
             $evento = Evento::create([
                 'id_trabajador' => $obrero->id_trabajador,
+                'tipo_evento' => 4,
                 'tipo' => $validated['tipo'],
                 'estado' => 'abierta',
                 'condicion' => $validated['condicion'],

@@ -3,16 +3,16 @@ import { FormEventHandler } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 
 const CONDICIONES = [
-    'Caída de altura',
-    'Atrapamiento',
-    'Contacto eléctrico',
-    'Golpe por objeto',
-    'Exposición química',
-    'Incendio / explosión',
-    'Colisión vehicular',
-    'Sobreesfuerzo',
-    'Corte / laceración',
-    'Otro',
+    'Si las condiciones de trabajo NO son seguras.',
+    'Si NO tiene las herramientas adecuadas o están en mal estado.',
+    'Si NO tiene los EPP adecuados.',
+    'Si NO sabe o no está capacitado / autorizado para realizar la actividad.',
+    'Si NO hay un procedimiento / instructivo asociado a la actividad o si este existe pero no ha sido difundido.',
+    'NO contar con el apoyo de recursos humanos y/o materiales necesarios para realizar la actividad.',
+    'NO contar con AST, VATS, ERT.',
+    'NO contar con el o los permisos exigidos para realizar la actividad.',
+    'NO encontrarse en condiciones físicas o emocionales para realizar la actividad.',
+    'Otras condiciones no consideradas que impliquen un riesgo no controlado.'
 ];
 
 export default function Create() {
@@ -71,11 +71,12 @@ export default function Create() {
                         <select
                             value={data.condicion}
                             onChange={(e) => setData('condicion', e.target.value)}
-                            className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white"
-                        >
-                            <option value="">Seleccione...</option>
-                            {CONDICIONES.map((c) => (
-                                <option key={c} value={c}>{c}</option>
+                            className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white">
+                        <option value="">Seleccione...</option>
+                        {CONDICIONES.map((c, index) => (
+                                <option key={index} value={(index + 1).toString()}>
+                                    {index + 1}. {c}
+                                </option>
                             ))}
                         </select>
                         {errors.condicion && <p className="text-red-400 text-xs mt-1">{errors.condicion}</p>}

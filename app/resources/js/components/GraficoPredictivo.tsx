@@ -20,14 +20,9 @@ const CONDICIONES = [
     { id: 'c10', nombre: '10. Otros', color: '#E0E0E0' },         
 ];
 
-const datosSemanas = [
-    { periodo: 'Semana 1', c1: 15, c2: 4, c3: 2, c4: 0, c5: 5, c6: 1, c7: 3, c8: 0, c9: 1, c10: 2 },
-    { periodo: 'Semana 2', c1: 12, c2: 6, c3: 1, c4: 1, c5: 4, c6: 2, c7: 2, c8: 1, c9: 0, c10: 1 },
-    { periodo: 'Semana 3', c1: 18, c2: 3, c3: 4, c4: 0, c5: 2, c6: 0, c7: 5, c8: 0, c9: 2, c10: 0 },
-    { periodo: 'Semana 4', c1: 10, c2: 5, c3: 3, c4: 2, c5: 3, c6: 1, c7: 1, c8: 2, c9: 0, c10: 3 },
-];
 
-export default function GraficoPredictivo() {
+export default function GraficoPredictivo({ datosReales }: { datosReales?: Array<any> }) {
+    const datosParaDibujar = datosReales || [];
     const chartRef = useRef<HTMLDivElement>(null); 
     const [tipoGrafico, setTipoGrafico] = useState('linea'); 
     const [metricaY, setMetricaY] = useState('hallazgos');
@@ -44,17 +39,26 @@ export default function GraficoPredictivo() {
     };
 
     const datosTransformados = useMemo(() => {
-        return datosSemanas.map(d => {
+        return datosParaDibujar.map((d: any) => {
+            
+            const datoLimpio: any = { 
+                periodo: d.fecha || d.periodo 
+            };
+            CONDICIONES.forEach(c => {
+                datoLimpio[c.id] = Number(d[c.id]) || 0; 
+            });
+
             if (metricaY === 'gravedad') {
-                const nuevoDato: any = { periodo: d.periodo };
+                const nuevoDato: any = { periodo: datoLimpio.periodo };
                 CONDICIONES.forEach(c => {
-                    nuevoDato[c.id] = Number(((d as any)[c.id] * 0.8).toFixed(1)); 
+                    nuevoDato[c.id] = Number((datoLimpio[c.id] * 0.8).toFixed(1)); 
                 });
                 return nuevoDato;
             }
-            return d;
+            
+            return datoLimpio;
         });
-    }, [metricaY]);
+    }, [datosParaDibujar, metricaY]);
 
     const exportarGraficoPNG = async () => {
         setMenuExportarAbierto(false); 
@@ -127,11 +131,10 @@ export default function GraficoPredictivo() {
         const total = datosTransformados.reduce((suma, item: any) => suma + (Number(item[cond.id]) || 0), 0);
         return { name: cond.nombre, value: total, color: cond.color };
     }).filter(d => d.value > 0);
-
+console.log("Datos que llegan de Laravel:", datosReales);
     return (
         <div className="bg-[#1e2329] border border-[#2D3238] p-6 rounded-xl text-white w-full shadow-lg"> 
             
-            {/* Cabecera y Botones de Exportación/Filtros */}
             <div className="mb-6 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-6">
                 <div>
                     <h3 className="text-xl font-bold">Registro Tarjeta Pare</h3>
@@ -174,7 +177,6 @@ export default function GraficoPredictivo() {
                 </div>
             </div>
 
-            {/* Filtros de Condiciones */}
             <div className="mb-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                 {CONDICIONES.map(cond => (
                     <button 
@@ -192,7 +194,6 @@ export default function GraficoPredictivo() {
                 ))}
             </div>
 
-            {/* 1. SECCIÓN SUPERIOR: GRÁFICO PRINCIPAL Y MÉTRICAS */}
             <div className="flex flex-col lg:flex-row gap-6">
                 <div 
                     ref={chartRef}
@@ -216,11 +217,10 @@ export default function GraficoPredictivo() {
                 </div>
             </div>
 
-            {/* 2. SECCIÓN INFERIOR: TORTA Y RESUMEN */}
             <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 h-auto lg:h-[280px]">
                 
                 <div className="bg-[#0a0a0a] border border-[#2D3238] rounded-xl p-4 flex flex-col">
-                    <h3 className="text-white text-sm font-bold mb-2">Distribución Total por Condición</h3>
+                    <h3 className="text-white text-sm font-bold mb-2">Distribución total por condición</h3>
                     <div className="flex-grow min-h-[200px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -247,7 +247,6 @@ export default function GraficoPredictivo() {
                     </div>
                 </div>
 
-                {/* Panel de Resumen Rápido (KPIs) */}
                 <div className="bg-[#0a0a0a] border border-[#2D3238] rounded-xl p-5 flex flex-col justify-center gap-4">
                     <h3 className="text-[#7A7F85] text-sm font-bold uppercase tracking-wider">Resumen del Periodo</h3>
                     <div className="grid grid-cols-2 gap-4">
