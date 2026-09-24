@@ -34,7 +34,7 @@ export default function TarjetasPareCrear() {
             return;
         }
 
-        post('/tarjetas-pare')
+        post('/eventos');
     };
 
     return (

@@ -1,5 +1,5 @@
-import { useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { FormEvent } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 
 const CONDICIONES = [
@@ -16,169 +16,204 @@ const CONDICIONES = [
 ];
 
 export default function Create() {
-    const { data, setData, post, processing, errors, progress } = useForm<{
-        tipo: 'incidente' | 'fatalidad' | '';
-        condicion: string;
-        descripcion: string;
-        referencia: string;
-        evidencia: File | null;
-        gravedad: string;
-        requiere_investigacion: boolean;
-        causa_muerte: string;
-        id_victima: string;
-    }>({
-        tipo: '',
-        condicion: '',
+    const { tiposEvento } = usePage().props as unknown as { tiposEvento: TipoEvento[] };
+
+    const { data, setData, post, processing, errors } = useForm({
+        id_tipo_evento: 0,
+        condicion: 0,
         descripcion: '',
-        referencia: '',
-        evidencia: null,
-        gravedad: '',
-        requiere_investigacion: false,
-        causa_muerte: '',
-        id_victima: '',
+        referencia: ''
     });
 
-    const submit: FormEventHandler = (e) => {
+    const condicionesPare: {[key: number]: string} = {
+        1: "Si las condiciones de trabajo NO son seguras.",
+        2: "Si NO tiene las herramientas adecuadas o están en mal estado.",
+        3: "Si NO tiene los EPP adecuados.",
+        4: "Si NO sabe o no está capacitado / autorizado para realizar la actividad.",
+        5: "Si NO hay un procedimiento / instructivo asociado a la actividad o si este existe pero no ha sido difundido.",
+        6: "NO contar con el apoyo de recursos humanos y/o materiales necesarios para realizar la actividad.",
+        7: "NO contar con AST, VATS, ERT.",
+        8: "NO contar con el o los permisos exigidos para realizar la actividad.",
+        9: "NO encontrarse en condiciones físicas o emocionales para realizar la actividad.",
+        10: "Otras condiciones no consideradas que impliquen un riesgo no controlado."
+    };
+
+    const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        post('/eventos', {
-            forceFormData: true,
-        });
+
+        if (data.condicion === 0) {
+            alert("Por favor, seleccione una condición de uso (1 a 10).");
+            return;
+        }
+
+        if (data.id_tipo_evento === 0) {
+            alert("Por favor, seleccione un tipo de evento.");
+            return;
+        }
+
+        post('/eventos');
     };
 
     return (
         <MainLayout>
-            <div className="max-w-2xl mx-auto p-6 lg:p-8">
-                <h1 className="text-2xl font-bold text-white mb-6">Registrar Evento</h1>
+            <Head title="Ingreso de Reporte | AVA" />
 
-                <form onSubmit={submit} className="space-y-5 bg-[#15181c] border border-white/5 rounded-xl p-6">
+            <div className="max-w-[1700px] mx-auto p-6 lg:p-8 lg:mt-2 ">
+                <div className="mb-8 pl-146">
+                    <h1 className="text-2xl font-bold text-3xl text-white mb-2 pl-24">Ingreso de Reporte</h1>
+                    <p className="text-[#7a7f85] text-sm">Registra un evento detallando la condición y la descripción.</p>
+                </div>
 
-                    <div>
-                        <label className="block text-sm text-[#7a7f85] mb-1.5">Tipo de evento</label>
-                        <select
-                            value={data.tipo}
-                            onChange={(e) => setData('tipo', e.target.value as 'incidente' | 'fatalidad')}
-                            className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white"
-                        >
-                            <option value="">Seleccione...</option>
-                            <option value="incidente">Incidente</option>
-                            <option value="fatalidad">Fatalidad</option>
-                        </select>
-                        {errors.tipo && <p className="text-red-400 text-xs mt-1">{errors.tipo}</p>}
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 mt">
+                    <div className="xl:col-span-1">
+                        {/* Lado izquierdo */}
+                        <div className="bg-[#111111] border border-[#2d3238] rounded-2xl p-6 shadow-xl sticky top-24 h-full flex flex-col">
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">Guía de Condiciones</h3>
+                            <div className="space-y-2.5">
+                                {[1, 2, 3, 4, 5,].map(num => (
+                                    <div
+                                        key={num}
+                                        className={`p-3 rounded-lg border text-lg leading-relaxed transition-colors duration-300 flex gap-3 ${
+                                            data.condicion === num
+                                                ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner'
+                                                : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85]'
+                                        }`}
+                                    >
+                                        <div className={`font-black shrink-0 ${data.condicion === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
+                                            {num.toString().padStart(2, '0')}.
+                                        </div>
+                                        <div>{condicionesPare[num]}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm text-[#7a7f85] mb-1.5">Condición del evento</label>
-                        <select
-                            value={data.condicion}
-                            onChange={(e) => setData('condicion', e.target.value)}
-                            className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white">
-                        <option value="">Seleccione...</option>
-                        {CONDICIONES.map((c, index) => (
-                                <option key={index} value={(index + 1).toString()}>
-                                    {index + 1}. {c}
-                                </option>
-                            ))}
-                        </select>
-                        {errors.condicion && <p className="text-red-400 text-xs mt-1">{errors.condicion}</p>}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm text-[#7a7f85] mb-1.5">Descripción</label>
-                        <textarea
-                            value={data.descripcion}
-                            onChange={(e) => setData('descripcion', e.target.value)}
-                            className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white"
-                            rows={3}
-                        />
-                        {errors.descripcion && <p className="text-red-400 text-xs mt-1">{errors.descripcion}</p>}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm text-[#7a7f85] mb-1.5">Referencia</label>
-                        <input
-                            type="text"
-                            value={data.referencia}
-                            onChange={(e) => setData('referencia', e.target.value)}
-                            className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white"
-                        />
-                        {errors.referencia && <p className="text-red-400 text-xs mt-1">{errors.referencia}</p>}
-                    </div>
-
-                    {data.tipo === 'incidente' && (
-                        <>
+                    {/* Centro */}
+                    <div className="xl:col-span-2 bg-[#141414] border border-[#2d3238] rounded-2xl p-8 shadow-2xl h-full flex flex-col">
+                        <form onSubmit={handleSubmit} className="space-y-6">
                             <div>
-                                <label className="block text-sm text-[#7a7f85] mb-1.5">Gravedad</label>
+                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                    Referencia (Lugar del evento)
+                                </label>
                                 <input
                                     type="text"
-                                    value={data.gravedad}
-                                    onChange={(e) => setData('gravedad', e.target.value)}
-                                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white"
+                                    required
+                                    value={data.referencia}
+                                    onChange={e => setData('referencia', e.target.value)}
+                                    placeholder="Ej: Chancador primario, Nivel 4..."
+                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors"
                                 />
-                                {errors.gravedad && <p className="text-red-400 text-xs mt-1">{errors.gravedad}</p>}
+                                {errors.referencia && <p className="text-red-400 text-xs mt-1">{errors.referencia}</p>}
                             </div>
-                            <label className="flex items-center gap-2 text-sm text-[#7a7f85]">
-                                <input
-                                    type="checkbox"
-                                    checked={data.requiere_investigacion}
-                                    onChange={(e) => setData('requiere_investigacion', e.target.checked)}
-                                />
-                                Requiere investigación
-                            </label>
-                        </>
-                    )}
 
-                    {data.tipo === 'fatalidad' && (
-                        <>
                             <div>
-                                <label className="block text-sm text-[#7a7f85] mb-1.5">Causa de muerte</label>
-                                <input
-                                    type="text"
-                                    value={data.causa_muerte}
-                                    onChange={(e) => setData('causa_muerte', e.target.value)}
-                                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white"
-                                />
-                                {errors.causa_muerte && <p className="text-red-400 text-xs mt-1">{errors.causa_muerte}</p>}
+                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                    Tipo de Evento
+                                </label>
+                                <select
+                                    required
+                                    value={data.id_tipo_evento}
+                                    onChange={e => setData('id_tipo_evento', Number(e.target.value))}
+                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors"
+                                >
+                                    <option value={0}>Seleccione un tipo de evento...</option>
+                                    {tiposEvento?.map((tipo) => (
+                                        <option key={tipo.id_tipo_evento} value={tipo.id_tipo_evento}>
+                                            {tipo.nombre}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.id_tipo_evento && <p className="text-red-400 text-xs mt-1">{errors.id_tipo_evento}</p>}
                             </div>
-                            <div>
-                                <label className="block text-sm text-[#7a7f85] mb-1.5">ID víctima</label>
-                                <input
-                                    type="number"
-                                    value={data.id_victima}
-                                    onChange={(e) => setData('id_victima', e.target.value)}
-                                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white"
-                                />
-                                {errors.id_victima && <p className="text-red-400 text-xs mt-1">{errors.id_victima}</p>}
-                            </div>
-                        </>
-                    )}
 
-                    <div>
-                        <label className="block text-sm text-[#7a7f85] mb-1.5">Evidencia (foto o video)</label>
-                        <input
-                            type="file"
-                            accept="image/*,video/*"
-                            onChange={(e) => setData('evidencia', e.target.files ? e.target.files[0] : null)}
-                            className="w-full text-white text-sm"
-                        />
-                        {errors.evidencia && <p className="text-red-400 text-xs mt-1">{errors.evidencia}</p>}
-                        {progress && (
-                            <div className="w-full bg-white/5 rounded-full h-1.5 mt-2">
+                            {(errors as any).general && (
+                                <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/30 rounded-lg px-4 py-3">
+                                    {(errors as any).general}
+                                </p>
+                            )}
+
+                            <div className="bg-[#0a0a0a] p-5 rounded-xl border border-[#2d3238]">
+                                <div className="flex justify-between items-end mb-4">
+                                    <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85]">Condición del Evento</label>
+                                    {data.condicion > 0 && (
+                                        <span className="text-sm font-bold tracking-wide text-[#a0f700]">
+                                            Condición #{data.condicion}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                        <button
+                                            key={num}
+                                            type="button"
+                                            onClick={() => setData('condicion', num)}
+                                            className={`flex-1 min-w-[40px] py-2.5 rounded-md text-sm font-bold transition-all ${
+                                                data.condicion === num
+                                                    ? 'bg-[#a0f700] text-black shadow-[0_0_15px_-3px_rgba(160,247,0,0.4)]'
+                                                    : 'bg-[#141414] border border-[#2d3238] text-white hover:border-[#7a7f85]'
+                                            }`}
+                                        >
+                                            {num}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                    Descripción Detallada
+                                </label>
+                                <textarea
+                                    rows={5}
+                                    required
+                                    value={data.descripcion}
+                                    onChange={e => setData('descripcion', e.target.value)}
+                                    placeholder="Describe el contexto del hallazgo..."
+                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] resize-none transition-colors"
+                                ></textarea>
+                                {errors.descripcion && <p className="text-red-400 text-xs mt-1">{errors.descripcion}</p>}
+                            </div>
+
+                            <div className="flex justify-center gap-4 pt-6 border-t border-[#2d3238] mt-8">
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="px-6 py-3 rounded-lg text-lg font-bold bg-[#a0f700] hover:bg-[#86cf00] text-black transition-colors shadow-lg shadow-[#a0f700]/20 flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    {processing ? 'Guardando...' : 'Registrar evento'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Lado derecho */}
+                    <div className="bg-[#111111] border border-[#2d3238] rounded-2xl p-6 shadow-xl sticky top-24 h-full flex flex-col">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">Guía de Condiciones</h3>
+                        <div className="flex flex-col gap-3">
+                            {[6, 7, 8, 9, 10].map(num => (
                                 <div
-                                    className="bg-[#a0f700] h-1.5 rounded-full"
-                                    style={{ width: `${progress.percentage}%` }}
-                                />
-                            </div>
-                        )}
+                                    key={num}
+                                    className={`p-3 rounded-lg border text-lg leading-relaxed transition-colors duration-300 flex gap-3 ${
+                                        data.condicion === num
+                                            ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner'
+                                            : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85]'
+                                    }`}
+                                >
+                                    <div className={`font-black shrink-0 ${data.condicion === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
+                                        {num.toString().padStart(2, '0')}.
+                                    </div>
+                                    <div>{condicionesPare[num]}</div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={processing}
-                        className="bg-[#a0f700] hover:bg-[#86cf00] text-black px-5 py-2.5 rounded-lg text-sm font-bold disabled:opacity-50"
-                    >
-                        {processing ? 'Guardando...' : 'Registrar evento'}
-                    </button>
-                </form>
+                </div>
             </div>
         </MainLayout>
     );

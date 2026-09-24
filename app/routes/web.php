@@ -4,9 +4,8 @@ use App\Http\Controllers\TrabajadorController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\PermisoController;
-use App\Http\Controllers\ModeloTarjetaPareController;
-use App\Http\Controllers\EscalaRiesgoController;
-use App\Http\Controllers\TarjetaPareController;
+
+use App\Http\Controllers\SituacionCriticaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EventoController;
 use Inertia\Inertia;
@@ -48,30 +47,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/permisos/{permiso}', [PermisoController::class, 'destroy'])->name('permisos.destroy');
 
 
-    Route::get('/escala-riesgo', [EscalaRiesgoController::class, 'index'])->name('escala-riesgo.index');
-    Route::get('/escala-riesgo/crear', [EscalaRiesgoController::class, 'create'])->name('escala-riesgo.crear');
-    Route::post('/escala-riesgo', [EscalaRiesgoController::class, 'store'])->name('escala-riesgo.store');
-    Route::get('/escala-riesgo/{escala}', [EscalaRiesgoController::class, 'show'])->name('escala-riesgo.show');
-    Route::get('/escala-riesgo/{escala}/editar', [EscalaRiesgoController::class, 'edit'])->name('escala-riesgo.editar');
-    Route::put('/escala-riesgo/{escala}', [EscalaRiesgoController::class, 'update'])->name('escala-riesgo.update');
-    Route::delete('/escala-riesgo/{escala}', [EscalaRiesgoController::class, 'destroy'])->name('escala-riesgo.destroy');
-
-    Route::get('/modelo-tarjeta', [ModeloTarjetaPareController::class, 'index'])->name('modelo-tarjeta.index');
-    Route::get('/modelo-tarjeta/crear', [ModeloTarjetaPareController::class, 'create'])->name('modelo-tarjeta.crear');
-    Route::post('/modelo-tarjeta', [ModeloTarjetaPareController::class, 'store'])->name('modelo-tarjeta.store');
-    Route::get('/modelo-tarjeta/{modelo}', [ModeloTarjetaPareController::class, 'show'])->name('modelo-tarjeta.show');
-    Route::get('/modelo-tarjeta/{modelo}/editar', [ModeloTarjetaPareController::class, 'edit'])->name('modelo-tarjeta.editar');
-    Route::put('/modelo-tarjeta/{modelo}', [ModeloTarjetaPareController::class, 'update'])->name('modelo-tarjeta.update');
-    Route::delete('/modelo-tarjeta/{modelo}', [ModeloTarjetaPareController::class, 'destroy'])->name('modelo-tarjeta.destroy');
-
-    Route::get('/tarjetas-pare', [TarjetaPareController::class, 'index'])->name('tarjetas-pare.index');
-    Route::get('/tarjetas-pare/crear', [TarjetaPareController::class, 'create'])->name('tarjetas-pare.crear');
-    Route::post('/tarjetas-pare', [TarjetaPareController::class, 'store'])->name('tarjetas-pare.store');
-    Route::get('/tarjetas-pare/{tarjeta}', [TarjetaPareController::class, 'show'])->name('tarjetas-pare.show');
-    Route::get('/tarjetas-pare/{tarjeta}/editar', [TarjetaPareController::class, 'edit'])->name('tarjetas-pare.editar');
-    Route::put('/tarjetas-pare/{tarjeta}', [TarjetaPareController::class, 'update'])->name('tarjetas-pare.update');
-    Route::delete('/tarjetas-pare/{tarjeta}', [TarjetaPareController::class, 'destroy'])->name('tarjetas-pare.destroy');
-
     Route::resource('/trabajadores', TrabajadorController::class)
     ->parameters(['trabajadores' => 'trabajador']);
 
@@ -79,6 +54,13 @@ Route::middleware('auth')->group(function () {
     Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])->name('eventos.tomar');
     Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])->name('eventos.cerrar');
     
+    Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
+    Route::get('/situacion-criticas/crear', [SituacionCriticaController::class, 'create'])->name('situacion-criticas.crear');
+    Route::post('/situacion-criticas', [SituacionCriticaController::class, 'store'])->name('situacion-criticas.store');
+    Route::get('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'show'])->name('situacion-criticas.show');
+    Route::get('/situacion-criticas/{situacionCritica}/editar', [SituacionCriticaController::class, 'edit'])->name('situacion-criticas.editar');
+    Route::put('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'update'])->name('situacion-criticas.update');
+    Route::delete('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'destroy'])->name('situacion-criticas.destroy');
 });
 
 Route::get('/portal', function () {

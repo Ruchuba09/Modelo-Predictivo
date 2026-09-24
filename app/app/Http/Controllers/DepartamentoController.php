@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Administrativo;
+use App\Models\Departamento;
 use Illuminate\Http\Request;
 
-class AdministrativoController extends Controller
+class DepartamentoController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -34,7 +34,7 @@ class AdministrativoController extends Controller
     /**
      * Display the specified resource.
      */
-public function show(Administrativo $administrativo)
+    public function show(Departamento $departamento)
     {
         //
     }
@@ -42,7 +42,7 @@ public function show(Administrativo $administrativo)
     /**
      * Show the form for editing the specified resource.
      */
-public function edit(Administrativo $administrativo)
+    public function edit(Departamento $departamento)
     {
         //
     }
@@ -50,7 +50,7 @@ public function edit(Administrativo $administrativo)
     /**
      * Update the specified resource in storage.
      */
-public function update(Request $request, Administrativo $administrativo)
+    public function update(Request $request, Departamento $departamento)
     {
         //
     }
@@ -58,7 +58,7 @@ public function update(Request $request, Administrativo $administrativo)
     /**
      * Remove the specified resource from storage.
      */
-public function destroy(Administrativo $administrativo)
+    public function destroy(Departamento $departamento)
     {
         //
     }

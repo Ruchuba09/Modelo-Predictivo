@@ -10,8 +10,17 @@ class Trabajador extends Model
     protected $primaryKey = 'id_trabajador';
 
     protected $fillable = [
-        'nombre_1', 'nombre_2', 'apellido_1', 'apellido_2',
-        'cargo', 'id_tipo_trabajador', 'rut',
+        "rut",
+        "nombre_1",
+        "nombre_2",
+        "apellido_1",
+        "apellido_2",
+        "cargo",
+        "id_tipo_trabajador",
+        "fecha_creacion",
+        "ultima_act",
+        "estado",
+
     ];
 
     public function usuario()

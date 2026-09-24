@@ -16,6 +16,7 @@ class User extends Authenticatable
         "rut",
         "email",
         "password",
+        "fecha_creation"
     ];
 
     protected $hidden = [
