@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Trabajador extends Model
 {
-    protected $table = 'trabajadors';
+    protected $table = 'trabajadores';
     protected $primaryKey = 'id_trabajador';
 
     protected $fillable = [
@@ -25,7 +25,7 @@ class Trabajador extends Model
 
     public function usuario()
     {
-        return $this->hasOne(User::class, 'rut', 'rut');
+        return $this->hasOne(User::class, 'id_trabajador', 'id_trabajador');
     }
 
     public function cuadrilla()

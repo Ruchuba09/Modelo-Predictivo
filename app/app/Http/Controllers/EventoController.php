@@ -10,6 +10,7 @@ use App\Models\Obrero;
 use App\Models\Supervisor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+
 use Inertia\Inertia;
 use App\Models\Asignacion;
 class EventoController extends Controller
@@ -69,7 +70,11 @@ class EventoController extends Controller
         // Administrativo: administra proyectos vía asignaciones directas
         if ($trabajador->administrativo) {
             $asignacion = Asignacion::where('id_administrador', $trabajador->id_trabajador)
-                ->whereNull('fecha_termino')
+                ->where('fecha_inicio', '<=', now())
+                ->where(function ($q) {
+                    $q->whereNull('fecha_termino')
+                    ->orWhere('fecha_termino', '>=', now());
+                })
                 ->latest('fecha_inicio')
                 ->first();
 
@@ -85,7 +90,11 @@ class EventoController extends Controller
             abort_if(! $cuadrilla, 422, 'No tienes una cuadrilla asignada.');
 
             $asignacion = Asignacion::where('id_cuadrilla', $cuadrilla->id_cuadrilla)
-                ->whereNull('fecha_termino')
+                ->where('fecha_inicio', '<=', now())
+                ->where(function ($q) {
+                    $q->whereNull('fecha_termino')
+                    ->orWhere('fecha_termino', '>=', now());
+                })
                 ->latest('fecha_inicio')
                 ->first();
 
@@ -99,7 +108,11 @@ class EventoController extends Controller
             abort_if(! $trabajador->obrero->id_cuadrilla, 422, 'No tienes una cuadrilla asignada.');
 
             $asignacion = Asignacion::where('id_cuadrilla', $trabajador->obrero->id_cuadrilla)
-                ->whereNull('fecha_termino')
+                ->where('fecha_inicio', '<=', now())
+                ->where(function ($q) {
+                    $q->whereNull('fecha_termino')
+                    ->orWhere('fecha_termino', '>=', now());
+                })
                 ->latest('fecha_inicio')
                 ->first();
 
@@ -114,10 +127,10 @@ class EventoController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'id_tipo_evento' => 'required|integer|exists:tipo_eventos,id_tipo_evento',
+            'id_tipo_evento' => 'required|exists:tipo_eventos,id_tipo_evento',
             'condicion' => 'required|integer|between:1,10',
             'descripcion' => 'required|string',
-            'referencia' => 'required|string',
+            'referencia' => 'nullable|string',
         ]);
 
         $idProyecto = $this->proyectoActualDelTrabajador();
@@ -135,6 +148,7 @@ class EventoController extends Controller
 
         return redirect()->route('eventos.show', $evento->id_evento);
     }
+
 
     public function create()
     {
@@ -173,7 +187,7 @@ class EventoController extends Controller
     
     public function show(Evento $evento)
     {
-        $evento->load(['incidente', 'fatalidad', 'trabajador', 'supervisor', 'administrativo']);
+        $evento->load(['tipoEvento', 'area', 'proyecto', 'administrador']);
 
         return Inertia::render('Eventos/Show', [
             'evento' => $evento,
@@ -195,33 +209,13 @@ class EventoController extends Controller
             'condicion' => 'required|string',
             'descripcion' => 'required|string',
             'referencia' => 'required|string',
-            'gravedad' => 'nullable|string',
-            'requiere_investigacion' => 'boolean',
-            'causa_muerte' => 'nullable|string',
-            'id_victima' => 'nullable|integer|exists:obreros,id_trabajador',
         ]);
 
-        DB::transaction(function () use ($evento, $validated) {
-            $evento->update([
-                'condicion' => $validated['condicion'],
-                'descripcion' => $validated['descripcion'],
-                'referencia' => $validated['referencia'],
-            ]);
-
-            if ($evento->incidente) {
-                $evento->incidente->update([
-                    'gravedad' => $validated['gravedad'] ?? $evento->incidente->gravedad,
-                    'requiere_investigacion' => $validated['requiere_investigacion'] ?? $evento->incidente->requiere_investigacion,
-                ]);
-            }
-
-            if ($evento->fatalidad) {
-                $evento->fatalidad->update([
-                    'causa_muerte' => $validated['causa_muerte'] ?? $evento->fatalidad->causa_muerte,
-                    'id_victima' => $validated['id_victima'] ?? $evento->fatalidad->id_victima,
-                ]);
-            }
-        });
+        $evento->update([
+            'condicion' => $validated['condicion'],
+            'descripcion' => $validated['descripcion'],
+            'referencia' => $validated['referencia'],
+        ]);
 
         return redirect()->route('eventos.show', $evento->id_evento);
     }

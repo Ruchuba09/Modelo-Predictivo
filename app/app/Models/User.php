@@ -13,7 +13,7 @@ class User extends Authenticatable
     protected $table = "users";
     protected $primaryKey = "id_user";
     protected $fillable = [
-        "rut",
+        "id_trabajador",
         "email",
         "password",
         "fecha_creation"
@@ -70,5 +70,9 @@ class User extends Authenticatable
                 $query->where("nombre", $nombrePermiso);
             })
             ->exists();
+    }
+    public function trabajador()
+    {
+        return $this->belongsTo(Trabajador::class, 'id_trabajador', 'id_trabajador');
     }
 }
