@@ -11,7 +11,7 @@ use App\Models\Supervisor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
-
+use App\Models\Asignacion;
 class EventoController extends Controller
 {
     public function index()
@@ -21,6 +21,62 @@ class EventoController extends Controller
         return Inertia::render('Eventos/Index', [
             'eventos' => $eventos,
         ]);
+    }
+    public function indexGrafico()
+    {
+        // 1. Consultar la base de datos agrupando por fecha
+        $tarjetasPare = Evento::select(
+                DB::raw('DATE(created_at) as fecha'),
+                DB::raw('count(*) as cantidad')
+            )
+            ->where('tipo_evento', 4) // El filtro crucial para Tarjetas PARE
+            ->where('created_at', '>=', now()->subDays(7)) // Rango: últimos 7 días
+            ->groupBy('fecha')
+            ->orderBy('fecha', 'asc')
+            ->get();
+
+        // 2. Enviar la variable $tarjetasPare a la vista de React
+        return Inertia::render('Dashboard', [
+            'datosGrafico' => $tarjetasPare
+        ]);
+    }
+
+    private function proyectoActualDelObrero(Obrero $obrero): int
+    {
+        abort_if(! $obrero->id_cuadrilla, 422, 'El obrero no tiene cuadrilla asignada.');
+
+        $asignacion = Asignacion::where('id_cuadrilla', $obrero->id_cuadrilla)
+            ->whereNull('fecha_termino')
+            ->latest('fecha_inicio')
+            ->first();
+
+        abort_if(! $asignacion, 422, 'La cuadrilla no tiene un proyecto asignado actualmente.');
+
+        return $asignacion->id_proyecto;
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'id_tipo_evento' => 'required|integer|exists:tipo_eventos,id_tipo_evento',
+            'condicion' => 'required|integer|between:1,10',
+            'descripcion' => 'required|string',
+        ]);
+
+        $obrero = $this->obreroAutenticado();
+        $idProyecto = $this->proyectoActualDelObrero($obrero);
+
+        $evento = Evento::create([
+            'id_tipo_evento' => $validated['id_tipo_evento'],
+            'id_administrador' => null,
+            'id_area' => null,
+            'id_proyecto' => $idProyecto,
+            'descripcion' => $validated['descripcion'],
+            'condicion' => $validated['condicion'],
+            'estado' => 'abierto',
+        ]);
+
+        return redirect()->route('eventos.show', $evento->id_evento);
     }
 
     public function create()
@@ -55,63 +111,7 @@ class EventoController extends Controller
         return $administrativo;
     }
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'tipo' => 'required|in:incidente,fatalidad',
-            'condicion' => 'required|string',
-            'descripcion' => 'required|string',
-            'referencia' => 'required|string',
-            'evidencia' => 'nullable|file|mimes:jpg,jpeg,png,mp4,mov|max:51200', // 50MB
-            'gravedad' => 'required_if:tipo,incidente|string',
-            'requiere_investigacion' => 'boolean',
-            'causa_muerte' => 'required_if:tipo,fatalidad|string',
-            'id_victima' => 'required_if:tipo,fatalidad|integer|exists:obreros,id_trabajador',
-        ]);
-
-        $obrero = $this->obreroAutenticado();
-
-        $evento = DB::transaction(function () use ($validated, $obrero, $request) {
-            $evidenciaPath = null;
-            $evidenciaTipo = null;
-
-            if ($request->hasFile('evidencia')) {
-                $file = $request->file('evidencia');
-                $evidenciaPath = $file->store('eventos/evidencias', 'public');
-                $evidenciaTipo = str_starts_with($file->getMimeType(), 'video') ? 'video' : 'foto';
-            }
-
-            $evento = Evento::create([
-                'id_trabajador' => $obrero->id_trabajador,
-                'tipo' => $validated['tipo'],
-                'estado' => 'abierta',
-                'condicion' => $validated['condicion'],
-                'descripcion' => $validated['descripcion'],
-                'referencia' => $validated['referencia'],
-                'evidencia_path' => $evidenciaPath,
-                'evidencia_tipo' => $evidenciaTipo,
-            ]);
-
-            if ($validated['tipo'] === 'incidente') {
-                Incidente::create([
-                    'id_evento' => $evento->id_evento,
-                    'gravedad' => $validated['gravedad'],
-                    'requiere_investigacion' => $validated['requiere_investigacion'] ?? false,
-                ]);
-            } else {
-                Fatalidad::create([
-                    'id_evento' => $evento->id_evento,
-                    'causa_muerte' => $validated['causa_muerte'],
-                    'id_victima' => $validated['id_victima'],
-                ]);
-            }
-
-            return $evento;
-        });
-
-        return redirect()->route('eventos.show', $evento->id_evento);
-    }
-
+    
     public function show(Evento $evento)
     {
         $evento->load(['incidente', 'fatalidad', 'trabajador', 'supervisor', 'administrativo']);

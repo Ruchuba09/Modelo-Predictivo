@@ -10,59 +10,40 @@ class Evento extends Model
     protected $primaryKey = 'id_evento';
 
     const CREATED_AT = 'fecha_creacion';
-    const UPDATED_AT = 'fecha_ult_act';
+    const UPDATED_AT = 'fecha_actualizacion';
 
     protected $fillable = [
-        'id_trabajador',
-        'id_supervisor',
-        'id_administrativo',
-        'tipo',
-        'estado',
-        'condicion',
+        'id_tipo_evento',
+        'id_administrador',
+        'id_area',
+        'id_proyecto',
         'descripcion',
-        'referencia',
-        'evidencia_path',
-        'evidencia_tipo',
-        'fecha_cierre',
+        'condicion',
+        'estado',
     ];
 
     protected $casts = [
         'fecha_creacion' => 'datetime',
-        'fecha_ult_act' => 'datetime',
-        'fecha_cierre' => 'datetime',
+        'fecha_actualizacion' => 'datetime',
     ];
 
-    public function trabajador()
+    public function tipoEvento()
     {
-        return $this->belongsTo(trabajador::class, 'id_trabajador', 'id_trabajador');
+        return $this->belongsTo(TipoEvento::class, 'id_tipo_evento', 'id_tipo_evento');
     }
 
-    public function supervisor()
+    public function administrador()
     {
-        return $this->belongsTo(Supervisor::class, 'id_supervisor', 'id_trabajador');
+        return $this->belongsTo(Administrativo::class, 'id_administrador', 'id_trabajador');
     }
 
-    public function administrativo()
+    public function area()
     {
-        return $this->belongsTo(Administrativo::class, 'id_administrativo', 'id_trabajador');
+        return $this->belongsTo(Area::class, 'id_area', 'id_area');
     }
 
-    public function incidente()
+    public function proyecto()
     {
-        return $this->hasOne(Incidente::class, 'id_evento', 'id_evento');
-    }
-
-    public function fatalidad()
-    {
-        return $this->hasOne(Fatalidad::class, 'id_evento', 'id_evento');
-    }
-
-    protected static function booted(): void
-    {
-        static::updating(function (Evento $evento) {
-            if ($evento->isDirty('estado') && $evento->estado === 'cerrada' && ! $evento->fecha_cierre) {
-                $evento->fecha_cierre = now();
-            }
-        });
+        return $this->belongsTo(Proyecto::class, 'id_proyecto', 'id_proyecto');
     }
 }

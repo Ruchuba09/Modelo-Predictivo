@@ -7,9 +7,8 @@ export default function TarjetasPareCrear() {
     const fechaActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
     const { data, setData, post, processing } = useForm({
-        referencia: '',
-        condicion_pare: 0,
-        fecha_evento: fechaActual,
+        id_tipo_evento: 0,
+        condicion: 0,
         descripcion: ''
     });
 
@@ -34,7 +33,7 @@ export default function TarjetasPareCrear() {
             return;
         }
 
-        post('/tarjetas-pare');
+        post('/eventos');
     };
 
     return (
