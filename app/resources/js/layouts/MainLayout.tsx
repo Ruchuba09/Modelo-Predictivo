@@ -32,7 +32,7 @@ export default function MainLayout({ children }: PropsWithChildren) {
                     <Link href="/usuarios" className={getLinkClass('/usuarios')}>Usuarios</Link>
                     <Link href="/roles" className={getLinkClass('/roles')}>Roles</Link>
                     <Link href="/permisos" className={getLinkClass('/permisos')}>Permisos</Link>
-                    <Link href="/trabajadores" className={getLinkClass('/trabajadores')}>trabajadores</Link>
+                    <Link href="/trabajadores" className={getLinkClass('/trabajadores')}>Trabajadores</Link>
                 </nav>
 
                 <div className="relative">
