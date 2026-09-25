@@ -54,20 +54,23 @@ class EventoController extends Controller
     }
     public function indexGrafico()
     {
-        // 1. Consultar la base de datos agrupando por fecha
-        $tarjetasPare = Evento::select(
-                DB::raw('DATE(created_at) as fecha'),
-                DB::raw('count(*) as cantidad')
-            )
-            ->where('tipo_evento', 4) // El filtro crucial para Tarjetas PARE
-            ->where('created_at', '>=', now()->subDays(7)) // Rango: últimos 7 días
-            ->groupBy('fecha')
-            ->orderBy('fecha', 'asc')
-            ->get();
+        $eventos = Evento::select('fecha_creacion', 'condicion')
+            ->where('fecha_creacion', '>=', now()->subDays(7))
+            ->get()
+            ->groupBy(function ($item) {
+                return \Carbon\Carbon::parse($item->fecha_creacion)->format('Y-m-d');
+            });
 
-        // 2. Enviar la variable $tarjetasPare a la vista de React
-        return Inertia::render('Dashboard', [
-            'datosGrafico' => $tarjetasPare
+        $datosGrafico = $eventos->map(function ($grupo, $fecha) {
+            $fila = ['fecha' => $fecha];
+            for ($i = 1; $i <= 10; $i++) {
+                $fila["c{$i}"] = $grupo->where('condicion', $i)->count();
+            }
+            return $fila;
+        })->values();
+
+        return Inertia::render('dashboard', [
+            'datosGrafico' => $datosGrafico
         ]);
     }
 

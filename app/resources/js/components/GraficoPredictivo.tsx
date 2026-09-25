@@ -22,6 +22,7 @@ const CONDICIONES = [
 
 
 export default function GraficoPredictivo({ datosReales }: { datosReales?: Array<any> }) {
+    
     const datosParaDibujar = datosReales || [];
     const chartRef = useRef<HTMLDivElement>(null); 
     const [tipoGrafico, setTipoGrafico] = useState('linea'); 
