@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\faena;
+use App\Models\Faena;
 use Illuminate\Http\Request;
 
 class FaenaController extends Controller
@@ -34,7 +34,7 @@ class FaenaController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(faena $faena)
+    public function show(Faena $faena)
     {
         //
     }
@@ -42,7 +42,7 @@ class FaenaController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(faena $faena)
+    public function edit(Faena $faena)
     {
         //
     }
@@ -50,7 +50,7 @@ class FaenaController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, faena $faena)
+    public function update(Request $request, Faena $faena)
     {
         //
     }
@@ -58,7 +58,7 @@ class FaenaController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(faena $faena)
+    public function destroy(Faena $faena)
     {
         //
     }

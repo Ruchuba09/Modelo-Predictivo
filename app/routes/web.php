@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/permisos/{permiso}', [PermisoController::class, 'update'])->name('permisos.update');
     Route::delete('/permisos/{permiso}', [PermisoController::class, 'destroy'])->name('permisos.destroy');
 
+    Route::get('/dashboard', [EventoController::class, 'indexGrafico'])->name('dashboard');
 
     Route::resource('/trabajadores', TrabajadorController::class)
     ->parameters(['trabajadores' => 'trabajador']);
@@ -67,9 +68,7 @@ Route::get('/portal', function () {
     return Inertia::render('portal');
 });
 
-Route::get('dashboard', function () {
-    return Inertia::render('dashboard');
-})->name('dashboard');
+
 
 Route::get('/reportes', function () {
     return Inertia::render('reportes');

@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Asignacion;
+use App\Models\situacionCritica;
 use Illuminate\Http\Request;
 
-class AsignacionController extends Controller
+class SituacionCriticaController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -34,7 +34,7 @@ class AsignacionController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Asignacion $asignacion)
+    public function show(situacionCritica $situacionCritica)
     {
         //
     }
@@ -42,7 +42,7 @@ class AsignacionController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Asignacion $asignacion)
+    public function edit(situacionCritica $situacionCritica)
     {
         //
     }
@@ -50,7 +50,7 @@ class AsignacionController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Asignacion $asignacion)
+    public function update(Request $request, situacionCritica $situacionCritica)
     {
         //
     }
@@ -58,7 +58,7 @@ class AsignacionController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Asignacion $asignacion)
+    public function destroy(situacionCritica $situacionCritica)
     {
         //
     }

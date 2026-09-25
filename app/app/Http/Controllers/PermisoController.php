@@ -11,7 +11,7 @@ class PermisoController extends Controller
     public function index()
     {
         return Inertia::render('Permisos/Index', [
-            'permisos' => Permiso::with('roles')->latest()->get(),
+            'permisos' => Permiso::with('roles')->orderBy('id_permiso', 'desc')->get(),
         ]);
     }
     

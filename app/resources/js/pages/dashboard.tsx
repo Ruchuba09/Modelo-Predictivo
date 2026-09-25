@@ -1,14 +1,31 @@
 import AuthenticatedLayout from '../layouts/MainLayout';
 import { Head } from '@inertiajs/react';
 import GraficoPredictivo from '../components/GraficoPredictivo';
+import SessionInfo from '@/components/session-info';
 
-export default function Dashboard() {
+interface Props {
+    datosGrafico?: Array<{
+        fecha: string;
+        [key: string]: string | number;
+    }>;
+}
+
+export default function Dashboard( props : any) {
     return (
         <AuthenticatedLayout>
             <Head title="Dashboard" />
             <div className="py-8">
                 <div className="max-w-screen-2xl mx-auto sm:px-6 lg:px-8 space-y-6">
                     
+                    <div className="bg-red-500/20 border border-red-500 p-4 rounded-lg z-50">
+                        <p className="text-white font-bold text-sm mb-2">📦 PROPS COMPLETOS DE LARAVEL:</p>
+                        <pre className="text-[#A0F700] text-xs overflow-auto max-h-40">
+                            {JSON.stringify(props, null, 2)}
+                        </pre>
+                    </div>
+
+                    <SessionInfo />
+
                     <div className="bg-[#1e2329] overflow-hidden shadow-sm sm:rounded-xl border border-[#2D3238]">
                         <div className="p-6 text-white text-lg font-medium flex items-center justify-between">
                             <span>Panel de Control - Sistema de Gestión Integrado (SGI)</span>
@@ -49,7 +66,7 @@ export default function Dashboard() {
                             </div>
                         </div>
                         <div className="xl:col-span-2">
-                            <GraficoPredictivo/>
+                            <GraficoPredictivo datosReales={props.datosGrafico} />
                         </div>
                     </div>
                 </div>
