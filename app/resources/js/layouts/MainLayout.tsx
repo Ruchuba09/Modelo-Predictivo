@@ -28,12 +28,11 @@ export default function MainLayout({ children }: PropsWithChildren) {
                 <nav className="hidden md:flex h-full">
                     <Link href="/portal" className={getLinkClass('/portal')}>Inicio</Link>
                     <Link href="/dashboard" className={getLinkClass('/dashboard')}>Dashboard</Link>
-                    <Link href="/ver-cierre" className={getLinkClass('/ver-cierre')}>Reportes</Link>
+                    <Link href="/tarjetas-pare" className={getLinkClass('/tarjetas-pare')}>Reportes</Link>
                     <Link href="/usuarios" className={getLinkClass('/usuarios')}>Usuarios</Link>
                     <Link href="/roles" className={getLinkClass('/roles')}>Roles</Link>
                     <Link href="/permisos" className={getLinkClass('/permisos')}>Permisos</Link>
-                    {/* <Link href="/modelo-tarjeta" className={getLinkClass('/modelotarjetapare')}>modelotarjetapare</Link> */}
-                    {/* <Link href="/escala-riesgo" className={getLinkClass('/escalariesgo')}>escalariesgo</Link> */}
+                    <Link href="/trabajadores" className={getLinkClass('/trabajadores')}>Trabajadores</Link>
                 </nav>
 
                 <div className="relative">
@@ -52,6 +51,7 @@ export default function MainLayout({ children }: PropsWithChildren) {
                             <p className="text-xs text-[#7A7F85] truncate">admin@avamontajes.cl</p>
                         </div>
                         
+                        {menuPerfilAbierto && (
                         <Link 
                             href={route('profile.edit')} 
                             className="block px-4 py-2.5 text-sm text-[#7A7F85] hover:bg-[#2D3238] hover:text-white transition-colors"

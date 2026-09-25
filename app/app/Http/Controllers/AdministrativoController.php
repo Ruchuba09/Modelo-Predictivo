@@ -34,7 +34,7 @@ class AdministrativoController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Administrativo $administrativo)
+public function show(Administrativo $administrativo)
     {
         //
     }
@@ -42,7 +42,7 @@ class AdministrativoController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Administrativo $administrativo)
+public function edit(Administrativo $administrativo)
     {
         //
     }
@@ -50,7 +50,7 @@ class AdministrativoController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Administrativo $administrativo)
+public function update(Request $request, Administrativo $administrativo)
     {
         //
     }
@@ -58,7 +58,7 @@ class AdministrativoController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Administrativo $administrativo)
+public function destroy(Administrativo $administrativo)
     {
         //
     }

@@ -1,24 +1,26 @@
 <?php
+// app/Models/Role.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Rol extends Model
 {
-    //protected $connection = "usuarios";
-    protected $table = "roles";
-    protected $primaryKey = "id_rol";
-    protected $fillable = ["nombre"];
+    protected $table = 'roles';
+    protected $primaryKey = 'id_rol';
     public $timestamps = false;
 
-    public function usuarios()
+    protected $fillable = ['nombre', 'descripcion', 'estado'];
+
+    public function permisos(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, "usuario_rols", "id_rol", "id_user");
+        return $this->belongsToMany(Permiso::class, 'rol_permiso', 'id_rol', 'id_permiso');
     }
 
-    public function permisos()
+    public function usuarios(): BelongsToMany
     {
-        return $this->belongsToMany(Permiso::class, "rol_permisos", "id_rol", "id_permiso");
+        return $this->belongsToMany(User::class, 'usuario_rol', 'id_rol', 'id_user');
     }
 }
