@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '../layouts/MainLayout';
 import { Head } from '@inertiajs/react';
 import GraficoPredictivo from '../components/GraficoPredictivo';
+import SessionInfo from '@/components/session-info';
 
 interface Props {
     datosGrafico?: Array<{
@@ -22,6 +23,8 @@ export default function Dashboard( props : any) {
                             {JSON.stringify(props, null, 2)}
                         </pre>
                     </div>
+
+                    <SessionInfo />
 
                     <div className="bg-[#1e2329] overflow-hidden shadow-sm sm:rounded-xl border border-[#2D3238]">
                         <div className="p-6 text-white text-lg font-medium flex items-center justify-between">
