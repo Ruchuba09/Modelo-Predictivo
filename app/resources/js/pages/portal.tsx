@@ -24,12 +24,12 @@ export default function Portal() {
                         <p className="text-sm text-[#7a7f85]">Visualiza indicadores y métricas del sistema.</p>
                     </Link>
 
-                    <Link href="/reportes" className="group bg-[#111111] border border-[#2d3238] hover:border-[#a0f700] p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1 block">
+                    <Link href="/eventos" className="group bg-[#111111] border border-[#2d3238] hover:border-[#a0f700] p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1 block">
                         <div className="w-12 h-12 bg-[#2d3238] group-hover:bg-[#a0f700] text-[#a0f700] group-hover:text-black rounded-xl flex items-center justify-center mb-6 transition-colors">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         </div>
                         <h2 className="text-lg font-bold text-white mb-2">Reportes Tarjeta Pare</h2>
-                        <p className="text-sm text-[#7a7f85]">Registra tarjetas pare en terreno.</p>
+                        <p className="text-sm text-[#7a7f85]">Administra reportes de tarjetas pare.</p>
                     </Link>
 
                     <Link href="/usuarios" className="group bg-[#111111] border border-[#2d3238] hover:border-[#a0f700] p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1 block">
