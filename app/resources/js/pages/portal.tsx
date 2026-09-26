@@ -8,8 +8,11 @@ export default function Portal() {
 
             <div className="max-w-[1000px] mx-auto p-6 lg:p-12 mt-8">
                 
-                <div className="mb-12">
-                    <h1 className="text-3xl font-bold text-white mb-2">Bienvenido</h1>
+                {/* Cabecera con flexbox para el botón a la derecha */}
+                <div className="mb-12 flex justify-between items-end">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-2">Bienvenido</h1>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -18,7 +21,7 @@ export default function Portal() {
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                         </div>
                         <h2 className="text-lg font-bold text-white mb-2">Dashboard Operativo</h2>
-                        <p className="text-sm text-[#7a7f85]">Visualiza indicadoresy métricas del sistema.</p>
+                        <p className="text-sm text-[#7a7f85]">Visualiza indicadores y métricas del sistema.</p>
                     </Link>
 
                     <Link href="/reportes" className="group bg-[#111111] border border-[#2d3238] hover:border-[#a0f700] p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1 block">
