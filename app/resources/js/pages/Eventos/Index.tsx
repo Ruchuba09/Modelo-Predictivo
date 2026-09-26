@@ -1,7 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
-
+import CerrarEvento from '@/components/eventos/CerrarEvento';
 const ESTADO_STYLES: { [key: string]: string } = {
     abierto: 'bg-[#a0f700]/10 text-[#a0f700] border-[#a0f700]/40',
     en_revision: 'bg-yellow-400/10 text-yellow-400 border-yellow-400/40',
@@ -145,6 +145,10 @@ export default function Index() {
                                                 {evento.fecha_creacion
                                                     ? new Date(evento.fecha_creacion).toLocaleDateString('es-CL')
                                                     : '—'}
+                                            </td>
+                                            
+                                            <td className="px-6 py-4">
+                                                <CerrarEvento eventoId={evento.id_evento} estado={evento.estado} />
                                             </td>
                                             <td className="px-6 py-4">
                                                 <EstadoBadge estado={evento.estado} />

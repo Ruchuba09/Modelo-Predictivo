@@ -6,6 +6,7 @@ interface AuthProps {
         user: {
             id: number;
             email: string;
+            roles: string[];
             permisos: string[];
         } | null;
     };
@@ -17,6 +18,9 @@ export function useAuth() {
 }
 
 export function useTienePermiso(permiso: string) {
-    const user = useAuth();
-    return user?.permisos?.includes(permiso) ?? false;
+    return useAuth()?.permisos?.includes(permiso) ?? false;
+}
+
+export function useTieneRol(rol: string) {
+    return useAuth()?.roles?.includes(rol) ?? false;
 }

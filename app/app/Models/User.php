@@ -53,6 +53,12 @@ class User extends Authenticatable
     {
         return $this->roles()->where('estado', 'activo');
     }
+    public function rolesArray(): array
+{
+    return $this->rolesActivos()
+        ->pluck('nombre')
+        ->all();
+}
     // ============================================================
     // PERMISOS
     // ============================================================

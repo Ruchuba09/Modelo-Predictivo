@@ -254,7 +254,7 @@ class EventoController extends Controller
     {
         $administrativo = $this->administrativoAutenticado();
 
-        abort_if($evento->estado !== 'proceso', 422, 'El evento debe estar en proceso antes de cerrarse.');
+        abort_if($evento->estado !== 'abierto', 422, 'El evento debe estar en proceso antes de cerrarse.');
 
         $evento->update([
             'id_administrativo' => $administrativo->id_trabajador,
