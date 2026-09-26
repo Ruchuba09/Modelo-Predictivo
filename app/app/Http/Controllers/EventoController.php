@@ -138,29 +138,40 @@ class EventoController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'id_tipo_evento' => 'required|exists:tipo_eventos,id_tipo_evento',
-            'condicion' => 'required|integer|between:1,10',
-            'descripcion' => 'required|string',
-            'referencia' => 'nullable|string',
-        ]);
+{
+    // 1. Validar que evidencia sea un arreglo y cada archivo cumpla las reglas
+    $request->validate([
+        'id_tipo_evento' => 'required|integer',
+        'condicion'      => 'required|integer',
+        'descripcion'    => 'required|string',
+        'referencia'     => 'required|string',
+        'evidencia'      => 'nullable|array|max:3',
+        'evidencia.*'    => 'file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120', // Máximo 5MB por archivo
+    ]);
 
-        $idProyecto = $this->proyectoActualDelTrabajador();
+    $rutasArchivos = [];
 
-        $evento = Evento::create([
-            'id_tipo_evento' => $validated['id_tipo_evento'],
-            'id_administrador' => null,
-            'id_area' => null,
-            'id_proyecto' => $idProyecto,
-            'descripcion' => $validated['descripcion'],
-            'condicion' => $validated['condicion'],
-            'referencia' => $validated['referencia'],
-            'estado' => 'abierto',
-        ]);
-
-        return redirect()->route('eventos.show', $evento->id_evento);
+    // 2. Si vienen archivos, los recorremos y guardamos
+    if ($request->hasFile('evidencia')) {
+        foreach ($request->file('evidencia') as $archivo) {
+            // Guarda en storage/app/public/evidencias y devuelve la ruta
+            $ruta = $archivo->store('evidencias', 'public');
+            $rutasArchivos[] = $ruta;
+        }
     }
+
+    // 3. Crear el registro en la base de datos
+    Evento::create([
+        'id_tipo_evento' => $request->id_tipo_evento,
+        'condicion'      => $request->condicion,
+        'descripcion'    => $request->descripcion,
+        'referencia'     => $request->referencia,
+        // Convertimos el arreglo de rutas a JSON para guardarlo en una sola columna
+        'evidencia'      => json_encode($rutasArchivos), 
+    ]);
+
+    return redirect()->route('dashboard')->with('success', 'Reporte creado con éxito');
+}
 
 
     public function create()

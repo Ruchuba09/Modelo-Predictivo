@@ -21,6 +21,7 @@ class Evento extends Model
         'condicion',
         'referencia',
         'estado',
+        'evidencia',
     ];
 
     protected $casts = [

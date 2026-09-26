@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle, ArrowRight } from 'lucide-react';
+import { LoaderCircle, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 import { format, validate } from 'rut.js';
 
@@ -25,6 +25,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
     });
 
     const [validacionLocal, setValidacionLocal] = useState('');
+    const [showPassword, setShowPassword] = useState(false); // Estado para ver/ocultar contraseña
 
     const handleRutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
@@ -105,6 +106,14 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
                     {status && <div className="mb-4 text-sm font-medium text-[#A0F700]">{status}</div>}
 
+                    {/* ALERTA DE ERROR GLOBAL (Cuenta o contraseña errónea) */}
+                    {(errors.email || errors.password) && (
+                        <div className="bg-[#FF4B4B]/10 border border-[#FF4B4B] p-4 rounded-lg flex items-center gap-3 text-[#FF4B4B]">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                            <span className="text-sm font-medium">Cuenta o contraseña errónea. Verifique sus credenciales.</span>
+                        </div>
+                    )}
+
                     <form onSubmit={submit} className="space-y-6">
                         <div className="space-y-2">
                             <label htmlFor="rut" className="text-xs font-semibold tracking-wider text-[#7A7F85] uppercase">
@@ -126,24 +135,33 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                                     className="w-full bg-transparent border border-[#2D3238] rounded-md py-2.5 pl-10 pr-4 text-white placeholder:text-[#2D3238] focus:border-[#A0F700] focus:ring-1 focus:ring-[#A0F700] transition-colors"
                                 />
                             </div>
-                            <InputError message={validacionLocal || errors.rut} />
+                            <InputError message={validacionLocal} />
                         </div>
 
                         <div className="space-y-2">
                             <label htmlFor="password" className="text-xs font-semibold tracking-wider text-[#7A7F85] uppercase">
                                 Contraseña
                             </label>
-                            <input
-                                id="password"
-                                type="password"
-                                required
-                                tabIndex={2}
-                                value={data.password}
-                                onChange={(e) => setData('password', e.target.value)}
-                                placeholder="••••••••"
-                                className="w-full bg-transparent border border-[#2D3238] rounded-md py-2.5 px-4 text-white placeholder:text-[#2D3238] focus:border-[#A0F700] focus:ring-1 focus:ring-[#A0F700] transition-colors"
-                            />
-                            <InputError message={errors.password} />
+                            <div className="relative">
+                                <input
+                                    id="password"
+                                    type={showPassword ? 'text' : 'password'} // Alterna el tipo de input
+                                    required
+                                    tabIndex={2}
+                                    value={data.password}
+                                    onChange={(e) => setData('password', e.target.value)}
+                                    placeholder="••••••••"
+                                    className="w-full bg-transparent border border-[#2D3238] rounded-md py-2.5 pl-4 pr-10 text-white placeholder:text-[#2D3238] focus:border-[#A0F700] focus:ring-1 focus:ring-[#A0F700] transition-colors"
+                                />
+                                {/* BOTÓN PARA VER / OCULTAR CONTRASEÑA */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-3 text-[#7A7F85] hover:text-white transition-colors focus:outline-none"
+                                >
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex items-center justify-between mt-2">
@@ -169,7 +187,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                         <button 
                             type="submit" 
                             disabled={processing}
-                            className="w-full mt-6 bg-[#A0F700] hover:bg-[#86CF00] text-black font-semibold py-3 px-4 rounded-md flex items-center justify-center transition-all disabled:opacity-50"
+                            className="w-full mt-6 bg-[#A0F700] hover:bg-[#86CF00] text-black font-semibold py-3 px-4 rounded-md flex items-center justify-center transition-all disabled:opacity-50 cursor-pointer"
                         >
                             {processing ? (
                                 <LoaderCircle className="h-5 w-5 animate-spin" />
