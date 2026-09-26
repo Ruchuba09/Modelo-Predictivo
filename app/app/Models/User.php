@@ -46,18 +46,13 @@ class User extends Authenticatable
 
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class, 'usuario_rol', 'id_user', 'id_rol');
+        return $this->belongsToMany(Rol::class, 'usuario_rol', 'id_user', 'id_rol');
     }
 
-    /**
-     * Solo los roles con estado 'activo'. Úsalo en vez de roles()
-     * para cualquier chequeo de permisos/autorización.
-     */
     public function rolesActivos(): BelongsToMany
     {
         return $this->roles()->where('estado', 'activo');
     }
-
     // ============================================================
     // PERMISOS
     // ============================================================
