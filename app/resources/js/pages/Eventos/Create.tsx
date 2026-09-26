@@ -1,5 +1,5 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { FormEvent } from 'react';
+import { FormEvent, useRef } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 
 const CONDICIONES = [
@@ -22,8 +22,38 @@ export default function Create() {
         id_tipo_evento: 0,
         condicion: 0,
         descripcion: '',
-        referencia: ''
+        referencia: '',
+        evidencia: [] as File[]
     });
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // FUNCIÓN SEGURA PARA AGREGAR ARCHIVOS
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const archivosNuevos = Array.from(e.target.files || []);
+        const archivosActuales = data.evidencia || []; // Validación de seguridad
+        
+        const totalArchivos = archivosActuales.length + archivosNuevos.length;
+
+        if (totalArchivos > 3) {
+            alert("Puedes subir un máximo de 3 archivos.");
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
+        setData('evidencia', [...archivosActuales, ...archivosNuevos]);
+        
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ''; 
+        }
+    };
+
+    // FUNCIÓN SEGURA PARA BORRAR
+    const removerArchivo = (index: number) => {
+        const nuevosArchivos = [...(data.evidencia || [])]; // Validación de seguridad
+        nuevosArchivos.splice(index, 1);
+        setData('evidencia', nuevosArchivos);
+    };
 
     const condicionesPare: {[key: number]: string} = {
         1: "Si las condiciones de trabajo NO son seguras.",
@@ -54,6 +84,9 @@ export default function Create() {
         post('/eventos');
     };
 
+    // VARIABLE SEGURA PARA RENDERIZAR
+    const archivosSubidos = data.evidencia || [];
+
     return (
         <MainLayout>
             <Head title="Ingreso de Reporte | AVA" />
@@ -66,14 +99,12 @@ export default function Create() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     
-                    {/* COLUMNA IZQUIERDA: FORMULARIO PRINCIPAL */}
                     <div className="lg:col-span-2 bg-[#141414] border border-[#2d3238] rounded-2xl p-8 shadow-2xl h-full flex flex-col">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             
-                            {/* Referencia */}
                             <div>
                                 <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
-                                    Referencia del lugar
+                                    Referencia 
                                 </label>
                                 <input
                                     type="text"
@@ -86,7 +117,6 @@ export default function Create() {
                                 {errors.referencia && <p className="text-red-400 text-xs mt-1">{errors.referencia}</p>}
                             </div>
 
-                            {/* Tipo de Evento */}
                             <div>
                                 <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
                                     Tipo de Evento
@@ -107,10 +137,9 @@ export default function Create() {
                                 {errors.id_tipo_evento && <p className="text-red-400 text-xs mt-1">{errors.id_tipo_evento}</p>}
                             </div>
 
-                            {/* NUEVO: Lista desplegable de Condiciones */}
                             <div>
                                 <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
-                                    Condición del Evento
+                                    Condición del Evento (PARE)
                                 </label>
                                 <select
                                     required
@@ -118,7 +147,7 @@ export default function Create() {
                                     onChange={e => setData('condicion', Number(e.target.value))}
                                     className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors cursor-pointer"
                                 >
-                                    <option value={0}>Seleccione la condición identificada</option>
+                                    <option value={0}>Seleccione la condición identificada (1 al 10)...</option>
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                                         <option key={num} value={num}>
                                             {num.toString().padStart(2, '0')}. {condicionesPare[num]}
@@ -128,13 +157,6 @@ export default function Create() {
                                 {(errors as any).condicion && <p className="text-red-400 text-xs mt-1">{(errors as any).condicion}</p>}
                             </div>
 
-                            {(errors as any).general && (
-                                <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/30 rounded-lg px-4 py-3">
-                                    {(errors as any).general}
-                                </p>
-                            )}
-
-                            {/* Descripción Detallada */}
                             <div>
                                 <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2 mt-4">
                                     Descripción Detallada
@@ -149,6 +171,57 @@ export default function Create() {
                                 ></textarea>
                                 {errors.descripcion && <p className="text-red-400 text-xs mt-1">{errors.descripcion}</p>}
                             </div>
+
+                            {/* SECCIÓN MULTI-ARCHIVO SEGURA */}
+                            <div>
+                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2 mt-4">
+                                    Evidencia Adjunta (Máx 3. archivos)
+                                </label>
+                                
+                                {archivosSubidos.length < 3 && (
+                                    <>
+                                        <input
+                                            type="file"
+                                            multiple
+                                            ref={fileInputRef}
+                                            accept="image/*,.pdf,.doc,.docx"
+                                            onChange={handleFileChange}
+                                            className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#a0f700] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#a0f700]/10 file:text-[#a0f700] hover:file:bg-[#a0f700]/20 cursor-pointer transition-colors"
+                                        />
+                                        <p className="text-[#7a7f85] text-xs mt-2">Puedes adjuntar hasta 3 fotos o documentos (JPG, PNG, PDF).</p>
+                                    </>
+                                )}
+
+                                {archivosSubidos.length > 0 && (
+                                    <div className="flex flex-col gap-2 mt-3">
+                                        {archivosSubidos.map((file, index) => (
+                                            <div key={index} className="flex items-center justify-between gap-3 bg-[#0a0a0a] border border-[#a0f700]/50 p-2 pr-4 rounded-lg w-full">
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <span className="text-xl shrink-0">📎</span>
+                                                    <span className="text-sm text-[#a0f700] font-medium truncate">
+                                                        {file.name}
+                                                    </span>
+                                                </div>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => removerArchivo(index)}
+                                                    className="text-[#FF4B4B] text-lg font-black px-2 hover:scale-110 transition-transform shrink-0"
+                                                    title="Quitar archivo"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {(errors as any).evidencia && <p className="text-red-400 text-xs mt-1">{(errors as any).evidencia}</p>}
+                            </div>
+
+                            {(errors as any).general && (
+                                <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/30 rounded-lg px-4 py-3">
+                                    {(errors as any).general}
+                                </p>
+                            )}
 
                             <div className="flex justify-center gap-4 pt-6 border-t border-[#2d3238] mt-8">
                                 <button
@@ -165,7 +238,6 @@ export default function Create() {
                         </form>
                     </div>
 
-                    {/* COLUMNA DERECHA: BARRA UNIFICADA DE CONDICIONES */}
                     <div className="lg:col-span-1">
                         <div className="bg-[#111111] border border-[#2d3238] rounded-2xl p-6 shadow-xl sticky top-6 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar flex flex-col">
                             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">
