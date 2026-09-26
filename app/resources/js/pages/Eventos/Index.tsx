@@ -51,13 +51,6 @@ export default function Index() {
                         <h1 className="text-3xl font-bold text-white mb-2">Eventos</h1>
                         <p className="text-[#7a7f85] text-sm">Listado de reportes registrados.</p>
                     </div>
-
-                    <Link
-                        href={route('eventos.create')}
-                        className="px-5 py-3 rounded-lg text-sm font-bold bg-[#a0f700] hover:bg-[#86cf00] text-black transition-colors shadow-lg shadow-[#a0f700]/20"
-                    >
-                        + Nuevo evento
-                    </Link>
                 </div>
 
                 {/* Filtros por estado */}
