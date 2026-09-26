@@ -16,7 +16,7 @@ const CONDICIONES = [
 ];
 
 export default function Create() {
-    const { tiposEvento } = usePage().props as unknown as { tiposEvento: TipoEvento[] };
+    const { tiposEvento } = usePage().props as unknown as { tiposEvento: any[] };
 
     const { data, setData, post, processing, errors } = useForm({
         id_tipo_evento: 0,
@@ -58,43 +58,22 @@ export default function Create() {
         <MainLayout>
             <Head title="Ingreso de Reporte | AVA" />
 
-            <div className="max-w-[1700px] mx-auto p-6 lg:p-8 lg:mt-2 ">
-                <div className="mb-8 pl-146">
-                    <h1 className="text-2xl font-bold text-3xl text-white mb-2 pl-24">Ingreso de Reporte</h1>
+            <div className="max-w-[1400px] mx-auto p-6 lg:p-8 lg:mt-4">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-white mb-2">Ingreso de Reporte</h1>
                     <p className="text-[#7a7f85] text-sm">Registra un evento detallando la condición y la descripción.</p>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 mt">
-                    <div className="xl:col-span-1">
-                        {/* Lado izquierdo */}
-                        <div className="bg-[#111111] border border-[#2d3238] rounded-2xl p-6 shadow-xl sticky top-24 h-full flex flex-col">
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">Guía de Condiciones</h3>
-                            <div className="space-y-2.5">
-                                {[1, 2, 3, 4, 5,].map(num => (
-                                    <div
-                                        key={num}
-                                        className={`p-3 rounded-lg border text-lg leading-relaxed transition-colors duration-300 flex gap-3 ${
-                                            data.condicion === num
-                                                ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner'
-                                                : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85]'
-                                        }`}
-                                    >
-                                        <div className={`font-black shrink-0 ${data.condicion === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
-                                            {num.toString().padStart(2, '0')}.
-                                        </div>
-                                        <div>{condicionesPare[num]}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Centro */}
-                    <div className="xl:col-span-2 bg-[#141414] border border-[#2d3238] rounded-2xl p-8 shadow-2xl h-full flex flex-col">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    
+                    {/* COLUMNA IZQUIERDA: FORMULARIO PRINCIPAL */}
+                    <div className="lg:col-span-2 bg-[#141414] border border-[#2d3238] rounded-2xl p-8 shadow-2xl h-full flex flex-col">
                         <form onSubmit={handleSubmit} className="space-y-6">
+                            
+                            {/* Referencia */}
                             <div>
                                 <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
-                                    Referencia (Lugar del evento)
+                                    Referencia del lugar
                                 </label>
                                 <input
                                     type="text"
@@ -107,6 +86,7 @@ export default function Create() {
                                 {errors.referencia && <p className="text-red-400 text-xs mt-1">{errors.referencia}</p>}
                             </div>
 
+                            {/* Tipo de Evento */}
                             <div>
                                 <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
                                     Tipo de Evento
@@ -115,7 +95,7 @@ export default function Create() {
                                     required
                                     value={data.id_tipo_evento}
                                     onChange={e => setData('id_tipo_evento', Number(e.target.value))}
-                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors"
+                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors cursor-pointer"
                                 >
                                     <option value={0}>Seleccione un tipo de evento...</option>
                                     {tiposEvento?.map((tipo) => (
@@ -127,42 +107,36 @@ export default function Create() {
                                 {errors.id_tipo_evento && <p className="text-red-400 text-xs mt-1">{errors.id_tipo_evento}</p>}
                             </div>
 
+                            {/* NUEVO: Lista desplegable de Condiciones */}
+                            <div>
+                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                    Condición del Evento
+                                </label>
+                                <select
+                                    required
+                                    value={data.condicion}
+                                    onChange={e => setData('condicion', Number(e.target.value))}
+                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors cursor-pointer"
+                                >
+                                    <option value={0}>Seleccione la condición identificada</option>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                        <option key={num} value={num}>
+                                            {num.toString().padStart(2, '0')}. {condicionesPare[num]}
+                                        </option>
+                                    ))}
+                                </select>
+                                {(errors as any).condicion && <p className="text-red-400 text-xs mt-1">{(errors as any).condicion}</p>}
+                            </div>
+
                             {(errors as any).general && (
                                 <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/30 rounded-lg px-4 py-3">
                                     {(errors as any).general}
                                 </p>
                             )}
 
-                            <div className="bg-[#0a0a0a] p-5 rounded-xl border border-[#2d3238]">
-                                <div className="flex justify-between items-end mb-4">
-                                    <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85]">Condición del Evento</label>
-                                    {data.condicion > 0 && (
-                                        <span className="text-sm font-bold tracking-wide text-[#a0f700]">
-                                            Condición #{data.condicion}
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div className="flex flex-wrap gap-2">
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                                        <button
-                                            key={num}
-                                            type="button"
-                                            onClick={() => setData('condicion', num)}
-                                            className={`flex-1 min-w-[40px] py-2.5 rounded-md text-sm font-bold transition-all ${
-                                                data.condicion === num
-                                                    ? 'bg-[#a0f700] text-black shadow-[0_0_15px_-3px_rgba(160,247,0,0.4)]'
-                                                    : 'bg-[#141414] border border-[#2d3238] text-white hover:border-[#7a7f85]'
-                                            }`}
-                                        >
-                                            {num}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
+                            {/* Descripción Detallada */}
                             <div>
-                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2 mt-4">
                                     Descripción Detallada
                                 </label>
                                 <textarea
@@ -191,25 +165,30 @@ export default function Create() {
                         </form>
                     </div>
 
-                    {/* Lado derecho */}
-                    <div className="bg-[#111111] border border-[#2d3238] rounded-2xl p-6 shadow-xl sticky top-24 h-full flex flex-col">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">Guía de Condiciones</h3>
-                        <div className="flex flex-col gap-3">
-                            {[6, 7, 8, 9, 10].map(num => (
-                                <div
-                                    key={num}
-                                    className={`p-3 rounded-lg border text-lg leading-relaxed transition-colors duration-300 flex gap-3 ${
-                                        data.condicion === num
-                                            ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner'
-                                            : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85]'
-                                    }`}
-                                >
-                                    <div className={`font-black shrink-0 ${data.condicion === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
-                                        {num.toString().padStart(2, '0')}.
+                    {/* COLUMNA DERECHA: BARRA UNIFICADA DE CONDICIONES */}
+                    <div className="lg:col-span-1">
+                        <div className="bg-[#111111] border border-[#2d3238] rounded-2xl p-6 shadow-xl sticky top-6 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar flex flex-col">
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">
+                                Guía de Condiciones
+                            </h3>
+                            <div className="space-y-2">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                                    <div
+                                        key={num}
+                                        className={`p-3 rounded-lg border text-xs leading-relaxed transition-colors duration-300 flex gap-3 cursor-pointer ${
+                                            data.condicion === num
+                                                ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner'
+                                                : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85] hover:border-[#7a7f85]/50'
+                                        }`}
+                                        onClick={() => setData('condicion', num)}
+                                    >
+                                        <div className={`font-black shrink-0 ${data.condicion === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
+                                            {num.toString().padStart(2, '0')}.
+                                        </div>
+                                        <div>{condicionesPare[num]}</div>
                                     </div>
-                                    <div>{condicionesPare[num]}</div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     </div>
 
