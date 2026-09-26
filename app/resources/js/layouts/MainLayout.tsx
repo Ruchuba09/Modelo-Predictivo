@@ -7,12 +7,12 @@ import { useAuth } from '@/hooks/use-auth';
 // Un item sin `roles` es visible para cualquier usuario autenticado.
 const NAV_ITEMS: { href: string; label: string; roles?: string[] }[] = [
     { href: '/portal', label: 'Inicio' },
-    { href: '/dashboard', label: 'Dashboard', roles: ['admin', 'supervisor'] },
+    { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'supervisor'] },
     { href: '/eventos/create', label: 'Reportes' },
     { href: '/usuarios', label: 'Usuarios', roles: ['admin'] },
-    { href: '/roles', label: 'Roles', roles: ['admin'] },
-    { href: '/permisos', label: 'Permisos', roles: ['admin'] },
-    { href: '/trabajadores', label: 'Trabajadores', roles: ['admin', 'rrhh'] },
+    { href: '/roles', label: 'Roles', roles: ['Administrador'] },
+    { href: '/permisos', label: 'Permisos', roles: ['Administrador'] },
+    { href: '/trabajadores', label: 'Trabajadores', roles: ['Administrador', 'rrhh'] },
 ];
 
 function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {
