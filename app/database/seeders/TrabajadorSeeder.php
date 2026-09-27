@@ -17,7 +17,8 @@ class TrabajadorSeeder extends Seeder
             [
                 'nombre_1' => 'Pedro', 'nombre_2' => 'José',
                 'apellido_1' => 'González', 'apellido_2' => 'Muñoz',
-                'cargo' => 'Trabajador', 'id_tipo_trabajador' => 'trabajador',
+                'cargo' => 'Trabajador', 'id_tipo_trabajador' => 'obrero',
+                'fecha_creacion' => now(), 'ultima_act' => now(), 'estado' => 'activo',
             ]
         );
         Obrero::firstOrCreate(['id_trabajador' => $obrero->id_trabajador]);
@@ -28,6 +29,7 @@ class TrabajadorSeeder extends Seeder
                 'nombre_1' => 'Juan', 'nombre_2' => 'Andrés',
                 'apellido_1' => 'Pérez', 'apellido_2' => 'Soto',
                 'cargo' => 'Supervisor', 'id_tipo_trabajador' => 'supervisor',
+                'fecha_creacion' => now(), 'ultima_act' => now(), 'estado' => 'activo',
             ]
         );
         Supervisor::firstOrCreate(['id_trabajador' => $supervisor->id_trabajador]);
@@ -38,6 +40,7 @@ class TrabajadorSeeder extends Seeder
                 'nombre_1' => 'María', 'nombre_2' => 'Fernanda',
                 'apellido_1' => 'Rojas', 'apellido_2' => 'Díaz',
                 'cargo' => 'Administrativo', 'id_tipo_trabajador' => 'administrativo',
+                'fecha_creacion' => now(), 'ultima_act' => now(), 'estado' => 'activo',
             ]
         );
         Administrativo::firstOrCreate(['id_trabajador' => $administrativo->id_trabajador]);
