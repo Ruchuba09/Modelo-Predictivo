@@ -13,6 +13,9 @@ x-laravel-base: &laravel-base
   working_dir: /var/www/app
   volumes:
     - ../app:/var/www/app
+    - laravel_vendor:/var/www/app/vendor
+    - laravel_storage:/var/www/app/storage
+    - laravel_cache:/var/www/app/bootstrap/cache
     - ./php/php.ini:/usr/local/etc/php/php.ini
   depends_on:
     - redis
@@ -116,6 +119,9 @@ services:
 
 volumes:
   laravel:
+  laravel_vendor:
+  laravel_storage:
+  laravel_cache:
   mariadb:
   postgres:
   redis:
