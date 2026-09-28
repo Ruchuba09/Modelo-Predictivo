@@ -58,7 +58,7 @@ export default function MainLayout({ children }: PropsWithChildren) {
                     )}
                 </div>
 
-                {/* Botón Principal: Nueva Tarjeta PARE (Apunta a la ruta del compañero) */}
+                {/* Botón Principal: Nueva Tarjeta PARE */}
                 <div className="p-4 border-b border-[#2d3238] shrink-0">
                     <Link 
                         href="/eventos/create" 
