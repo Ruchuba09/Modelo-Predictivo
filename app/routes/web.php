@@ -54,6 +54,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('eventos', EventoController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])->name('eventos.tomar');
     Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])->name('eventos.cerrar');
+    
     Route::get('/proyectos', function () {
         return Inertia::render('proyectos/Index');
     })->name('proyectos.index');
@@ -67,6 +68,7 @@ Route::middleware('auth')->group(function () {
             'id' => $id,
         ]);
     })->name('proyectos.show');
+    
     Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
     Route::get('/situacion-criticas/crear', [SituacionCriticaController::class, 'create'])->name('situacion-criticas.crear');
     Route::post('/situacion-criticas', [SituacionCriticaController::class, 'store'])->name('situacion-criticas.store');
