@@ -44,7 +44,7 @@ class EventoController extends Controller
     }
     public function index()
     {
-        $eventos = Evento::with(['tipoEvento', 'proyecto', 'area'])
+        $eventos = Evento::with(['tipoEvento', 'proyecto'])
             ->orderByDesc('fecha_creacion')
             ->get();
 
@@ -211,7 +211,7 @@ class EventoController extends Controller
     
     public function show(Evento $evento)
     {
-        $evento->load(['tipoEvento', 'area', 'proyecto', 'administrador']);
+        $evento->load(['tipoEvento', 'proyecto', 'administrador']);
 
         return Inertia::render('Eventos/Show', [
             'evento' => $evento,

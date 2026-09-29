@@ -28,7 +28,7 @@ export default function Create() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // FUNCIÓN SEGURA PARA AGREGAR ARCHIVOS
+    // FUNCIÓN PARA AGREGAR ARCHIVOS
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const archivosNuevos = Array.from(e.target.files || []);
         const archivosActuales = data.evidencia || []; // Validación de seguridad
@@ -48,7 +48,7 @@ export default function Create() {
         }
     };
 
-    // FUNCIÓN SEGURA PARA BORRAR
+    // FUNCIÓN PARA BORRAR
     const removerArchivo = (index: number) => {
         const nuevosArchivos = [...(data.evidencia || [])]; // Validación de seguridad
         nuevosArchivos.splice(index, 1);
@@ -119,26 +119,6 @@ export default function Create() {
 
                             <div>
                                 <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
-                                    Tipo de Evento
-                                </label>
-                                <select
-                                    required
-                                    value={data.id_tipo_evento}
-                                    onChange={e => setData('id_tipo_evento', Number(e.target.value))}
-                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors cursor-pointer"
-                                >
-                                    <option value={0}>Seleccione un tipo de evento...</option>
-                                    {tiposEvento?.map((tipo) => (
-                                        <option key={tipo.id_tipo_evento} value={tipo.id_tipo_evento}>
-                                            {tipo.nombre}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.id_tipo_evento && <p className="text-red-400 text-xs mt-1">{errors.id_tipo_evento}</p>}
-                            </div>
-
-                            <div>
-                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
                                     Condición del Evento (PARE)
                                 </label>
                                 <select
@@ -147,7 +127,7 @@ export default function Create() {
                                     onChange={e => setData('condicion', Number(e.target.value))}
                                     className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors cursor-pointer"
                                 >
-                                    <option value={0}>Seleccione la condición identificada (1 al 10)...</option>
+                                    <option value={0}>Seleccione la condición identificada</option>
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                                         <option key={num} value={num}>
                                             {num.toString().padStart(2, '0')}. {condicionesPare[num]}

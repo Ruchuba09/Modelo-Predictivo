@@ -11,8 +11,8 @@ use App\Http\Controllers\EventoController;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('welcome');
-})->name('home');
+    return redirect()->route('login');
+});
 
 Route::get('/test-auth', function () {
     return response()->json([
