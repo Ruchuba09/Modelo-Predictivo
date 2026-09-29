@@ -40,25 +40,42 @@ export default function GraficoPredictivo({ datosReales }: { datosReales?: Array
     };
 
     const datosTransformados = useMemo(() => {
-        return datosParaDibujar.map((d: any) => {
+        // 1. Agrupar los datos por Mes (YYYY-MM)
+        const agrupado = datosParaDibujar.reduce((acc: any, d: any) => {
+            const fechaStr = d.fecha || d.periodo;
+            if (!fechaStr) return acc;
             
-            const datoLimpio: any = { 
-                periodo: d.fecha || d.periodo 
-            };
-            CONDICIONES.forEach(c => {
-                datoLimpio[c.id] = Number(d[c.id]) || 0; 
-            });
-
-            if (metricaY === 'gravedad') {
-                const nuevoDato: any = { periodo: datoLimpio.periodo };
-                CONDICIONES.forEach(c => {
-                    nuevoDato[c.id] = Number((datoLimpio[c.id] * 0.8).toFixed(1)); 
-                });
-                return nuevoDato;
+            // Cortamos la fecha para quedarnos solo con el Año-Mes (ej: "2026-11")
+            const mesKey = fechaStr.substring(0, 7); 
+            
+            if (!acc[mesKey]) {
+                acc[mesKey] = { periodo: mesKey };
+                CONDICIONES.forEach(c => acc[mesKey][c.id] = 0);
             }
             
-            return datoLimpio;
-        });
+            // Sumamos los valores en su mes correspondiente
+            CONDICIONES.forEach(c => {
+                acc[mesKey][c.id] += (Number(d[c.id]) || 0);
+            });
+            return acc;
+        }, {});
+
+        // 2. Convertir el objeto a arreglo y ordenarlo cronológicamente
+        let datosAgrupados = Object.values(agrupado) as any[];
+        datosAgrupados.sort((a, b) => a.periodo.localeCompare(b.periodo));
+
+        // 3. Aplicar multiplicador si se usa la métrica de gravedad
+        if (metricaY === 'gravedad') {
+            return datosAgrupados.map((d: any) => {
+                const nuevoDato: any = { periodo: d.periodo };
+                CONDICIONES.forEach(c => {
+                    nuevoDato[c.id] = Number((d[c.id] * 0.8).toFixed(1)); 
+                });
+                return nuevoDato;
+            });
+        }
+        
+        return datosAgrupados;
     }, [datosParaDibujar, metricaY]);
 
     const exportarGraficoPNG = async () => {
@@ -99,7 +116,7 @@ export default function GraficoPredictivo({ datosReales }: { datosReales?: Array
             <>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2D3238" vertical={false} />
                 <XAxis dataKey="periodo" stroke="#7A7F85" fontSize={11} tickLine={false} axisLine={false} dy={10} />
-                <YAxis stroke="#7A7F85" fontSize={11} tickLine={false} axisLine={false} dx={-10} />
+                <YAxis stroke="#7A7F85" fontSize={11} tickLine={false} axisLine={false} dx={-10} allowDecimals={false} />
                 <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#2D3238', borderRadius: '8px' }} itemStyle={{ color: '#fff', fontSize: '13px' }} />
             </>
         );

@@ -14,15 +14,18 @@ export default function MainLayout({ children }: PropsWithChildren) {
 
     const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
 
-    return (
-        <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            <header className="h-16 bg-[#111111] border-b border-[#2d3238] flex items-center justify-between px-6 sticky top-0 z-50 shrink-0">
-                <div className="flex items-center">
-                    <img 
-                        src="https://cdn.intrava.cl/v2/logos/Logotipo-isotipo-02.svg" 
-                        alt="AVA Montajes" 
-                        className="h-14 mb-11 mt-11"
-                    />
+                {/* Botón Principal: Nueva Tarjeta PARE */}
+                <div className="p-4 border-b border-[#2d3238] shrink-0">
+                    <Link 
+                        href="/eventos/create" 
+                        className={`flex items-center justify-center gap-2 bg-[#a0f700] hover:bg-[#86cf00] text-black rounded-lg font-bold transition-colors shadow-lg shadow-[#a0f700]/10 ${colapsado ? 'h-10 w-10 p-0 rounded-full mx-auto' : 'px-4 py-3'}`}
+                        title="Nueva Tarjeta PARE"
+                    >
+                        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+                        </svg>
+                        {!colapsado && <span className="truncate">Nueva Tarjeta</span>}
+                    </Link>
                 </div>
 
                 <nav className="hidden md:flex h-full">
