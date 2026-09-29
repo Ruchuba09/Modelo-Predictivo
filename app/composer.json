@@ -15,7 +15,7 @@
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^13.0",
         "laravel/pulse": "^1.7",
-        "laravel/sanctum": "^4.3",
+        "laravel/sanctum": "^4.0",
         "laravel/telescope": "^5.19",
         "laravel/tinker": "^3.0",
         "laravel/ui": "^4.6",

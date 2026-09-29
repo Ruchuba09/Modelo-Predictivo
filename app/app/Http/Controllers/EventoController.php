@@ -263,7 +263,7 @@ class EventoController extends Controller
     
     public function show(Evento $evento)
     {
-        $evento->load(['tipoEvento', 'area', 'proyecto', 'administrador']);
+        $evento->load(['tipoEvento', 'proyecto', 'administrador']);
 
         return Inertia::render('Eventos/Show', [
             'evento' => $evento,

@@ -57,10 +57,10 @@ class Evento extends Model
         return $this->belongsTo(Administrativo::class, 'id_administrador', 'id_trabajador');
     }
 
-    public function area()
-    {
-        return $this->belongsTo(Area::class, 'id_area', 'id_area');
-    }
+    // public function area()
+    // {
+    //     return $this->belongsTo(Area::class, 'id_area', 'id_area');
+    // }
 
     public function proyecto()
     {
