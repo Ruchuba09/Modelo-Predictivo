@@ -118,11 +118,9 @@ services:
       - "5432:5432"
 
 volumes:
-  laravel:
   laravel_vendor:
   laravel_storage:
   laravel_cache:
-  mariadb:
   postgres:
   redis:
   pgadmin:
