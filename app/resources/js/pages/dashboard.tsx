@@ -1,66 +1,114 @@
 import AuthenticatedLayout from '../layouts/MainLayout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import GraficoPredictivo from '../components/GraficoPredictivo';
-import SessionInfo from '@/components/session-info';
 import { useTieneRol } from '@/hooks/use-auth';
-
-interface Props {
-    datosGrafico?: Array<{
-        fecha: string;
-        [key: string]: string | number;
-    }>;
-}
+import { useState } from 'react';
 
 export default function Dashboard(props: any) {
     const esAdmin = useTieneRol('Administrador');
     const esSupervisor = useTieneRol('supervisor');
 
+    const { proyectos, filtros, datosGrafico } = props;
+
+    const [formFiltros, setFormFiltros] = useState({
+        id_proyecto: filtros?.id_proyecto ?? '',
+        fecha_inicio: filtros?.fecha_inicio ?? '',
+        fecha_fin: filtros?.fecha_fin ?? '',
+    });
+
+    const handleFilterChange = (field: string, value: string) => {
+        const newFilters = { ...formFiltros, [field]: value };
+        setFormFiltros(newFilters);
+        
+        const cleanFilters = Object.fromEntries(
+            Object.entries(newFilters).filter(([_, v]) => v !== '')
+        );
+
+        router.get(route('dashboard'), cleanFilters, {
+            preserveState: true,
+            replace: true,
+            preserveScroll: true
+        });
+    };
+
+    const limpiarFiltros = () => {
+        setFormFiltros({
+            id_proyecto: '',
+            fecha_inicio: '',
+            fecha_fin: '',
+        });
+        router.get(route('dashboard'), {}, { preserveState: true, replace: true });
+    };
+
+    const tieneFiltrosActivos = Object.values(formFiltros).some(val => val !== '');
+
     return (
         <AuthenticatedLayout>
             <Head title="Dashboard" />
-            <div className="py-8">
-                <div className="max-w-screen-2xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            
+            <div className="max-w-[1700px] mx-auto p-6 lg:p-8 lg:mt-2">
+                <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gris-2 mb-2">Panel Estadístico</h1>
+                        <p className="text-gris-1 text-sm">Resumen de hallazgos y reportes (Tarjeta PARE).</p>
+                    </div>
+                </div>
 
+                {/* Filtros Globales */}
+                <div className="bg-white border border-verde-3 rounded-2xl p-6 mb-6 shadow-sm flex flex-col gap-4">
+                    <div className="flex items-center justify-between border-b border-verde-3 pb-4 mb-2">
+                        <h3 className="text-sm font-bold text-gris-2 uppercase tracking-wider">Filtros del Panel</h3>
+                        {tieneFiltrosActivos && (
+                            <button 
+                                onClick={limpiarFiltros}
+                                className="text-xs text-rojo-1 hover:underline font-bold"
+                            >
+                                Limpiar Filtros
+                            </button>
+                        )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Filtro Proyecto */}
+                        <div>
+                            <label className="block text-xs uppercase text-gris-1 mb-1 font-bold">Proyecto</label>
+                            <select 
+                                value={formFiltros.id_proyecto}
+                                onChange={(e) => handleFilterChange('id_proyecto', e.target.value)}
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2.5 text-sm text-gris-2 focus:outline-none focus:border-verde-5 focus:ring-1 focus:ring-verde-5 transition-colors"
+                            >
+                                <option value="">Todos los proyectos</option>
+                                {proyectos?.map((p: any) => (
+                                    <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
 
-                    <div className="bg-[#1e2329] overflow-hidden shadow-sm sm:rounded-xl border border-[#2D3238]">
-                        <div className="p-6 text-white text-lg font-medium flex items-center justify-between">
-                            <span>Panel de Control - Sistema de Gestión Integrado (SGI)</span>
+                        {/* Filtro Fecha Desde */}
+                        <div>
+                            <label className="block text-xs uppercase text-gris-1 mb-1 font-bold">Desde</label>
+                            <input 
+                                type="date"
+                                value={formFiltros.fecha_inicio}
+                                onChange={(e) => handleFilterChange('fecha_inicio', e.target.value)}
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-sm text-gris-2 focus:outline-none focus:border-verde-5 focus:ring-1 focus:ring-verde-5 transition-colors"
+                            />
+                        </div>
+
+                        {/* Filtro Fecha Hasta */}
+                        <div>
+                            <label className="block text-xs uppercase text-gris-1 mb-1 font-bold">Hasta</label>
+                            <input 
+                                type="date"
+                                value={formFiltros.fecha_fin}
+                                onChange={(e) => handleFilterChange('fecha_fin', e.target.value)}
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-sm text-gris-2 focus:outline-none focus:border-verde-5 focus:ring-1 focus:ring-verde-5 transition-colors"
+                            />
                         </div>
                     </div>
+                </div>
 
-                    <div className="grid grid-cols-1 xl:grid-cols-1 gap-6">
-                        <div className="grid grid-cols-4 gap-4">
-                            <div className="bg-[#1e2329] border border-[#2D3238] p-5 rounded-xl shadow-lg">
-                                <p className="text-[#7A7F85] text-xs font-bold uppercase tracking-wider mb-2">Media Riesgo SSO</p>
-                                <div className="flex items-end gap-2">
-                                    <span className="text-3xl font-bold text-white">24.5</span>
-                                    <span className="text-[#A0F700] text-sm font-medium mb-1">↓ 12%</span>
-                                </div>
-                            </div>
-
-                            <div className="bg-[#1e2329] border border-[#2D3238] p-5 rounded-xl shadow-lg">
-                                <p className="text-[#7A7F85] text-xs font-bold uppercase tracking-wider mb-2">No Conformidades</p>
-                                <div className="flex items-end gap-2">
-                                    <span className="text-3xl font-bold text-white">18</span>
-                                    <span className="text-red-500 text-sm font-medium mb-1">↑ 3</span>
-                                </div>
-                            </div>
-
-                            <div className="bg-[#1e2329] border border-[#2D3238] p-5 rounded-xl shadow-lg">
-                                <p className="text-[#7A7F85] text-xs font-bold uppercase tracking-wider mb-2">Índice Ambiental</p>
-                                <div className="flex items-end gap-2">
-                                    <span className="text-3xl font-bold text-white">98%</span>
-                                    <span className="text-[#A0F700] text-sm font-medium mb-1">Óptimo</span>
-                                </div>
-                            </div>
-
-                            <div className="bg-[#1e2329] border border-[#2D3238] p-5 rounded-xl shadow-lg">
-                                <p className="text-[#7A7F85] text-xs font-bold uppercase tracking-wider mb-2">Días sin Incidentes</p>
-                                <div className="flex items-end gap-2">
-                                    <span className="text-3xl font-bold text-[#A0F700]">142</span>
-                                </div>
-                            </div>
-                        </div>
+                <div className="grid grid-cols-1 gap-6">
 
                         {/* Solo admin y supervisor ven el gráfico predictivo */}
                         {(esAdmin || esSupervisor) && (
@@ -71,14 +119,13 @@ export default function Dashboard(props: any) {
 
                         {/* Bloque exclusivo de admin */}
                         {esAdmin && (
-                            <div className="bg-[#1e2329] border border-[#A0F700] p-5 rounded-xl">
-                                <p className="text-[#A0F700] text-sm font-bold uppercase mb-2">Panel de Administración</p>
-                                <p className="text-[#7A7F85] text-sm">Aquí van controles exclusivos para administradores (gestión de usuarios, roles, permisos, etc).</p>
+                            <div className="bg-verde-2 border border-verde-5 p-5 rounded-xl shadow-sm">
+                                <p className="text-verde-6 text-sm font-bold uppercase mb-2">Panel de Administración</p>
+                                <p className="text-gris-2 text-sm">Aquí van controles exclusivos para administradores (gestión de usuarios, roles, permisos, etc).</p>
                             </div>
                         )}
                     </div>
                 </div>
-            </div>
         </AuthenticatedLayout>
     );
 }

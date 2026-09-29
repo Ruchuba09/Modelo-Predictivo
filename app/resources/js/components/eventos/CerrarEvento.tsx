@@ -45,7 +45,7 @@ export default function CerrarEvento({ eventoId, estado, onCerrado }: CerrarEven
       onClick={handleCerrar}
       disabled={!puedeCerrar || cargando}
       title={!puedeCerrar ? 'El evento debe estar en proceso para poder cerrarse' : undefined}
-      className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+      className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-gris-2 shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
     >
       {cargando ? 'Cerrando...' : 'Cerrar evento'}
     </button>

@@ -43,8 +43,8 @@ function nombreTrabajador(trabajador?: Trabajador) {
 }
 
 const inputClass =
-    'mt-1 block w-full rounded-lg border border-white/10 bg-[#0e0f11] px-3 py-2 text-sm text-white placeholder:text-[#7a7f85] focus:border-[#a0f700]/50 focus:outline-none focus:ring-1 focus:ring-[#a0f700]/50';
-const labelClass = 'block text-sm font-medium text-[#7a7f85]';
+    'mt-1 block w-full rounded-lg border border-verde-3 bg-white px-3 py-2 text-sm text-gris-2 placeholder:text-gris-1 focus:border-verde-5/50 focus:outline-none focus:ring-1 focus:ring-verde-5/50';
+const labelClass = 'block text-sm font-medium text-gris-1';
 
 export default function SituacionCriticaForm({ trabajadores, supervisores, eventos, form, onSubmit }: SituacionCriticaFormProps) {
     const { data, setData, errors, processing } = form;
@@ -73,7 +73,7 @@ export default function SituacionCriticaForm({ trabajadores, supervisores, event
 
             <div>
                 <label htmlFor="id_supervisor" className={labelClass}>
-                    Supervisor <span className="text-[#7a7f85]/70">(opcional)</span>
+                    Supervisor <span className="text-gris-1/70">(opcional)</span>
                 </label>
                 <select
                     id="id_supervisor"
@@ -129,7 +129,7 @@ export default function SituacionCriticaForm({ trabajadores, supervisores, event
             <div>
                 <span className={labelClass}>Condición</span>
                 <div className="mt-2 flex gap-6">
-                    <label className="flex items-center gap-2 text-sm text-white">
+                    <label className="flex items-center gap-2 text-sm text-gris-2">
                         <input
                             type="radio"
                             name="condicion"
@@ -140,7 +140,7 @@ export default function SituacionCriticaForm({ trabajadores, supervisores, event
                         />
                         Leve
                     </label>
-                    <label className="flex items-center gap-2 text-sm text-white">
+                    <label className="flex items-center gap-2 text-sm text-gris-2">
                         <input
                             type="radio"
                             name="condicion"
@@ -159,7 +159,7 @@ export default function SituacionCriticaForm({ trabajadores, supervisores, event
                 <button
                     type="submit"
                     disabled={processing}
-                    className="rounded-lg bg-[#a0f700] px-5 py-2.5 text-sm font-bold text-black shadow-lg shadow-[#a0f700]/10 transition-colors hover:bg-[#86cf00] disabled:opacity-50"
+                    className="rounded-lg bg-verde-5 px-5 py-2.5 text-sm font-bold text-black shadow-lg shadow-verde-5/10 transition-colors hover:bg-verde-6 disabled:opacity-50"
                 >
                     Guardar
                 </button>
