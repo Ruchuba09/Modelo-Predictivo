@@ -18,7 +18,11 @@ function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {
     return rolesRequeridos.some((rol) => rolesUsuario.includes(rol));
 }
 
-export default function MainLayout({ children }: PropsWithChildren) {
+interface MainLayoutProps extends PropsWithChildren {
+    bgClass?: string;
+}
+
+export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLayoutProps) {
     const { url, props } = usePage();
     const usuario = useAuth();
     const notificaciones = (props.notificaciones as any[]) || [];
@@ -57,7 +61,7 @@ export default function MainLayout({ children }: PropsWithChildren) {
     };
 
     return (
-        <div className="flex h-screen bg-verde-1 overflow-hidden" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <div className={`flex h-screen ${bgClass} overflow-hidden`} style={{ fontFamily: "'Poppins', sans-serif" }}>
             
             <aside className={`${colapsado ? 'w-20' : 'w-64'} bg-white border-r border-verde-3 transition-all duration-300 flex flex-col relative z-50 shrink-0 shadow-sm`}>
                 
@@ -113,7 +117,7 @@ export default function MainLayout({ children }: PropsWithChildren) {
             </aside>
 
             {/* Contenedor Principal (Header + Contenido) */}
-            <div className="flex flex-col flex-1 overflow-hidden bg-verde-1">
+            <div className={`flex flex-col flex-1 overflow-hidden ${bgClass}`}>
                 
                 {/* Header Global (Top bar) */}
                 <header className="h-16 shrink-0 bg-white border-b border-verde-3 flex items-center justify-end px-8 z-40 relative shadow-sm">
@@ -160,7 +164,7 @@ export default function MainLayout({ children }: PropsWithChildren) {
                 </header>
 
                 {/* Contenido Principal */}
-                <main className="flex-1 overflow-y-auto bg-verde-1 pr-20">
+                <main className={`flex-1 overflow-y-auto ${bgClass} pr-20`}>
                     {children}
                 </main>
             </div>
