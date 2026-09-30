@@ -112,20 +112,22 @@ export default function Show() {
             <Head title={`Evento #${evento.id_evento} | AVA`} />
 
             <div className="relative w-full">
-                <div className="absolute left-10 xl:left-16 top-6 lg:top-8 mt-1 hidden xl:block">
-                    <Link
-                        href={route('eventos.index')}
-                        className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold border border-verde-3 text-gris-1 hover:text-gris-2 hover:border-gris-1 transition-colors whitespace-nowrap"
-                    >
-                        ← Volver al listado
-                    </Link>
+                <div className="sticky top-8 z-40 h-0 hidden xl:block overflow-visible">
+                    <div className="absolute left-10 xl:left-16">
+                        <Link
+                            href={route('eventos.index')}
+                            className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-md shadow-verde-5/10 whitespace-nowrap"
+                        >
+                            ← Volver al listado
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="max-w-[1100px] mx-auto p-6 lg:p-8">
                     <div className="xl:hidden mb-6">
                         <Link
                             href={route('eventos.index')}
-                            className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold border border-verde-3 text-gris-1 hover:text-gris-2 hover:border-gris-1 transition-colors whitespace-nowrap"
+                            className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-sm whitespace-nowrap"
                         >
                             ← Volver al listado
                         </Link>
