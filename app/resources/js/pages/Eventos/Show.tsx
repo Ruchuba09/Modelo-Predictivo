@@ -113,7 +113,7 @@ export default function Show() {
 
             <div className="relative w-full">
                 <div className="sticky top-8 z-40 h-0 hidden xl:block overflow-visible">
-                    <div className="absolute left-10 xl:left-16">
+                    <div className="absolute left-4 xl:left-6">
                         <Link
                             href={route('eventos.index')}
                             className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-md shadow-verde-5/10 whitespace-nowrap"
