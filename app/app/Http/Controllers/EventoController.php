@@ -44,7 +44,7 @@ class EventoController extends Controller
     }
     public function index(Request $request)
     {
-        $query = Evento::with(['tipoEvento', 'proyecto', 'area']);
+        $query = Evento::with(['tipoEvento', 'proyecto']);
 
         if ($request->filled('id_proyecto')) {
             $query->where('id_proyecto', $request->id_proyecto);
