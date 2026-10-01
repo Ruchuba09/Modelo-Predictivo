@@ -5,16 +5,16 @@ import {
 } from 'recharts';
 
 const CONDICIONES_COLORS: Record<string, string> = {
-    'c1': '#FF4B4B', 
-    'c2': '#FF9100',   
-    'c3': '#FFCB00',       
-    'c4': '#A0F700',   
-    'c5': '#00E676', 
-    'c6': '#00D1FF',        
-    'c7': '#29B6F6',    
-    'c8': '#9D4EDD',        
-    'c9': '#F48FB1', 
-    'c10': '#E0E0E0',         
+    'c1': '#86CF00', 
+    'c2': '#86CF00',   
+    'c3': '#86CF00',       
+    'c4': '#86CF00',   
+    'c5': '#86CF00', 
+    'c6': '#86CF00',        
+    'c7': '#86CF00',    
+    'c8': '#86CF00',        
+    'c9': '#86CF00', 
+    'c10': '#86CF00',         
 };
 
 export default function GraficoPredictivo({ datosReales }: { datosReales?: Array<any> }) {
@@ -50,7 +50,8 @@ export default function GraficoPredictivo({ datosReales }: { datosReales?: Array
                 
                 <button 
                     onClick={exportarGraficoPNG}
-                    className="flex items-center justify-center gap-2 bg-verde-1 border border-verde-5 text-verde-6 px-4 py-2 rounded-lg text-sm font-bold hover:bg-verde-5 hover:text-gris-2 transition-all cursor-pointer">
+                    className="flex items-center justify-center gap-2 bg-white border border-gris-2 text-gris-2 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gris-2 hover:text-white transition-all shadow-sm cursor-pointer"
+                >
                     📸 Exportar PNG
                 </button>
             </div>
@@ -110,10 +111,10 @@ export default function GraficoPredictivo({ datosReales }: { datosReales?: Array
                         <p className="text-gris-1 text-xs font-bold uppercase tracking-wider mb-2">Condición más Crítica</p>
                         {condicionPrincipal && condicionPrincipal.hallazgos > 0 ? (
                             <>
-                                <p className="text-3xl font-black" style={{ color: CONDICIONES_COLORS[condicionPrincipal.id] }}>
+                                <p className="text-4xl font-black text-rojo-1">
                                     {condicionPrincipal.hallazgos}
                                 </p>
-                                <p className="text-sm font-bold text-gris-2 mt-1 leading-tight">{condicionPrincipal.condicion}</p>
+                                <p className="text-sm font-bold text-gris-2 mt-2 leading-tight">{condicionPrincipal.condicion}</p>
                             </>
                         ) : (
                             <p className="text-sm text-gris-1 mt-2">Sin datos suficientes</p>
