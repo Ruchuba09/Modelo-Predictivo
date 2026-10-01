@@ -17,9 +17,11 @@ const CONDICIONES_COLORS: Record<string, string> = {
     'c10': '#86CF00',         
 };
 
+
 export default function GraficoPredictivo({ datosReales }: { datosReales?: Array<any> }) {
     
     const datos = datosReales || [];
+
     const chartRef = useRef<HTMLDivElement>(null); 
     
     const exportarGraficoPNG = async () => {
@@ -37,7 +39,8 @@ export default function GraficoPredictivo({ datosReales }: { datosReales?: Array
     };
 
     const totalHallazgos = datos.reduce((acc, curr) => acc + curr.hallazgos, 0);
-    const condicionPrincipal = datos.length > 0 ? datos.reduce((prev, current) => (prev.hallazgos > current.hallazgos) ? prev : current) : null;
+    const maxHallazgos = datos.length > 0 ? Math.max(...datos.map((d: any) => d.hallazgos)) : 0;
+    const condicionesPrincipales = maxHallazgos > 0 ? datos.filter((d: any) => d.hallazgos === maxHallazgos) : [];
 
     return (
         <div className="bg-white border border-verde-3 p-6 rounded-xl text-gris-2 w-full shadow-sm"> 
@@ -58,8 +61,8 @@ export default function GraficoPredictivo({ datosReales }: { datosReales?: Array
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 
-                <div className="lg:col-span-3">
-                    <div ref={chartRef} className="h-[400px] w-full p-4 bg-verde-1 border border-verde-3 rounded-xl">
+                <div className="lg:col-span-3 flex flex-col">
+                    <div ref={chartRef} className="flex-1 w-full p-4 bg-verde-1 border border-verde-3 rounded-xl min-h-[400px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart
                                 data={datos}
@@ -109,12 +112,18 @@ export default function GraficoPredictivo({ datosReales }: { datosReales?: Array
                     
                     <div className="bg-verde-1 p-5 rounded-xl border border-verde-3 flex flex-col justify-center items-center text-center flex-1">
                         <p className="text-gris-1 text-xs font-bold uppercase tracking-wider mb-2">Condición más Crítica</p>
-                        {condicionPrincipal && condicionPrincipal.hallazgos > 0 ? (
+                        {condicionesPrincipales.length > 0 ? (
                             <>
                                 <p className="text-4xl font-black text-rojo-1">
-                                    {condicionPrincipal.hallazgos}
+                                    {maxHallazgos}
                                 </p>
-                                <p className="text-sm font-bold text-gris-2 mt-2 leading-tight">{condicionPrincipal.condicion}</p>
+                                <div className="mt-2 flex flex-col gap-1 w-full max-h-[100px] overflow-y-auto custom-scrollbar px-2">
+                                    {condicionesPrincipales.map((c: any) => (
+                                        <p key={c.id} className="text-[12px] font-bold text-gris-2 leading-tight border-b border-verde-3/30 pb-1 last:border-0 last:pb-0">
+                                            {c.condicion}
+                                        </p>
+                                    ))}
+                                </div>
                             </>
                         ) : (
                             <p className="text-sm text-gris-1 mt-2">Sin datos suficientes</p>
@@ -126,3 +135,4 @@ export default function GraficoPredictivo({ datosReales }: { datosReales?: Array
         </div>
     );
 }
+

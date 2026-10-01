@@ -1,4 +1,4 @@
-﻿import AuthenticatedLayout from '../layouts/MainLayout';
+import AuthenticatedLayout from '../layouts/MainLayout';
 import { Head, router } from '@inertiajs/react';
 import GraficoPredictivo from '../components/GraficoPredictivo';
 import { useTieneRol } from '@/hooks/use-auth';
@@ -55,51 +55,55 @@ export default function Dashboard(props: any) {
                         <p className="text-gris-1 text-sm">Resumen de hallazgos y reportes (Tarjeta PARE).</p>
                     </div>
 
-                    {/* Barra de Filtros */}
-                    <div className="flex flex-wrap items-center gap-2 bg-white border border-verde-3 rounded-lg p-2 shadow-sm">
-                        
-                        <div className="flex items-center gap-2 px-3 sm:border-r border-verde-3/50">
-                            <span className="text-xs uppercase text-gris-1 font-bold hidden sm:inline">Proyecto:</span>
-                            <select 
-                                value={formFiltros.id_proyecto}
-                                onChange={(e) => handleFilterChange('id_proyecto', e.target.value)}
-                                className="bg-transparent text-sm text-gris-2 font-medium focus:outline-none cursor-pointer py-1 w-full sm:max-w-[180px]"
-                            >
-                                <option value="">Todos los proyectos</option>
-                                {proyectos?.map((p: any) => (
-                                    <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
+                    {/* Barra de Filtros Ordenada */}
+                    <div className="w-full xl:w-auto bg-white border border-verde-3 rounded-xl p-3 shadow-sm flex items-center justify-between gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-2 flex-1">
+                            
+                            <div className="flex flex-col">
+                                <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-0.5">Proyecto</label>
+                                <select 
+                                    value={formFiltros.id_proyecto}
+                                    onChange={(e) => handleFilterChange('id_proyecto', e.target.value)}
+                                    className="bg-verde-1 border border-verde-3 rounded-md px-2 py-1.5 text-sm text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full"
+                                >
+                                    <option value="">Todos los proyectos</option>
+                                    {proyectos?.map((p: any) => (
+                                        <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
 
-                        <div className="flex items-center gap-2 px-3 sm:border-r border-verde-3/50">
-                            <span className="text-xs uppercase text-gris-1 font-bold hidden sm:inline">Desde:</span>
-                            <input 
-                                type="date"
-                                value={formFiltros.fecha_inicio}
-                                onChange={(e) => handleFilterChange('fecha_inicio', e.target.value)}
-                                className="bg-transparent text-sm text-gris-2 font-medium focus:outline-none cursor-pointer py-1"
-                            />
-                        </div>
+                            <div className="flex flex-col">
+                                <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-0.5">Desde</label>
+                                <input 
+                                    type="date"
+                                    value={formFiltros.fecha_inicio}
+                                    onChange={(e) => handleFilterChange('fecha_inicio', e.target.value)}
+                                    className="bg-verde-1 border border-verde-3 rounded-md px-2 py-1.5 text-sm text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full"
+                                />
+                            </div>
 
-                        <div className="flex items-center gap-2 px-3">
-                            <span className="text-xs uppercase text-gris-1 font-bold hidden sm:inline">Hasta:</span>
-                            <input 
-                                type="date"
-                                value={formFiltros.fecha_fin}
-                                onChange={(e) => handleFilterChange('fecha_fin', e.target.value)}
-                                className="bg-transparent text-sm text-gris-2 font-medium focus:outline-none cursor-pointer py-1"
-                            />
+                            <div className="flex flex-col">
+                                <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-0.5">Hasta</label>
+                                <input 
+                                    type="date"
+                                    value={formFiltros.fecha_fin}
+                                    onChange={(e) => handleFilterChange('fecha_fin', e.target.value)}
+                                    className="bg-verde-1 border border-verde-3 rounded-md px-2 py-1.5 text-sm text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full"
+                                />
+                            </div>
                         </div>
 
                         {tieneFiltrosActivos && (
-                            <button 
-                                onClick={limpiarFiltros}
-                                title="Limpiar Filtros"
-                                className="ml-1 p-1.5 text-rojo-1 bg-rojo-1/10 rounded-md hover:bg-rojo-1 hover:text-white transition-colors"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
+                            <div className="pl-4 border-l border-verde-3/50 flex items-center justify-center h-full">
+                                <button 
+                                    onClick={limpiarFiltros}
+                                    title="Limpiar Filtros"
+                                    className="p-2 text-rojo-1 bg-rojo-1/10 rounded-md hover:bg-rojo-1 hover:text-white transition-colors flex items-center justify-center shrink-0"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -121,3 +125,4 @@ export default function Dashboard(props: any) {
         </AuthenticatedLayout>
     );
 }
+
