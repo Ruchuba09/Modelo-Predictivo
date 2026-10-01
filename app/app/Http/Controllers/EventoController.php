@@ -72,7 +72,7 @@ class EventoController extends Controller
         return Inertia::render('Eventos/Index', [
             'eventos' => $eventos,
             'proyectos' => $proyectos,
-            'filtros' => $request->only(['id_proyecto', 'condicion', 'severidad', 'estado', 'fecha_inicio', 'fecha_fin'])
+            'filtros' => $request->only(['id_proyecto', 'condicion', 'estado', 'fecha_inicio', 'fecha_fin'])
         ]);
     }
     public function indexGrafico(Request $request)
@@ -114,17 +114,10 @@ class EventoController extends Controller
             ];
         }
 
-        $datosSeveridad = [
-            ['name' => 'Alta', 'value' => $eventos->where('severidad', 'Alta')->count()],
-            ['name' => 'Media', 'value' => $eventos->where('severidad', 'Media')->count()],
-            ['name' => 'Baja', 'value' => $eventos->where('severidad', 'Baja')->count()],
-        ];
-
         $proyectos = \App\Models\Proyecto::all();
 
         return Inertia::render('dashboard', [
             'datosGrafico' => $datosGrafico,
-            'datosSeveridad' => $datosSeveridad,
             'proyectos' => $proyectos,
             'filtros' => $request->only(['id_proyecto', 'fecha_inicio', 'fecha_fin'])
         ]);
@@ -199,7 +192,6 @@ class EventoController extends Controller
     $request->validate([
         'id_tipo_evento' => 'required|integer',
         'condicion'      => 'required|integer',
-        'severidad'      => 'required|string|in:Alta,Media,Baja',
         'descripcion'    => 'required|string|max:500',
         'referencia'     => 'required|string',
         'evidencia'      => 'nullable|array|max:3',
@@ -221,7 +213,6 @@ class EventoController extends Controller
     $evento = Evento::create([
         'id_tipo_evento' => $request->id_tipo_evento,
         'condicion'      => $request->condicion,
-        'severidad'      => $request->severidad,
         'descripcion'    => $request->descripcion,
         'referencia'     => $request->referencia,
         'id_proyecto'    => $this->proyectoActualDelTrabajador(),
@@ -231,10 +222,8 @@ class EventoController extends Controller
         'evidencia'      => json_encode($rutasArchivos), 
     ]);
 
-    // 4. Lógica de Alertas Inmediatas (Módulo A)
-    if ($evento->severidad === 'Alta') {
-        \Illuminate\Support\Facades\Log::alert("ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE Crítica registrada. Evento ID: {$evento->id_evento}, Proyecto ID: {$evento->id_proyecto}");
-    }
+    // 4. Lógica de Alertas Inmediatas (Módulo A) - Todas las tarjetas PARE son críticas
+    \Illuminate\Support\Facades\Log::alert("ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE registrada. Evento ID: {$evento->id_evento}, Proyecto ID: {$evento->id_proyecto}");
 
     return redirect()->route('eventos.index')->with('success', 'Reporte creado con éxito');
 }
