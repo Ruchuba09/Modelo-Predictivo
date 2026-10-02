@@ -306,7 +306,7 @@ class EventoController extends Controller
 
         abort_if(! $cuadrillaObrero, 422, 'El trabajador no tiene cuadrilla asignada.');
         abort_unless($cuadrillaObrero->id_supervisor === $supervisor->id_trabajador, 403, 'No eres el supervisor asignado a esta cuadrilla.');
-        abort_if($evento->estado !== 'abierta', 422, 'El evento ya fue tomado o cerrado.');
+        abort_if($evento->estado !== 'abierta', 422, 'El evento ya fue tomado o cerrada.');
 
         $evento->update([
             'id_supervisor' => $supervisor->id_trabajador,
@@ -320,7 +320,7 @@ class EventoController extends Controller
     {
         $administrativo = $this->administrativoAutenticado();
 
-        abort_if(!in_array($evento->estado, ['abierta', 'proceso']), 422, 'El evento debe estar abierto o en proceso antes de cerrarse.');
+        abort_if(!in_array($evento->estado, ['abierta', 'proceso']), 422, 'El evento debe estar abierta o en proceso antes de cerrarse.');
 
         $request->validate([
             'justificacion'    => 'required|string|max:500',
@@ -344,7 +344,7 @@ class EventoController extends Controller
             'fecha_cierre' => now(),
         ]);
 
-        return redirect()->route('eventos.show', $evento->id_evento)->with('success', 'Evento cerrado con éxito');
+        return redirect()->route('eventos.show', $evento->id_evento)->with('success', 'Evento cerrada con éxito');
     }
 
     public function destroy(Evento $evento)
