@@ -16,10 +16,10 @@ const CONDICIONES_PARE: { [key: number]: string } = {
 };
 
 const ESTADO_STYLES: { [key: string]: string } = {
-    abierto: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
+    abierta: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
     en_revision: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
     proceso: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
-    cerrado: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
+    cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
     cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
 };
 
@@ -61,9 +61,9 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default function Show() {
     const { evento } = usePage().props as unknown as { evento: Evento };
-    const estadoStyle = ESTADO_STYLES[evento.estado] ?? ESTADO_STYLES['abierto'];
+    const estadoStyle = ESTADO_STYLES[evento.estado] ?? ESTADO_STYLES['abierta'];
     
-    const estaCerrado = evento.estado === 'cerrado' || evento.estado === 'cerrada';
+    const estaCerrada = evento.estado === 'cerrada' || evento.estado === 'cerrada';
 
     // CONFIGURACIÓN DEL FORMULARIO DE CIERRE
     const { data, setData, post, processing, errors } = useForm({
@@ -176,11 +176,11 @@ export default function Show() {
                             <InfoRow label="Proyecto" value={evento.proyecto?.nombre} />
                         </div>
 
-                        {/* FORMULARIO PARA CERRAR EL EVENTO (Solo visible si no está cerrado) */}
-                        {!estaCerrado && (
+                        {/* FORMULARIO PARA CERRAR EL EVENTO (Solo visible si no está cerrada) */}
+                        {!estaCerrada && (
                             <div className="pt-8 border-t border-verde-3">
                                 <h3 className="text-lg font-bold text-gris-2 mb-4">Cerrar Evento</h3>
-                                <p className="text-gris-1 text-sm mb-6">Proporciona los detalles y la evidencia de la resolución para dar por cerrado este reporte.</p>
+                                <p className="text-gris-1 text-sm mb-6">Proporciona los detalles y la evidencia de la resolución para dar por cerrada este reporte.</p>
                                 
                                 <form onSubmit={handleCerrar} className="space-y-6">
                                     <div>
@@ -294,7 +294,7 @@ export default function Show() {
 
                             <div className="p-3 rounded-lg border border-verde-3/50 bg-verde-1">
                                 <div className="text-[12px] uppercase tracking-wider text-gris-1 mb-1">
-                                    Cerrado por
+                                    Cerrada por
                                 </div>
                                 <div className="text-sm text-gris-2">
                                     {evento.administrativo
