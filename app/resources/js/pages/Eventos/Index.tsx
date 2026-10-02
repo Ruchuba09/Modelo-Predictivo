@@ -3,10 +3,10 @@ import { useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import CerrarEvento from '@/components/eventos/CerrarEvento';
 const ESTADO_STYLES: { [key: string]: string } = {
-    abierto: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
+    abierta: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
     en_revision: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
     proceso: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
-    cerrado: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
+    cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
     cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
 };
 
@@ -24,7 +24,7 @@ interface Evento {
 }
 
 function EstadoBadge({ estado }: { estado: string }) {
-    const style = ESTADO_STYLES[estado] ?? ESTADO_STYLES['abierto'];
+    const style = ESTADO_STYLES[estado] ?? ESTADO_STYLES['abierta'];
     return (
         <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border whitespace-nowrap ${style}`}>
             {estado.replace('_', ' ')}
@@ -173,15 +173,15 @@ export default function Index() {
                     </div>
                 </div>
                 {/* Tabla */}
-                <div className="bg-white border border-verde-3 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="bg-white border border-verde-3 rounded-2xl shadow-2xl overflow-hidden flex-1 flex flex-col min-h-0">
                     {eventos.length === 0 ? (
                         <div className="p-10 text-center text-gris-1 text-sm">
                             No hay eventos que coincidan con los filtros seleccionados.
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-auto flex-1 relative">
                             <table className="w-full text-sm">
-                                <thead>
+                                <thead className="sticky top-0 bg-white z-10 shadow-sm">
                                     <tr className="border-b border-verde-3 text-left">
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
                                             #
