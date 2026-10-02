@@ -38,49 +38,49 @@ export default function UsuariosCrear() {
             <div className="max-w-[800px] mx-auto p-6 lg:p-8">
 
                 <div className="flex items-center gap-3 mb-8">
-                    <Link href="/usuarios" className="text-[#7a7f85] hover:text-white transition-colors text-sm">
+                    <Link href="/usuarios" className="text-gris-1 hover:text-gris-2 transition-colors text-sm">
                         ← Volver
                     </Link>
                 </div>
 
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-white mb-1">Crear Usuario</h1>
-                    <p className="text-[#7a7f85] text-sm">Registra una nueva cuenta con acceso al sistema.</p>
+                    <h1 className="text-2xl font-bold text-gris-2 mb-1">Crear Usuario</h1>
+                    <p className="text-gris-1 text-sm">Registra una nueva cuenta con acceso al sistema.</p>
                 </div>
 
-                <form onSubmit={submit} className="bg-[#15181c] border border-white/5 rounded-xl p-6 lg:p-8 space-y-6">
+                <form onSubmit={submit} className="bg-white border border-verde-3 rounded-xl p-6 lg:p-8 space-y-6">
 
                     <div>
-                        <label className="block text-sm font-medium text-white mb-2">RUT</label>
+                        <label className="block text-sm font-medium text-gris-2 mb-2">RUT</label>
                         <input
                             type="text"
                             value={data.rut}
                             onChange={(e) => setData('rut', e.target.value)}
-                            className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors"
+                            className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors"
                             placeholder="12.345.678-9"
                         />
                         {errors.rut && <p className="text-red-400 text-xs mt-1">{errors.rut}</p>}
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-white mb-2">Correo electrónico</label>
+                        <label className="block text-sm font-medium text-gris-2 mb-2">Correo electrónico</label>
                         <input
                             type="email"
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
-                            className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors"
+                            className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors"
                             placeholder="usuario@ejemplo.com"
                         />
                         {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-white mb-2">Roles</label>
+                        <label className="block text-sm font-medium text-gris-2 mb-2">Roles</label>
                         <div className="grid grid-cols-2 gap-3">
                             {roles?.map((rol) => (
                                 <label
                                     key={rol.id_rol}
-                                    className="flex items-center gap-2.5 bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 cursor-pointer hover:border-white/20 transition-colors"
+                                    className="flex items-center gap-2.5 bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 cursor-pointer hover:border-verde-4 transition-colors"
                                 >
                                     <input
                                         type="checkbox"
@@ -88,7 +88,7 @@ export default function UsuariosCrear() {
                                         onChange={() => toggleRol(rol.id_rol)}
                                         className="accent-[#a0f700]"
                                     />
-                                    <span className="text-white text-sm">{rol.nombre}</span>
+                                    <span className="text-gris-2 text-sm">{rol.nombre}</span>
                                 </label>
                             ))}
                         </div>
@@ -97,37 +97,37 @@ export default function UsuariosCrear() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label className="block text-sm font-medium text-white mb-2">Contraseña</label>
+                            <label className="block text-sm font-medium text-gris-2 mb-2">Contraseña</label>
                             <input
                                 type="password"
                                 value={data.password}
                                 onChange={(e) => setData('password', e.target.value)}
-                                className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors"
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors"
                                 placeholder="••••••••"
                             />
                             {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-white mb-2">Confirmar contraseña</label>
+                            <label className="block text-sm font-medium text-gris-2 mb-2">Confirmar contraseña</label>
                             <input
                                 type="password"
                                 value={data.password_confirmation}
                                 onChange={(e) => setData('password_confirmation', e.target.value)}
-                                className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors"
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors"
                                 placeholder="••••••••"
                             />
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-                        <Link href="/usuarios" className="px-5 py-2.5 rounded-lg text-sm font-medium text-[#7a7f85] hover:text-white transition-colors">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-verde-3">
+                        <Link href="/usuarios" className="px-5 py-2.5 rounded-lg text-sm font-medium text-gris-1 hover:text-gris-2 transition-colors">
                             Cancelar
                         </Link>
                         <button
                             type="submit"
                             disabled={processing}
-                            className="bg-[#a0f700] hover:bg-[#86cf00] disabled:opacity-50 text-black px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-[#a0f700]/10"
+                            className="bg-verde-5 hover:bg-verde-6 disabled:opacity-50 text-black px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-verde-5/10"
                         >
                             {processing ? 'Creando...' : 'Crear Usuario'}
                         </button>

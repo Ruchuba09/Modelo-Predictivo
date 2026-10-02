@@ -19,7 +19,7 @@ export default function Create() {
     const { tiposEvento } = usePage().props as unknown as { tiposEvento: any[] };
 
     const { data, setData, post, processing, errors } = useForm({
-        id_tipo_evento: 0,
+        id_tipo_evento: 4, // 4 = Tarjeta PARE (Accidente)
         condicion: 0,
         descripcion: '',
         referencia: '',
@@ -76,11 +76,6 @@ export default function Create() {
             return;
         }
 
-        if (data.id_tipo_evento === 0) {
-            alert("Por favor, seleccione un tipo de evento.");
-            return;
-        }
-
         post('/eventos');
     };
 
@@ -91,19 +86,19 @@ export default function Create() {
         <MainLayout>
             <Head title="Ingreso de Reporte | AVA" />
 
-            <div className="max-w-[1400px] mx-auto p-6 lg:p-8 lg:mt-4">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2">Ingreso de Reporte</h1>
-                    <p className="text-[#7a7f85] text-sm">Registra un evento detallando la condición y la descripción.</p>
+            <div className="max-w-[1400px] mx-auto p-4 lg:p-6 lg:mt-0">
+                <div className="mb-4">
+                    <h1 className="text-2xl font-bold text-gris-2 mb-1">Ingreso de Reporte</h1>
+                    <p className="text-gris-1 text-sm">Registra un evento detallando la condición y la descripción.</p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
-                    <div className="lg:col-span-2 bg-[#141414] border border-[#2d3238] rounded-2xl p-8 shadow-2xl h-full flex flex-col">
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="lg:col-span-2 bg-white border border-verde-3 rounded-xl p-6 shadow-2xl h-full flex flex-col justify-between">
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             
                             <div>
-                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
                                     Referencia 
                                 </label>
                                 <input
@@ -112,20 +107,20 @@ export default function Create() {
                                     value={data.referencia}
                                     onChange={e => setData('referencia', e.target.value)}
                                     placeholder="Ej: Chancador primario, Nivel 4..."
-                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors"
+                                    className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 transition-colors"
                                 />
                                 {errors.referencia && <p className="text-red-400 text-xs mt-1">{errors.referencia}</p>}
                             </div>
 
                             <div>
-                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
                                     Condición del Evento (PARE)
                                 </label>
                                 <select
                                     required
                                     value={data.condicion}
                                     onChange={e => setData('condicion', Number(e.target.value))}
-                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] transition-colors cursor-pointer"
+                                    className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 transition-colors cursor-pointer"
                                 >
                                     <option value={0}>Seleccione la condición identificada</option>
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -138,54 +133,58 @@ export default function Create() {
                             </div>
 
                             <div>
-                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2 mt-4">
+                                <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
                                     Descripción Detallada
                                 </label>
                                 <textarea
-                                    rows={5}
+                                    rows={3}
                                     required
+                                    maxLength={500}
                                     value={data.descripcion}
                                     onChange={e => setData('descripcion', e.target.value)}
                                     placeholder="Describe el contexto del hallazgo..."
-                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] resize-none transition-colors"
+                                    className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 resize-none transition-colors"
                                 ></textarea>
-                                {errors.descripcion && <p className="text-red-400 text-xs mt-1">{errors.descripcion}</p>}
+                                <div className="flex justify-between mt-1">
+                                    <div>{errors.descripcion && <p className="text-red-400 text-xs">{errors.descripcion}</p>}</div>
+                                    <span className={`text-[11px] font-bold ${data.descripcion.length >= 500 ? 'text-rojo-1' : 'text-gris-1'}`}>
+                                        {data.descripcion.length} / 500
+                                    </span>
+                                </div>
                             </div>
 
                             {/* SECCIÓN MULTI-ARCHIVO SEGURA */}
                             <div>
-                                <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2 mt-4">
+                                <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
                                     Evidencia Adjunta (Máx 3. archivos)
                                 </label>
                                 
                                 {archivosSubidos.length < 3 && (
-                                    <>
+                                    <div className="flex items-center justify-between">
                                         <input
                                             type="file"
                                             multiple
                                             ref={fileInputRef}
                                             accept="image/*,.pdf,.doc,.docx"
                                             onChange={handleFileChange}
-                                            className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#a0f700] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#a0f700]/10 file:text-[#a0f700] hover:file:bg-[#a0f700]/20 cursor-pointer transition-colors"
+                                            className="w-full max-w-sm bg-verde-1 border border-verde-3 rounded-lg px-2 py-1.5 text-sm text-gris-2 focus:outline-none focus:border-verde-5 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[13px] file:font-bold file:bg-verde-5/10 file:text-verde-6 hover:file:bg-verde-5/20 cursor-pointer transition-colors"
                                         />
-                                        <p className="text-[#7a7f85] text-xs mt-2">Puedes adjuntar hasta 3 fotos o documentos (JPG, PNG, PDF).</p>
-                                    </>
+                                        <p className="text-gris-1 text-xs">Máx 3 fotos/docs</p>
+                                    </div>
                                 )}
 
                                 {archivosSubidos.length > 0 && (
-                                    <div className="flex flex-col gap-2 mt-3">
+                                    <div className="flex flex-row flex-wrap gap-2 mt-2">
                                         {archivosSubidos.map((file, index) => (
-                                            <div key={index} className="flex items-center justify-between gap-3 bg-[#0a0a0a] border border-[#a0f700]/50 p-2 pr-4 rounded-lg w-full">
-                                                <div className="flex items-center gap-3 overflow-hidden">
-                                                    <span className="text-xl shrink-0">📎</span>
-                                                    <span className="text-sm text-[#a0f700] font-medium truncate">
-                                                        {file.name}
-                                                    </span>
-                                                </div>
+                                            <div key={index} className="flex items-center gap-2 bg-verde-1 border border-verde-5/50 px-3 py-1.5 rounded-lg max-w-[200px]">
+                                                <span className="text-sm shrink-0">📎</span>
+                                                <span className="text-xs text-verde-6 font-medium truncate flex-1">
+                                                    {file.name}
+                                                </span>
                                                 <button 
                                                     type="button" 
                                                     onClick={() => removerArchivo(index)}
-                                                    className="text-[#FF4B4B] text-lg font-black px-2 hover:scale-110 transition-transform shrink-0"
+                                                    className="text-rojo-1 text-sm font-black hover:scale-110 transition-transform shrink-0"
                                                     title="Quitar archivo"
                                                 >
                                                     ✕
@@ -198,16 +197,16 @@ export default function Create() {
                             </div>
 
                             {(errors as any).general && (
-                                <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/30 rounded-lg px-4 py-3">
+                                <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/30 rounded-lg px-3 py-2">
                                     {(errors as any).general}
                                 </p>
                             )}
 
-                            <div className="flex justify-center gap-4 pt-6 border-t border-[#2d3238] mt-8">
+                            <div className="pt-4 border-t border-verde-3 mt-4 flex justify-end">
                                 <button
                                     type="submit"
                                     disabled={processing}
-                                    className="px-6 py-3 rounded-lg text-lg font-bold bg-[#a0f700] hover:bg-[#86cf00] text-black transition-colors shadow-lg shadow-[#a0f700]/20 flex items-center gap-2 disabled:opacity-50"
+                                    className="px-6 py-2.5 rounded-lg text-sm font-bold bg-verde-5 hover:bg-verde-6 text-black transition-colors shadow-lg shadow-verde-5/20 flex items-center gap-2 disabled:opacity-50"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
@@ -219,22 +218,22 @@ export default function Create() {
                     </div>
 
                     <div className="lg:col-span-1">
-                        <div className="bg-[#111111] border border-[#2d3238] rounded-2xl p-6 shadow-xl sticky top-6 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar flex flex-col">
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">
+                        <div className="bg-white border border-verde-3 rounded-xl p-4 shadow-xl flex flex-col h-full">
+                            <h3 className="text-[13px] font-bold text-gris-2 uppercase tracking-wider mb-3">
                                 Guía de Condiciones
                             </h3>
-                            <div className="space-y-2">
+                            <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-2">
                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
                                     <div
                                         key={num}
-                                        className={`p-3 rounded-lg border text-xs leading-relaxed transition-colors duration-300 flex gap-3 cursor-pointer ${
+                                        className={`px-3 py-2 rounded-lg border text-[13px] leading-tight transition-colors duration-300 flex gap-2 cursor-pointer ${
                                             data.condicion === num
-                                                ? 'bg-[#a0f700]/10 border-[#a0f700]/50 text-white shadow-inner'
-                                                : 'bg-[#0a0a0a] border-[#2d3238]/50 text-[#7a7f85] hover:border-[#7a7f85]/50'
+                                                ? 'bg-verde-5/10 border-verde-5/50 text-gris-2 shadow-inner'
+                                                : 'bg-verde-1 border-verde-3/50 text-gris-1 hover:border-gris-1/50'
                                         }`}
                                         onClick={() => setData('condicion', num)}
                                     >
-                                        <div className={`font-black shrink-0 ${data.condicion === num ? 'text-[#a0f700]' : 'text-gray-600'}`}>
+                                        <div className={`font-black shrink-0 ${data.condicion === num ? 'text-verde-6' : 'text-gray-600'}`}>
                                             {num.toString().padStart(2, '0')}.
                                         </div>
                                         <div>{condicionesPare[num]}</div>

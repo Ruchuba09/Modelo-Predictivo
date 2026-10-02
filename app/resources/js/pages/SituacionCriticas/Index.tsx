@@ -54,21 +54,21 @@ export default function Index({ situacionCriticas }: IndexProps) {
             <div className="mx-auto max-w-[1400px] p-6 lg:p-8">
                 <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
                     <div>
-                        <h1 className="mb-1 text-2xl font-bold text-white">Situaciones críticas</h1>
-                        <p className="text-sm text-[#7a7f85]">Registro de eventos críticos y su seguimiento.</p>
+                        <h1 className="mb-1 text-2xl font-bold text-gris-2">Situaciones críticas</h1>
+                        <p className="text-sm text-gris-1">Registro de eventos críticos y su seguimiento.</p>
                     </div>
                     <Link
                         href="/situacion-criticas/crear"
-                        className="flex items-center gap-2 rounded-lg bg-[#a0f700] px-5 py-2.5 text-sm font-bold text-black shadow-lg shadow-[#a0f700]/10 transition-colors hover:bg-[#86cf00]"
+                        className="flex items-center gap-2 rounded-lg bg-verde-5 px-5 py-2.5 text-sm font-bold text-black shadow-lg shadow-verde-5/10 transition-colors hover:bg-verde-6"
                     >
                         <span className="text-lg leading-none">+</span> Nueva situación crítica
                     </Link>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-white/5 bg-[#15181c]">
+                <div className="overflow-hidden rounded-xl border border-verde-3 bg-white">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-white/5 text-left text-[#7a7f85]">
+                            <tr className="border-b border-verde-3 text-left text-gris-1">
                                 <th className="px-6 py-4 font-medium">Trabajador</th>
                                 <th className="px-6 py-4 font-medium">Supervisor</th>
                                 <th className="px-6 py-4 font-medium">Evento</th>
@@ -79,13 +79,13 @@ export default function Index({ situacionCriticas }: IndexProps) {
                         </thead>
                         <tbody>
                             {situacionCriticas.map((situacionCritica) => (
-                                <tr key={situacionCritica.id} className="border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.02]">
-                                    <td className="px-6 py-4 text-white">{nombreTrabajador(situacionCritica.trabajador)}</td>
-                                    <td className="px-6 py-4 text-white">{nombreTrabajador(situacionCritica.supervisor?.trabajador)}</td>
-                                    <td className="px-6 py-4 text-white">{situacionCritica.evento?.descripcion ?? '—'}</td>
-                                    <td className="px-6 py-4 text-white">{situacionCritica.referencia}</td>
+                                <tr key={situacionCritica.id} className="border-b border-verde-3 transition-colors last:border-0 hover:bg-verde-1">
+                                    <td className="px-6 py-4 text-gris-2">{nombreTrabajador(situacionCritica.trabajador)}</td>
+                                    <td className="px-6 py-4 text-gris-2">{nombreTrabajador(situacionCritica.supervisor?.trabajador)}</td>
+                                    <td className="px-6 py-4 text-gris-2">{situacionCritica.evento?.descripcion ?? '—'}</td>
+                                    <td className="px-6 py-4 text-gris-2">{situacionCritica.referencia}</td>
                                     <td className="px-6 py-4">
-                                        <span className="rounded-md border border-[#a0f700]/20 bg-white/5 px-2 py-1 text-xs text-[#a0f700]">
+                                        <span className="rounded-md border border-verde-5/20 bg-verde-2 px-2 py-1 text-xs text-verde-6">
                                             {CONDICION_LABEL[situacionCritica.condicion] ?? situacionCritica.condicion}
                                         </span>
                                     </td>
@@ -93,13 +93,13 @@ export default function Index({ situacionCriticas }: IndexProps) {
                                         <div className="flex items-center justify-end gap-2">
                                             <Link
                                                 href={`/situacion-criticas/${situacionCritica.id}`}
-                                                className="rounded-md border border-white/10 px-3 py-1.5 text-xs font-medium text-[#7a7f85] transition-colors hover:border-white/20 hover:text-white"
+                                                className="rounded-md border border-verde-3 px-3 py-1.5 text-xs font-medium text-gris-1 transition-colors hover:border-verde-4 hover:text-gris-2"
                                             >
                                                 Detalles
                                             </Link>
                                             <Link
                                                 href={`/situacion-criticas/${situacionCritica.id}/editar`}
-                                                className="rounded-md border border-[#a0f700]/20 px-3 py-1.5 text-xs font-medium text-[#a0f700] transition-colors hover:border-[#a0f700]/40 hover:text-[#86cf00]"
+                                                className="rounded-md border border-verde-5/20 px-3 py-1.5 text-xs font-medium text-verde-6 transition-colors hover:border-verde-5/40 hover:text-verde-6"
                                             >
                                                 Editar
                                             </Link>
@@ -116,7 +116,7 @@ export default function Index({ situacionCriticas }: IndexProps) {
 
                             {situacionCriticas.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-10 text-center text-[#7a7f85]">
+                                    <td colSpan={6} className="px-6 py-10 text-center text-gris-1">
                                         No hay situaciones críticas registradas todavía.
                                     </td>
                                 </tr>
