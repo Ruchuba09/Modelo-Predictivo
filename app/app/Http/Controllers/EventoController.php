@@ -42,35 +42,84 @@ class EventoController extends Controller
             'datosGrafico' => $tarjetasPare
         ]);
     }
-    public function index()
+    public function index(Request $request)
     {
-        $eventos = Evento::with(['tipoEvento', 'proyecto', 'area'])
-            ->orderByDesc('fecha_creacion')
-            ->get();
+        $query = Evento::with(['tipoEvento', 'proyecto']);
+
+        if ($request->filled('id_proyecto')) {
+            $query->where('id_proyecto', $request->id_proyecto);
+        }
+
+        if ($request->filled('condicion')) {
+            $query->where('condicion', $request->condicion);
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('fecha_inicio')) {
+            $query->whereDate('fecha_creacion', '>=', $request->fecha_inicio);
+        }
+
+        if ($request->filled('fecha_fin')) {
+            $query->whereDate('fecha_creacion', '<=', $request->fecha_fin);
+        }
+
+        $eventos = $query->orderByDesc('fecha_creacion')->get();
+        $proyectos = \App\Models\Proyecto::all();
 
         return Inertia::render('Eventos/Index', [
             'eventos' => $eventos,
+            'proyectos' => $proyectos,
+            'filtros' => $request->only(['id_proyecto', 'condicion', 'estado', 'fecha_inicio', 'fecha_fin'])
         ]);
     }
-    public function indexGrafico()
+    public function indexGrafico(Request $request)
     {
-        $eventos = Evento::select('fecha_creacion', 'condicion')
-            ->where('fecha_creacion', '>=', now()->subDays(7))
-            ->get()
-            ->groupBy(function ($item) {
-                return \Carbon\Carbon::parse($item->fecha_creacion)->format('Y-m-d');
-            });
+        $query = Evento::where('id_tipo_evento', 4);
 
-        $datosGrafico = $eventos->map(function ($grupo, $fecha) {
-            $fila = ['fecha' => $fecha];
-            for ($i = 1; $i <= 10; $i++) {
-                $fila["c{$i}"] = $grupo->where('condicion', $i)->count();
-            }
-            return $fila;
-        })->values();
+        if ($request->filled('id_proyecto')) {
+            $query->where('id_proyecto', $request->id_proyecto);
+        }
+        if ($request->filled('fecha_inicio')) {
+            $query->whereDate('fecha_creacion', '>=', $request->fecha_inicio);
+        }
+        if ($request->filled('fecha_fin')) {
+            $query->whereDate('fecha_creacion', '<=', $request->fecha_fin);
+        }
+
+        $eventos = $query->get();
+
+        $condicionesNombres = [
+            1 => '1. Cond. Inseguras',
+            2 => '2. Herramientas',
+            3 => '3. Falta EPP',
+            4 => '4. Capacitación',
+            5 => '5. Procedimientos',
+            6 => '6. Recursos',
+            7 => '7. AST/VATS/ERT',
+            8 => '8. Permisos',
+            9 => '9. Est. Físico/Mental',
+            10 => '10. Otros',
+        ];
+
+        // Calculate totals per condition
+        $datosGrafico = [];
+        foreach ($condicionesNombres as $id => $nombre) {
+            $datosGrafico[] = [
+                'id' => "c{$id}",
+                'condicion' => $nombre,
+                'hallazgos' => $eventos->where('condicion', $id)->count()
+            ];
+        }
+
+        $proyectos = \App\Models\Proyecto::all();
 
         return Inertia::render('dashboard', [
-            'datosGrafico' => $datosGrafico
+            'datosGrafico' => $datosGrafico,
+            'proyectos' => $proyectos,
+            'filtros' => $request->only(['id_proyecto', 'fecha_inicio', 'fecha_fin'])
         ]);
     }
 
@@ -143,7 +192,7 @@ class EventoController extends Controller
     $request->validate([
         'id_tipo_evento' => 'required|integer',
         'condicion'      => 'required|integer',
-        'descripcion'    => 'required|string',
+        'descripcion'    => 'required|string|max:500',
         'referencia'     => 'required|string',
         'evidencia'      => 'nullable|array|max:3',
         'evidencia.*'    => 'file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120', // Máximo 5MB por archivo
@@ -161,16 +210,22 @@ class EventoController extends Controller
     }
 
     // 3. Crear el registro en la base de datos
-    Evento::create([
+    $evento = Evento::create([
         'id_tipo_evento' => $request->id_tipo_evento,
         'condicion'      => $request->condicion,
         'descripcion'    => $request->descripcion,
         'referencia'     => $request->referencia,
+        'id_proyecto'    => $this->proyectoActualDelTrabajador(),
+        'id_trabajador'  => auth()->user()->trabajador?->id_trabajador,
+        'estado'         => 'abierta',
         // Convertimos el arreglo de rutas a JSON para guardarlo en una sola columna
         'evidencia'      => json_encode($rutasArchivos), 
     ]);
 
-    return redirect()->route('dashboard')->with('success', 'Reporte creado con éxito');
+    // 4. Lógica de Alertas Inmediatas (Módulo A) - Todas las tarjetas PARE son críticas
+    \Illuminate\Support\Facades\Log::alert("ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE registrada. Evento ID: {$evento->id_evento}, Proyecto ID: {$evento->id_proyecto}");
+
+    return redirect()->route('eventos.index')->with('success', 'Reporte creado con éxito');
 }
 
 
@@ -211,7 +266,7 @@ class EventoController extends Controller
     
     public function show(Evento $evento)
     {
-        $evento->load(['tipoEvento', 'area', 'proyecto', 'administrador']);
+        $evento->load(['tipoEvento', 'proyecto', 'administrador']);
 
         return Inertia::render('Eventos/Show', [
             'evento' => $evento,
@@ -251,7 +306,7 @@ class EventoController extends Controller
 
         abort_if(! $cuadrillaObrero, 422, 'El trabajador no tiene cuadrilla asignada.');
         abort_unless($cuadrillaObrero->id_supervisor === $supervisor->id_trabajador, 403, 'No eres el supervisor asignado a esta cuadrilla.');
-        abort_if($evento->estado !== 'abierta', 422, 'El evento ya fue tomado o cerrado.');
+        abort_if($evento->estado !== 'abierta', 422, 'El evento ya fue tomado o cerrada.');
 
         $evento->update([
             'id_supervisor' => $supervisor->id_trabajador,
@@ -261,19 +316,35 @@ class EventoController extends Controller
         return redirect()->route('eventos.show', $evento->id_evento);
     }
 
-    public function cerrar(Evento $evento)
+    public function cerrar(Request $request, Evento $evento)
     {
         $administrativo = $this->administrativoAutenticado();
 
-        abort_if($evento->estado !== 'abierto', 422, 'El evento debe estar en proceso antes de cerrarse.');
+        abort_if(!in_array($evento->estado, ['abierta', 'proceso']), 422, 'El evento debe estar abierta o en proceso antes de cerrarse.');
+
+        $request->validate([
+            'justificacion'    => 'required|string|max:500',
+            'evidencia_cierre' => 'nullable|array|max:3',
+            'evidencia_cierre.*' => 'file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+        ]);
+
+        $rutasArchivos = [];
+        if ($request->hasFile('evidencia_cierre')) {
+            foreach ($request->file('evidencia_cierre') as $archivo) {
+                $ruta = $archivo->store('evidencias_cierre', 'public');
+                $rutasArchivos[] = $ruta;
+            }
+        }
 
         $evento->update([
-            'id_administrativo' => $administrativo->id_trabajador,
+            'id_administrador' => $administrativo->id_trabajador,
             'estado' => 'cerrada',
+            'justificacion' => $request->justificacion,
+            'evidencia_cierre' => json_encode($rutasArchivos),
             'fecha_cierre' => now(),
         ]);
 
-        return redirect()->route('eventos.show', $evento->id_evento);
+        return redirect()->route('eventos.show', $evento->id_evento)->with('success', 'Evento cerrada con éxito');
     }
 
     public function destroy(Evento $evento)
@@ -283,3 +354,6 @@ class EventoController extends Controller
         return redirect()->route('eventos.index');
     }
 }
+
+
+

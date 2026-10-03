@@ -43,8 +43,8 @@ function nombreTrabajador(trabajador?: Trabajador) {
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div>
-            <dt className="text-sm font-medium text-[#7a7f85]">{label}</dt>
-            <dd className="mt-1 text-sm text-white">{children}</dd>
+            <dt className="text-sm font-medium text-gris-1">{label}</dt>
+            <dd className="mt-1 text-sm text-gris-2">{children}</dd>
         </div>
     );
 }
@@ -56,11 +56,11 @@ export default function Show({ situacionCritica }: ShowProps) {
 
             <div className="mx-auto max-w-2xl p-6 lg:p-8">
                 <div className="mb-8">
-                    <h1 className="mb-1 text-2xl font-bold text-white">Detalle de situación crítica</h1>
-                    <p className="text-sm text-[#7a7f85]">Información completa del evento crítico registrado.</p>
+                    <h1 className="mb-1 text-2xl font-bold text-gris-2">Detalle de situación crítica</h1>
+                    <p className="text-sm text-gris-1">Información completa del evento crítico registrado.</p>
                 </div>
 
-                <div className="rounded-xl border border-white/5 bg-[#15181c] p-6">
+                <div className="rounded-xl border border-verde-3 bg-white p-6">
                     <dl className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                         <Campo label="Trabajador">{nombreTrabajador(situacionCritica.trabajador)}</Campo>
                         <Campo label="Supervisor">{nombreTrabajador(situacionCritica.supervisor?.trabajador)}</Campo>
@@ -73,13 +73,13 @@ export default function Show({ situacionCritica }: ShowProps) {
                         </div>
                     </dl>
 
-                    <div className="mt-8 flex justify-between border-t border-white/5 pt-6">
-                        <Link href="/situacion-criticas" className="text-sm text-[#7a7f85] hover:text-white">
+                    <div className="mt-8 flex justify-between border-t border-verde-3 pt-6">
+                        <Link href="/situacion-criticas" className="text-sm text-gris-1 hover:text-gris-2">
                             ← Volver al listado
                         </Link>
                         <Link
                             href={`/situacion-criticas/${situacionCritica.id}/editar`}
-                            className="rounded-lg bg-[#a0f700] px-5 py-2.5 text-sm font-bold text-black shadow-lg shadow-[#a0f700]/10 transition-colors hover:bg-[#86cf00]"
+                            className="rounded-lg bg-verde-5 px-5 py-2.5 text-sm font-bold text-black shadow-lg shadow-verde-5/10 transition-colors hover:bg-verde-6"
                         >
                             Editar
                         </Link>

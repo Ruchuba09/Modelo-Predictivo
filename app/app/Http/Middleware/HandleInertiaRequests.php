@@ -52,6 +52,17 @@ class HandleInertiaRequests extends Middleware
                     'permisos' => $user->permisosArray(),
                 ] : null,
             ],
+            'notificaciones' => $user ? \App\Models\Evento::orderByDesc('fecha_creacion')
+                ->take(5)
+                ->get()
+                ->map(function($e) {
+                    return [
+                        'id' => $e->id_evento,
+                        'titulo' => 'NUEVO REPORTE',
+                        'mensaje' => 'Se abrió un reporte #' . $e->id_evento . ' con fecha ' . $e->fecha_creacion->format('d-m-Y'),
+                        'fecha' => $e->fecha_creacion->diffForHumans(),
+                    ];
+                }) : [],
         ];
     }
 }

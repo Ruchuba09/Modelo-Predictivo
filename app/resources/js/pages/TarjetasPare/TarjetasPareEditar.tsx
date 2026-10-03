@@ -45,21 +45,21 @@ export default function TarjetasPareEditar() {
             <div className="max-w-[800px] mx-auto p-6 lg:p-8">
 
                 <div className="flex items-center gap-3 mb-8">
-                    <Link href="/tarjetas-pare" className="text-[#7a7f85] hover:text-white transition-colors text-sm">← Volver</Link>
+                    <Link href="/tarjetas-pare" className="text-gris-1 hover:text-gris-2 transition-colors text-sm">← Volver</Link>
                 </div>
 
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-white mb-1">Editar Tarjeta PARE</h1>
-                    <p className="text-[#7a7f85] text-sm">Modifica el reporte #{tarjeta.id}.</p>
+                    <h1 className="text-2xl font-bold text-gris-2 mb-1">Editar Tarjeta PARE</h1>
+                    <p className="text-gris-1 text-sm">Modifica el reporte #{tarjeta.id}.</p>
                 </div>
 
-                <form onSubmit={submit} className="bg-[#15181c] border border-white/5 rounded-xl p-6 lg:p-8 space-y-6">
+                <form onSubmit={submit} className="bg-white border border-verde-3 rounded-xl p-6 lg:p-8 space-y-6">
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label className="block text-sm font-medium text-white mb-2">Trabajador</label>
+                            <label className="block text-sm font-medium text-gris-2 mb-2">Trabajador</label>
                             <select value={data.id_trabajador} onChange={(e) => setData('id_trabajador', e.target.value)}
-                                className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors">
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors">
                                 {trabajadores?.map((t) => (
                                     <option key={t.id} value={t.id}>{t.nombre_1} {t.apellido_1} — {t.rut}</option>
                                 ))}
@@ -68,9 +68,9 @@ export default function TarjetasPareEditar() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-white mb-2">Modelo de tarjeta</label>
+                            <label className="block text-sm font-medium text-gris-2 mb-2">Modelo de tarjeta</label>
                             <select value={data.id_modelo} onChange={(e) => setData('id_modelo', e.target.value)}
-                                className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors">
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors">
                                 {modelos?.map((m) => (
                                     <option key={m.id} value={m.id}>{m.nombre}</option>
                                 ))}
@@ -81,9 +81,9 @@ export default function TarjetasPareEditar() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label className="block text-sm font-medium text-white mb-2">Escala de riesgo</label>
+                            <label className="block text-sm font-medium text-gris-2 mb-2">Escala de riesgo</label>
                             <select value={data.id_escala_riesgo} onChange={(e) => setData('id_escala_riesgo', e.target.value)}
-                                className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors">
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors">
                                 {escalas?.map((esc) => (
                                     <option key={esc.id} value={esc.id}>{esc.nivel}</option>
                                 ))}
@@ -92,9 +92,9 @@ export default function TarjetasPareEditar() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-white mb-2">Proyecto (opcional)</label>
+                            <label className="block text-sm font-medium text-gris-2 mb-2">Proyecto (opcional)</label>
                             <select value={data.id_proyecto} onChange={(e) => setData('id_proyecto', e.target.value)}
-                                className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors">
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors">
                                 <option value="">Sin proyecto asociado</option>
                                 {proyectos?.map((p) => (
                                     <option key={p.id} value={p.id}>{p.nombre}{p.alias ? ` (${p.alias})` : ''}</option>
@@ -105,23 +105,23 @@ export default function TarjetasPareEditar() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-white mb-2">Ubicación</label>
+                        <label className="block text-sm font-medium text-gris-2 mb-2">Ubicación</label>
                         <input type="text" value={data.ubicacion} onChange={(e) => setData('ubicacion', e.target.value)}
-                            className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors" />
+                            className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors" />
                         {errors.ubicacion && <p className="text-red-400 text-xs mt-1">{errors.ubicacion}</p>}
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-white mb-2">Descripción del hallazgo</label>
+                        <label className="block text-sm font-medium text-gris-2 mb-2">Descripción del hallazgo</label>
                         <textarea value={data.descripcion} onChange={(e) => setData('descripcion', e.target.value)} rows={4}
-                            className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors" />
+                            className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors" />
                         {errors.descripcion && <p className="text-red-400 text-xs mt-1">{errors.descripcion}</p>}
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-white mb-2">Estado</label>
+                        <label className="block text-sm font-medium text-gris-2 mb-2">Estado</label>
                         <select value={data.estado} onChange={(e) => setData('estado', e.target.value)}
-                            className="w-full bg-[#0d0f12] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700] transition-colors">
+                            className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors">
                             <option value="abierta">Abierta</option>
                             <option value="en_proceso">En proceso</option>
                             <option value="cerrada">Cerrada</option>
@@ -129,9 +129,9 @@ export default function TarjetasPareEditar() {
                         {errors.estado && <p className="text-red-400 text-xs mt-1">{errors.estado}</p>}
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-                        <Link href="/tarjetas-pare" className="px-5 py-2.5 rounded-lg text-sm font-medium text-[#7a7f85] hover:text-white transition-colors">Cancelar</Link>
-                        <button type="submit" disabled={processing} className="bg-[#a0f700] hover:bg-[#86cf00] disabled:opacity-50 text-black px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-[#a0f700]/10">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-verde-3">
+                        <Link href="/tarjetas-pare" className="px-5 py-2.5 rounded-lg text-sm font-medium text-gris-1 hover:text-gris-2 transition-colors">Cancelar</Link>
+                        <button type="submit" disabled={processing} className="bg-verde-5 hover:bg-verde-6 disabled:opacity-50 text-black px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-verde-5/10">
                             {processing ? 'Guardando...' : 'Guardar Cambios'}
                         </button>
                     </div>
