@@ -14,7 +14,7 @@ Aplicación web para la gestión y análisis predictivo de incidentes, tarjetas 
 ## Estructura del proyecto
 
 ```
-Modelo-Predictivo-Nicolas/
+Modelo-Predictivo/
 ├── app/             # Aplicación Laravel + React (el código del proyecto)
 └── docker/          # Configuración de Docker (Nginx, PHP, Redis, PostgreSQL, pgAdmin)
 ```
@@ -43,11 +43,42 @@ Antes de elegir una opción de instalación, revisa qué tienes instalado en tu 
 
 No necesitas instalar PHP, Composer, Node ni PostgreSQL: todo corre dentro de los contenedores.
 
+#### Habilitar la virtualización en la BIOS (solo Windows)
+
+Docker Desktop necesita que la virtualización de hardware esté activada. Si al instalar o abrir Docker Desktop aparece un error como `Virtualization support not detected` o `WSL 2 installation is incomplete`, debes habilitarla manualmente:
+
+1. Reinicia el computador y entra a la **BIOS/UEFI** (normalmente presionando `F2`, `F10`, `F12`, `Del` o `Esc` justo al encender el equipo; la tecla depende de la marca del computador).
+2. Busca una opción llamada **Virtualization Technology**, **Intel VT-x**, **AMD-V** o **SVM Mode** (suele estar en la pestaña `Advanced` o `CPU Configuration`).
+3. Cámbiala a **Enabled**.
+4. Guarda los cambios (`F10` en la mayoría de los equipos) y reinicia.
+
+#### Instalar WSL (Windows Subsystem for Linux)
+
+Docker Desktop en Windows requiere WSL 2 para funcionar. Para instalarlo:
+
+1. Abre **PowerShell como administrador** (click derecho → `Ejecutar como administrador`).
+2. Ejecuta el siguiente comando:
+
+```powershell
+wsl --install
+```
+
+3. Reinicia el computador cuando termine la instalación.
+4. Si WSL ya estaba instalado pero desactualizado, actualízalo con:
+
+```powershell
+wsl --update
+```
+
+5. Abre Docker Desktop y confirma que en `Settings` → `General` esté marcada la opción `Use the WSL 2 based engine`.
+
 ### A.2 Clonar el repositorio
 
+Clona el repositorio oficial desde la rama `main`:
+
 ```bash
-git clone https://github.com/Ruchuba09/Modelo-Predictivo
-cd Modelo-Predictivo-Nicolas
+git clone -b main https://github.com/AVA-UCSC/Modelo-Predictivo
+cd Modelo-Predictivo
 ```
 
 ### A.3 Configurar variables de entorno de Docker
@@ -59,30 +90,32 @@ cd docker
 cp .env.example .env
 ```
 
-Edita `docker/.env` con tus datos:
+#### Obtener tu token de GitHub
+
+El archivo necesita un **Personal Access Token** de GitHub para poder clonar el repositorio dentro del contenedor. Para generarlo:
+
+1. Entra a [github.com/settings/tokens](https://github.com/settings/tokens).
+2. Click en **Generate new token** → **Generate new token (classic)**.
+3. En `Note`, ponle un nombre que lo identifique, por ejemplo `modelo-predictivo-docker`.
+4. En `Expiration`, elige una duración (por ejemplo `90 days` o `No expiration`).
+5. En la lista de permisos (`Select scopes`), marca la casilla:
+   - ☑ **repo** (esto marca automáticamente todas las sub-casillas: `repo:status`, `repo_deployment`, `public_repo`, `repo:invite`, `security_events`).
+6. Baja hasta el final y click en **Generate token**.
+7. **Copia el token inmediatamente** (empieza con `ghp_...`): GitHub solo lo muestra una vez, si lo pierdes deberás generar uno nuevo.
+
+#### Completar el `.env`
+
+Edita `docker/.env` con tus datos, respetando el formato `CLAVE=valor` (sin espacios alrededor del `=`):
 
 ```env
-GITHUB_TOKEN    = # Un Personal Access Token de GitHub, generado en https://github.com/settings/tokens
-URL_REPOSITORIO = https://github.com/AVA-UCSC/Modelo-Predictivo-Nicolas
-RAMA            = Nicolas
-CORREO          = # Tu correo asociado a GitHub
-NOMBRE          = # Tu nombre de usuario de GitHub
-```
-### A.4 Instalación de Biblioteca
-
-Desde la powershell, un comando a la vez:
-
-```bash
-docker compose exec laravel-app npm install recharts
-```
-```bash
-docker compose exec laravel-app npm install html2canvas
-```
-```bash
-docker compose exce laravel-app npm install telescope 
+GITHUB_TOKEN=ghp_pega_aquí_tu_token
+URL_REPOSITORIO=https://github.com/AVA-UCSC/Modelo-Predictivo
+RAMA=main
+CORREO=tu_correo@ejemplo.com
+NOMBRE=tu_usuario_de_github
 ```
 
-### A.5 Levantar los contenedores
+### A.4 Levantar los contenedores
 
 Desde la carpeta `docker/`:
 
@@ -91,6 +124,22 @@ docker compose up -d --build
 ```
 
 Esto va a construir y levantar: Laravel, Nginx, Redis, PostgreSQL, workers de colas, pgAdmin y phpMyAdmin. La primera vez puede tardar varios minutos.
+
+### A.5 Instalación de bibliotecas
+
+> ⚠️ Estos comandos se ejecutan en la terminal **PowerShell integrada de Visual Studio Code** (`Terminal` → `New Terminal`), **no** en una PowerShell independiente del sistema. Asegúrate de tener la carpeta del proyecto abierta en VS Code y los contenedores ya levantados (paso anterior).
+
+Ejecuta los siguientes comandos uno a la vez:
+
+```bash
+docker compose exec laravel-app npm install recharts
+```
+```bash
+docker compose exec laravel-app npm install html2canvas
+```
+```bash
+docker compose exec laravel-app npm install telescope
+```
 
 ### A.6 Acceder a la aplicación
 
@@ -128,11 +177,11 @@ Para registrar la base de datos dentro de pgAdmin:
    - `Host`: `postgres`
    - `Username`: `postgres`
    - `Password`: `postgres` (marca `Save password`)
-  
+
 ### A.9 Credenciales para el Login (Copia y pega)
 
-- Usuario/RUT: 111111111 
-- Contraseña : 12345678 
+- Usuario/RUT: 111111111
+- Contraseña: 12345678
 
 ### A.10 Detener y limpiar el entorno
 
@@ -187,9 +236,11 @@ Instala lo siguiente si no lo tienes ya:
 
 ### B.2 Clonar el repositorio
 
+Clona el repositorio oficial desde la rama `main`:
+
 ```bash
-git clone https://github.com/AVA-UCSC/Modelo-Predictivo-Nicolas
-cd Modelo-Predictivo-Nicolas/app
+git clone -b main https://github.com/AVA-UCSC/Modelo-Predictivo
+cd Modelo-Predictivo/app
 ```
 
 > A partir de aquí, todos los comandos se ejecutan dentro de la carpeta `app/`.
@@ -274,7 +325,8 @@ Por defecto: `http://localhost:8000`
 
 ## Solución de problemas
 
-- **Error 500 al primer ingreso (Docker):** es normal, sigue el paso [A.6](#a6-configuración-inicial-de-laravel-dentro-del-contenedor) para generar la key y correr las migraciones.
+- **`Virtualization support not detected` o Docker Desktop no arranca (Windows):** revisa la sección [Habilitar la virtualización en la BIOS](#habilitar-la-virtualización-en-la-bios-solo-windows) y [Instalar WSL](#instalar-wsl-windows-subsystem-for-linux) en el paso A.1.
+- **Error 500 al primer ingreso (Docker):** es normal, sigue el paso [A.7](#a7-configuración-inicial-de-laravel-dentro-del-contenedor) para generar la key y correr las migraciones.
 - **Error de conexión a la base de datos (local):** revisa que PostgreSQL esté corriendo y que los datos en `.env` (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`) sean correctos.
 - **`npm install` falla por dependencias nativas:** borra `node_modules` y `package-lock.json`, y vuelve a ejecutar `npm install`.
 - **Cambios en `.env` no se reflejan:** ejecuta `php artisan config:clear`.
