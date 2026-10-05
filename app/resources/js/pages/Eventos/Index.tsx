@@ -1,7 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
-import CerrarEvento from '@/components/eventos/CerrarEvento';
 const ESTADO_STYLES: { [key: string]: string } = {
     abierta: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
     en_revision: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
@@ -183,7 +182,7 @@ export default function Index() {
                             <table className="w-full text-sm">
                                 <thead className="sticky top-0 bg-white z-10 shadow-sm">
                                     <tr className="border-b border-verde-3 text-left">
-                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
+                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold text-center w-16">
                                             #
                                         </th>
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
@@ -192,16 +191,18 @@ export default function Index() {
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
                                             Proyecto
                                         </th>
-                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
+                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold text-center">
                                             Condición
                                         </th>
-                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
+                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold text-center">
                                             Fecha
                                         </th>
-                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
+                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold text-center">
                                             Estado
                                         </th>
-                                        <th className="px-6 py-4"></th>
+                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold text-center">
+                                            Acciones
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -210,32 +211,35 @@ export default function Index() {
                                             key={evento.id_evento}
                                             className="border-b border-verde-3/60 last:border-b-0 hover:bg-verde-2 transition-colors"
                                         >
-                                            <td className="px-6 py-4 text-gris-1 font-bold">
+                                            <td className="px-6 py-4 text-gris-1 font-bold text-center">
                                                 #{evento.id_evento}
+                                            </td>
+                                            <td className="px-6 py-4 text-gris-1">
+                                                {evento.referencia ?? '—'}
                                             </td>
                                             <td className="px-6 py-4 text-gris-1">
                                                 {evento.proyecto?.nombre ?? '—'}
                                             </td>
-                                            <td className="px-6 py-4 text-gris-1">#{evento.condicion}</td>
-                                            <td className="px-6 py-4 text-gris-1">
+                                            <td className="px-6 py-4 text-gris-1 font-bold text-center whitespace-nowrap">
+                                                C-{evento.condicion}
+                                            </td>
+                                            <td className="px-6 py-4 text-gris-1 text-center whitespace-nowrap">
                                                 {evento.fecha_creacion
                                                     ? new Date(evento.fecha_creacion).toLocaleDateString('es-CL')
                                                     : '—'}
                                             </td>
-                                            
-                                            <td className="px-6 py-4">
-                                                <CerrarEvento eventoId={evento.id_evento} estado={evento.estado} />
-                                            </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 text-center">
                                                 <EstadoBadge estado={evento.estado} />
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Link
-                                                    href={route('eventos.show', evento.id_evento)}
-                                                    className="text-verde-6 hover:underline font-bold text-xs uppercase"
-                                                >
-                                                    Ver →
-                                                </Link>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center">
+                                                    <Link
+                                                        href={route('eventos.show', evento.id_evento)}
+                                                        className="text-verde-6 hover:underline font-bold text-xs uppercase"
+                                                    >
+                                                        Ver ➔
+                                                    </Link>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
