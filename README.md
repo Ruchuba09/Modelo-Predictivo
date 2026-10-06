@@ -180,7 +180,7 @@ Para registrar la base de datos dentro de pgAdmin:
 
 ### A.9 Credenciales para el Login (Copia y pega)
 
-- Usuario/RUT: 111111111
+- Usuario/RUT: admin@empresa.cl
 - Contraseña: 12345678
 
 ### A.10 Detener y limpiar el entorno
