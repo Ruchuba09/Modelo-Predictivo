@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import CerrarEvento from '@/components/eventos/CerrarEvento';
+
 const ESTADO_STYLES: { [key: string]: string } = {
     abierta: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
     en_revision: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',

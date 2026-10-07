@@ -12,4 +12,3 @@ Route::get('/user', function (Request $request) {
 
 Route::apiResource('proyectos', ProyectoController::class);
 Route::apiResource('asignaciones', AsignacionController::class);
-Route::apiResource('cuadrillas', CuadrillaController::class);
