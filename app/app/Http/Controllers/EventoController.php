@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-
+use Illuminate\Support\Facades\Auth;
 class EventoController extends Controller
 {
     private const TIPO_EVENTO_PARE = 4;
@@ -80,6 +80,48 @@ class EventoController extends Controller
             'eventos' => $query->orderByDesc('fecha_creacion')->get(),
             'proyectos' => Proyecto::all(),
             'filtros' => $request->only(['id_proyecto', 'condicion', 'estado', 'fecha_inicio', 'fecha_fin']),
+        ]);
+    }
+
+    public function MisReportes(Request $request)
+    {
+        $trabajador = Auth::user()->trabajador;
+
+        abort_if(! $trabajador, 403, 'El usuario no está registrado como trabajador.');
+
+        $query = Evento::with(['tipoEvento', 'proyecto'])
+            ->where('id_trabajador', $trabajador->id_trabajador);
+
+        if ($request->filled('id_proyecto')) {
+            $query->where('id_proyecto', $request->id_proyecto);
+        }
+
+        if ($request->filled('condicion')) {
+            $query->where('condicion', $request->condicion);
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('fecha_inicio')) {
+            $query->whereDate('fecha_creacion', '>=', $request->fecha_inicio);
+        }
+
+        if ($request->filled('fecha_fin')) {
+            $query->whereDate('fecha_creacion', '<=', $request->fecha_fin);
+        }
+
+        return Inertia::render('Eventos/MisReportes', [
+            'eventos' => $query->orderByDesc('fecha_creacion')->get(),
+            'proyectos' => Proyecto::all(),
+            'filtros' => $request->only([
+                'id_proyecto',
+                'condicion',
+                'estado',
+                'fecha_inicio',
+                'fecha_fin',
+            ]),
         ]);
     }
 

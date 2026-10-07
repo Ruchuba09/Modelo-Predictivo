@@ -2,7 +2,6 @@ import { Link, usePage } from '@inertiajs/react';
 import { useState, useEffect, PropsWithChildren } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 
-// Arreglo de roles original de tu compañero
 const NAV_ITEMS: { href: string; label: string; roles?: string[] }[] = [
     { href: '/portal', label: 'Inicio' },
     { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'supervisor'] },
@@ -11,6 +10,7 @@ const NAV_ITEMS: { href: string; label: string; roles?: string[] }[] = [
     { href: '/roles', label: 'Roles', roles: ['Administrador'] },
     { href: '/permisos', label: 'Permisos', roles: ['Administrador'] },
     { href: '/trabajadores', label: 'Trabajadores', roles: ['Administrador', 'rrhh'] },
+    { href: '/eventos/mis-reportes', label: 'Mis reportes' },
 ];
 
 function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {
@@ -30,11 +30,18 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
 
     const itemsVisibles = NAV_ITEMS.filter((item) => tieneAcceso(rolesUsuario, item.roles));
 
+    const rutaActual = url.split('?')[0];
+
+    const hrefActivo = itemsVisibles
+        .filter(
+            (item) =>
+                rutaActual === item.href || rutaActual.startsWith(item.href + '/')
+        )
+        .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
     const [colapsado, setColapsado] = useState(false);
     const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
     const [notificacionesAbiertas, setNotificacionesAbiertas] = useState(false);
-    
-    // El punto rojo se muestra si hay notificaciones y el ID de la más reciente es mayor al que tenemos guardado
     const [tieneNotificacionesNuevas, setTieneNotificacionesNuevas] = useState(false);
 
     useEffect(() => {
@@ -54,19 +61,13 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
         }
     };
 
-    const getLinkClass = (path: string) => {
-        return url.startsWith(path)
-            ? "flex items-center gap-3 px-3 py-3 rounded-lg bg-verde-2 text-verde-6 text-sm font-medium transition-colors"
-            : "flex items-center gap-3 px-3 py-3 rounded-lg text-gris-1 hover:text-gris-2 hover:bg-verde-2 text-sm transition-colors group";
-    };
-
     return (
         <div className={`flex h-screen ${bgClass} overflow-hidden`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-            
+
             <aside className={`${colapsado ? 'w-20' : 'w-64'} bg-white border-r border-verde-3 transition-all duration-300 flex flex-col relative z-50 shrink-0 shadow-sm`}>
-                
+
                 {/* Botón Colapsar */}
-                <button 
+                <button
                     onClick={() => setColapsado(!colapsado)}
                     className="absolute -right-3 top-6 bg-white border border-verde-3 text-gris-2 p-1 rounded-full hover:bg-verde-5 hover:border-verde-5 hover:text-gris-2 transition-colors shadow"
                 >
@@ -86,8 +87,8 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
 
                 {/* Botón Principal: Nueva Tarjeta PARE */}
                 <div className="p-4 border-b border-verde-3 shrink-0">
-                    <Link 
-                        href="/eventos/create" 
+                    <Link
+                        href="/eventos/create"
                         className={`flex items-center justify-center gap-2 bg-verde-5 hover:bg-verde-6 text-gris-2 rounded-lg font-bold transition-colors shadow-lg shadow-verde-5/20 ${colapsado ? 'h-10 w-10 p-0 rounded-full mx-auto' : 'px-4 py-3'}`}
                         title="Nueva Tarjeta PARE"
                     >
@@ -100,25 +101,38 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
 
                 {/* Menú de Navegación por Roles */}
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-                    {itemsVisibles.map((item) => (
-                        <Link key={item.href} href={item.href} title={item.label} className={
-                            url.startsWith(item.href)
-                                ? "flex items-center gap-3 px-3 py-3 rounded-lg bg-verde-2 text-verde-6 text-sm font-bold transition-colors"
-                                : "flex items-center gap-3 px-3 py-3 rounded-lg text-gris-1 hover:text-gris-2 hover:bg-verde-1 text-sm transition-colors group"
-                        }>
-                            <span className={`font-bold text-center shrink-0 ${url.startsWith(item.href) ? 'text-verde-6' : 'text-gris-1 group-hover:text-verde-5'} w-5`}>
-                                {item.label.charAt(0)}
-                            </span>
-                            {!colapsado && <span className="truncate">{item.label}</span>}
-                        </Link>
-                    ))}
+                    {itemsVisibles.map((item) => {
+                        const activo = item.href === hrefActivo;
+
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                title={item.label}
+                                className={
+                                    activo
+                                        ? 'flex items-center gap-3 px-3 py-3 rounded-lg bg-verde-2 text-verde-6 text-sm font-bold transition-colors'
+                                        : 'flex items-center gap-3 px-3 py-3 rounded-lg text-gris-1 hover:text-gris-2 hover:bg-verde-1 text-sm transition-colors group'
+                                }
+                            >
+                                <span
+                                    className={`font-bold text-center shrink-0 w-5 ${
+                                        activo ? 'text-verde-6' : 'text-gris-1 group-hover:text-verde-5'
+                                    }`}
+                                >
+                                    {item.label.charAt(0)}
+                                </span>
+                                {!colapsado && <span className="truncate">{item.label}</span>}
+                            </Link>
+                        );
+                    })}
                 </nav>
 
             </aside>
 
             {/* Contenedor Principal (Header + Contenido) */}
             <div className={`flex flex-col flex-1 overflow-hidden ${bgClass}`}>
-                
+
                 {/* Header Global (Top bar) */}
                 <header className="h-16 shrink-0 bg-white border-b border-verde-3 flex items-center justify-end px-8 z-40 relative shadow-sm">
                     <div className="flex items-center gap-4 relative">
@@ -137,7 +151,7 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
                             </div>
                         </button>
 
-                        {/* Menú Flotante Perfil (Abre hacia abajo) */}
+                        {/* Menú Flotante Perfil */}
                         {menuPerfilAbierto && (
                             <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-verde-3 rounded-lg shadow-xl py-1 z-50 overflow-hidden flex flex-col">
                                 <div className="px-4 py-3 border-b border-verde-3 bg-verde-1">
@@ -171,15 +185,13 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
 
             {/* Notification Bell Floating Button */}
             <div className="fixed bottom-6 right-6 z-[60]">
-                <button 
+                <button
                     onClick={toggleNotificaciones}
                     className="w-14 h-14 bg-verde-5 hover:bg-verde-6 text-gris-2 rounded-full flex items-center justify-center shadow-lg shadow-verde-5/30 transition-transform hover:scale-110 relative focus:outline-none border border-verde-4"
                 >
-                    {/* Bell Icon */}
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
-                    {/* Badge */}
                     {tieneNotificacionesNuevas && (
                         <span className="absolute top-0 right-0 w-4 h-4 bg-rojo-1 border-2 border-white rounded-full"></span>
                     )}
@@ -192,7 +204,7 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
                             <h3 className="text-sm font-bold text-gris-2">Notificaciones</h3>
                         </div>
                         <div className="p-4 flex flex-col gap-3 max-h-80 overflow-y-auto custom-scrollbar">
-                            
+
                             {notificaciones.length === 0 ? (
                                 <p className="text-sm text-gris-1 text-center py-4">No hay notificaciones nuevas</p>
                             ) : (

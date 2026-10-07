@@ -51,9 +51,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('/trabajadores', TrabajadorController::class)
     ->parameters(['trabajadores' => 'trabajador']);
 
+    Route::get('/eventos/mis-reportes', [EventoController::class, 'MisReportes'])
+        ->name('eventos.mis-reportes');
+        
     Route::resource('eventos', EventoController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    
     Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])->name('eventos.tomar');
     Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])->name('eventos.cerrar');
+    
     
     Route::get('/proyectos', function () {
         return Inertia::render('proyectos/Index');
