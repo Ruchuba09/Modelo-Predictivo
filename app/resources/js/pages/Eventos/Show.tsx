@@ -16,11 +16,11 @@ const CONDICIONES_PARE: { [key: number]: string } = {
 };
 
 const ESTADO_STYLES: { [key: string]: string } = {
-    abierto: 'bg-[#a0f700]/10 text-[#a0f700] border-[#a0f700]/40',
-    en_revision: 'bg-yellow-400/10 text-yellow-400 border-yellow-400/40',
-    proceso: 'bg-yellow-400/10 text-yellow-400 border-yellow-400/40',
-    cerrado: 'bg-[#7a7f85]/10 text-[#7a7f85] border-[#7a7f85]/40',
-    cerrada: 'bg-[#7a7f85]/10 text-[#7a7f85] border-[#7a7f85]/40',
+    abierta: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
+    en_revision: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
+    proceso: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
+    cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
+    cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
 };
 
 interface Administrador {
@@ -52,18 +52,18 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
     if (value === null || value === undefined || value === '') return null;
 
     return (
-        <div className="flex flex-col gap-1 py-3 border-b border-[#2d3238]/60 last:border-b-0">
-            <span className="text-[12px] uppercase tracking-wider text-[#7a7f85]">{label}</span>
-            <span className="text-sm text-white">{value}</span>
+        <div className="flex flex-col gap-1 py-3 border-b border-verde-3/60 last:border-b-0">
+            <span className="text-[12px] uppercase tracking-wider text-gris-1">{label}</span>
+            <span className="text-sm text-gris-2">{value}</span>
         </div>
     );
 }
 
 export default function Show() {
     const { evento } = usePage().props as unknown as { evento: Evento };
-    const estadoStyle = ESTADO_STYLES[evento.estado] ?? ESTADO_STYLES['abierto'];
+    const estadoStyle = ESTADO_STYLES[evento.estado] ?? ESTADO_STYLES['abierta'];
     
-    const estaCerrado = evento.estado === 'cerrado' || evento.estado === 'cerrada';
+    const estaCerrada = evento.estado === 'cerrada' || evento.estado === 'cerrada';
 
     // CONFIGURACIÓN DEL FORMULARIO DE CIERRE
     const { data, setData, post, processing, errors } = useForm({
@@ -111,26 +111,38 @@ export default function Show() {
         <MainLayout>
             <Head title={`Evento #${evento.id_evento} | AVA`} />
 
-            <div className="max-w-[1100px] mx-auto p-6 lg:p-8 lg:mt-2">
-                <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Evento #{evento.id_evento}</h1>
-                        <p className="text-[#7a7f85] text-sm">Detalle del reporte registrado.</p>
+            <div className="relative w-full">
+                <div className="sticky top-8 z-40 h-0 hidden xl:block overflow-visible">
+                    <div className="absolute left-4 xl:left-6">
+                        <Link
+                            href={route('eventos.index')}
+                            className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-md shadow-verde-5/10 whitespace-nowrap"
+                        >
+                            ← Volver al listado
+                        </Link>
+                    </div>
+                </div>
+
+                <div className="max-w-[1100px] mx-auto p-6 lg:p-8">
+                    <div className="xl:hidden mb-6">
+                        <Link
+                            href={route('eventos.index')}
+                            className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-sm whitespace-nowrap"
+                        >
+                            ← Volver al listado
+                        </Link>
                     </div>
 
-                    <Link
-                        href={route('eventos.index')}
-                        className="px-4 py-2 rounded-lg text-sm font-bold border border-[#2d3238] text-white hover:border-[#7a7f85] transition-colors"
-                    >
-                        ← Volver al listado
-                    </Link>
-                </div>
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-bold text-gris-2 mb-2">Evento #{evento.id_evento}</h1>
+                        <p className="text-gris-1 text-sm">Detalle del reporte registrado.</p>
+                    </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Columna principal */}
-                    <div className="lg:col-span-2 bg-[#141414] border border-[#2d3238] rounded-2xl p-8 shadow-2xl h-fit">
+                    <div className="lg:col-span-2 bg-white border border-verde-3 rounded-2xl p-8 shadow-2xl h-fit">
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                            <h3 className="text-sm font-bold text-gris-2 uppercase tracking-wider">
                                 Información del evento
                             </h3>
                             <span
@@ -140,52 +152,60 @@ export default function Show() {
                             </span>
                         </div>
 
-                        <div className="flex flex-col mb-8">
-                            <InfoRow
-                                label="Tipo de evento"
-                                value={evento.tipoEvento?.nombre ?? `#${evento.id_tipo_evento}`}
-                            />
+                        <div className="flex flex-col mb-3">
                             <InfoRow label="Referencia (lugar)" value={evento.referencia} />
                             <InfoRow
                                 label={`Condición #${evento.condicion}`}
                                 value={CONDICIONES_PARE[evento.condicion]}
                             />
-                            <InfoRow label="Descripción original" value={evento.descripcion} />
+                            
+                            <div className="border-b border-verde-3/60 grid grid-cols-1 md:grid-cols-2 gap-x-8">
+                                <div className="flex flex-col gap-1 py-3">
+                                    <span className="text-[12px] uppercase tracking-wider text-gris-1">Descripción original</span>
+                                    <span className="text-sm text-gris-2">{evento.descripcion}</span>
+                                </div>
+                                <div className="flex flex-col gap-1 py-3">
+                                    <span className="text-[12px] uppercase tracking-wider text-gris-1">Fecha de creación</span>
+                                    <span className="text-sm text-gris-2">
+                                        {evento.fecha_creacion
+                                            ? new Date(evento.fecha_creacion).toLocaleString('es-CL')
+                                            : undefined}
+                                    </span>
+                                </div>
+                            </div>
                             <InfoRow label="Proyecto" value={evento.proyecto?.nombre} />
-                            <InfoRow
-                                label="Fecha de creación"
-                                value={
-                                    evento.fecha_creacion
-                                        ? new Date(evento.fecha_creacion).toLocaleString('es-CL')
-                                        : undefined
-                                }
-                            />
                         </div>
 
-                        {/* FORMULARIO PARA CERRAR EL EVENTO (Solo visible si no está cerrado) */}
-                        {!estaCerrado && (
-                            <div className="pt-8 border-t border-[#2d3238]">
-                                <h3 className="text-lg font-bold text-white mb-4">Cerrar Evento</h3>
-                                <p className="text-[#7a7f85] text-sm mb-6">Proporciona los detalles y la evidencia de la resolución para dar por cerrado este reporte.</p>
+                        {/* FORMULARIO PARA CERRAR EL EVENTO (Solo visible si no está cerrada) */}
+                        {!estaCerrada && (
+                            <div className="pt-8 border-t border-verde-3">
+                                <h3 className="text-lg font-bold text-gris-2 mb-4">Cerrar Evento</h3>
+                                <p className="text-gris-1 text-sm mb-6">Proporciona los detalles y la evidencia de la resolución para dar por cerrada este reporte.</p>
                                 
                                 <form onSubmit={handleCerrar} className="space-y-6">
                                     <div>
-                                        <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                        <label className="block text-[14px] uppercase tracking-wider text-gris-1 mb-2">
                                             Acción correctiva / Justificación
                                         </label>
                                         <textarea
                                             rows={4}
                                             required
+                                            maxLength={500}
                                             value={data.justificacion}
                                             onChange={e => setData('justificacion', e.target.value)}
                                             placeholder="Detalla qué acciones se tomaron para solucionar el problema..."
-                                            className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#a0f700] resize-none transition-colors"
+                                            className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-3.5 text-sm text-gris-2 focus:outline-none focus:border-verde-5 resize-none transition-colors"
                                         ></textarea>
-                                        {(errors as any).justificacion && <p className="text-red-400 text-xs mt-1">{(errors as any).justificacion}</p>}
+                                        <div className="flex justify-between mt-1">
+                                            <div>{(errors as any).justificacion && <p className="text-red-400 text-xs">{(errors as any).justificacion}</p>}</div>
+                                            <span className={`text-[11px] font-bold ${data.justificacion.length >= 500 ? 'text-rojo-1' : 'text-gris-1'}`}>
+                                                {data.justificacion.length} / 500
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-[14px] uppercase tracking-wider text-[#7a7f85] mb-2">
+                                        <label className="block text-[14px] uppercase tracking-wider text-gris-1 mb-2">
                                             Evidencia de Cierre (Máx 3. archivos)
                                         </label>
                                         
@@ -197,7 +217,7 @@ export default function Show() {
                                                     ref={fileInputRef}
                                                     accept="image/*,.pdf,.doc,.docx"
                                                     onChange={handleFileChange}
-                                                    className="w-full bg-[#0a0a0a] border border-[#2d3238] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#a0f700] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#a0f700]/10 file:text-[#a0f700] hover:file:bg-[#a0f700]/20 cursor-pointer transition-colors"
+                                                    className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-sm text-gris-2 focus:outline-none focus:border-verde-5 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-verde-5/10 file:text-verde-6 hover:file:bg-verde-5/20 cursor-pointer transition-colors"
                                                 />
                                             </>
                                         )}
@@ -205,17 +225,17 @@ export default function Show() {
                                         {archivosSubidos.length > 0 && (
                                             <div className="flex flex-col gap-2 mt-3">
                                                 {archivosSubidos.map((file, index) => (
-                                                    <div key={index} className="flex items-center justify-between gap-3 bg-[#0a0a0a] border border-[#a0f700]/50 p-2 pr-4 rounded-lg w-full">
+                                                    <div key={index} className="flex items-center justify-between gap-3 bg-verde-1 border border-verde-5/50 p-2 pr-4 rounded-lg w-full">
                                                         <div className="flex items-center gap-3 overflow-hidden">
                                                             <span className="text-xl shrink-0">📎</span>
-                                                            <span className="text-sm text-[#a0f700] font-medium truncate">
+                                                            <span className="text-sm text-verde-6 font-medium truncate">
                                                                 {file.name}
                                                             </span>
                                                         </div>
                                                         <button 
                                                             type="button" 
                                                             onClick={() => removerArchivo(index)}
-                                                            className="text-[#FF4B4B] text-lg font-black px-2 hover:scale-110 transition-transform shrink-0"
+                                                            className="text-rojo-1 text-lg font-black px-2 hover:scale-110 transition-transform shrink-0"
                                                             title="Quitar archivo"
                                                         >
                                                             ✕
@@ -231,7 +251,7 @@ export default function Show() {
                                         <button
                                             type="submit"
                                             disabled={processing}
-                                            className="px-6 py-3 rounded-lg text-sm font-bold bg-[#a0f700] hover:bg-[#86cf00] text-black transition-colors shadow-lg shadow-[#a0f700]/20 disabled:opacity-50"
+                                            className="px-6 py-3 rounded-lg text-sm font-bold bg-verde-5 hover:bg-verde-6 text-black transition-colors shadow-lg shadow-verde-5/20 disabled:opacity-50"
                                         >
                                             {processing ? 'Cerrando...' : 'Cerrar reporte'}
                                         </button>
@@ -242,17 +262,17 @@ export default function Show() {
                     </div>
 
                     {/* Columna lateral: personas involucradas */}
-                    <div className="bg-[#111111] border border-[#2d3238] rounded-2xl p-6 shadow-xl h-fit">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">
+                    <div className="bg-white border border-verde-3 rounded-2xl p-6 shadow-xl h-fit">
+                        <h3 className="text-sm font-bold text-gris-2 uppercase tracking-wider mb-5">
                             Personas involucradas
                         </h3>
 
                         <div className="flex flex-col gap-4">
-                            <div className="p-3 rounded-lg border border-[#2d3238]/50 bg-[#0a0a0a]">
-                                <div className="text-[12px] uppercase tracking-wider text-[#7a7f85] mb-1">
+                            <div className="p-3 rounded-lg border border-verde-3/50 bg-verde-1">
+                                <div className="text-[12px] uppercase tracking-wider text-gris-1 mb-1">
                                     Reportado por
                                 </div>
-                                <div className="text-sm text-white">
+                                <div className="text-sm text-gris-2">
                                     {evento.trabajador
                                         ? `${evento.trabajador.persona?.nombre ?? ''} ${evento.trabajador.persona?.apellido ?? ''}`.trim() ||
                                           `Trabajador #${evento.trabajador.id_trabajador}`
@@ -260,11 +280,11 @@ export default function Show() {
                                 </div>
                             </div>
 
-                            <div className="p-3 rounded-lg border border-[#2d3238]/50 bg-[#0a0a0a]">
-                                <div className="text-[12px] uppercase tracking-wider text-[#7a7f85] mb-1">
+                            <div className="p-3 rounded-lg border border-verde-3/50 bg-verde-1">
+                                <div className="text-[12px] uppercase tracking-wider text-gris-1 mb-1">
                                     Supervisor asignado
                                 </div>
-                                <div className="text-sm text-white">
+                                <div className="text-sm text-gris-2">
                                     {evento.supervisor
                                         ? `${evento.supervisor.persona?.nombre ?? ''} ${evento.supervisor.persona?.apellido ?? ''}`.trim() ||
                                           `Supervisor #${evento.supervisor.id_trabajador}`
@@ -272,11 +292,11 @@ export default function Show() {
                                 </div>
                             </div>
 
-                            <div className="p-3 rounded-lg border border-[#2d3238]/50 bg-[#0a0a0a]">
-                                <div className="text-[12px] uppercase tracking-wider text-[#7a7f85] mb-1">
-                                    Cerrado por
+                            <div className="p-3 rounded-lg border border-verde-3/50 bg-verde-1">
+                                <div className="text-[12px] uppercase tracking-wider text-gris-1 mb-1">
+                                    Cerrada por
                                 </div>
-                                <div className="text-sm text-white">
+                                <div className="text-sm text-gris-2">
                                     {evento.administrativo
                                         ? `${evento.administrativo.persona?.nombre ?? ''} ${evento.administrativo.persona?.apellido ?? ''}`.trim() ||
                                           `Administrativo #${evento.administrativo.id_trabajador}`
@@ -286,6 +306,7 @@ export default function Show() {
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </MainLayout>
     );

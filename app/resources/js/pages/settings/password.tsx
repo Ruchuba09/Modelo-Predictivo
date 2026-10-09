@@ -37,14 +37,14 @@ export default function Password() {
 
             <div className="max-w-2xl mx-auto p-6 lg:p-8">
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-white mb-1">Cambiar Contraseña</h1>
-                    <p className="text-[#7a7f85] text-sm">Usa una contraseña larga y única para mantener tu cuenta segura.</p>
+                    <h1 className="text-2xl font-bold text-gris-2 mb-1">Cambiar Contraseña</h1>
+                    <p className="text-gris-1 text-sm">Usa una contraseña larga y única para mantener tu cuenta segura.</p>
                 </div>
 
-                <div className="bg-[#15181c] border border-white/5 rounded-xl p-6 lg:p-8">
+                <div className="bg-white border border-verde-3 rounded-xl p-6 lg:p-8">
                     <form onSubmit={submit} className="space-y-6">
                         <div>
-                            <label htmlFor="current_password" className="block text-sm font-medium text-[#7a7f85] mb-2">
+                            <label htmlFor="current_password" className="block text-sm font-medium text-gris-1 mb-2">
                                 Contraseña actual
                             </label>
                             <input
@@ -54,13 +54,13 @@ export default function Password() {
                                 value={data.current_password}
                                 onChange={(e) => setData('current_password', e.target.value)}
                                 autoComplete="current-password"
-                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700]/50 transition-colors"
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5/50 transition-colors"
                             />
                             {errors.current_password && <p className="mt-2 text-sm text-red-400">{errors.current_password}</p>}
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-[#7a7f85] mb-2">
+                            <label htmlFor="password" className="block text-sm font-medium text-gris-1 mb-2">
                                 Nueva contraseña
                             </label>
                             <input
@@ -70,13 +70,13 @@ export default function Password() {
                                 value={data.password}
                                 onChange={(e) => setData('password', e.target.value)}
                                 autoComplete="new-password"
-                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700]/50 transition-colors"
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5/50 transition-colors"
                             />
                             {errors.password && <p className="mt-2 text-sm text-red-400">{errors.password}</p>}
                         </div>
 
                         <div>
-                            <label htmlFor="password_confirmation" className="block text-sm font-medium text-[#7a7f85] mb-2">
+                            <label htmlFor="password_confirmation" className="block text-sm font-medium text-gris-1 mb-2">
                                 Confirmar contraseña
                             </label>
                             <input
@@ -85,7 +85,7 @@ export default function Password() {
                                 value={data.password_confirmation}
                                 onChange={(e) => setData('password_confirmation', e.target.value)}
                                 autoComplete="new-password"
-                                className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#a0f700]/50 transition-colors"
+                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5/50 transition-colors"
                             />
                             {errors.password_confirmation && <p className="mt-2 text-sm text-red-400">{errors.password_confirmation}</p>}
                         </div>
@@ -94,12 +94,12 @@ export default function Password() {
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="bg-[#a0f700] hover:bg-[#86cf00] disabled:opacity-50 text-black px-5 py-2.5 rounded-lg text-sm font-bold transition-colors"
+                                className="bg-verde-5 hover:bg-verde-6 disabled:opacity-50 text-black px-5 py-2.5 rounded-lg text-sm font-bold transition-colors"
                             >
                                 Guardar contraseña
                             </button>
                             {recentlySuccessful && (
-                                <span className="text-sm text-[#a0f700]">Guardado correctamente</span>
+                                <span className="text-sm text-verde-6">Guardado correctamente</span>
                             )}
                         </div>
                     </form>

@@ -3,182 +3,362 @@
 namespace App\Http\Controllers;
 
 use App\Models\Administrativo;
+use App\Models\Asignacion;
+use App\Models\Cuadrilla;
 use App\Models\Evento;
-use App\Models\Fatalidad;
-use App\Models\Incidente;
 use App\Models\Obrero;
+use App\Models\Proyecto;
 use App\Models\Supervisor;
+use App\Models\TipoEvento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-use App\Models\Asignacion;
+use Illuminate\Support\Facades\Auth;
+
 class EventoController extends Controller
 {
+    private const TIPO_EVENTO_PARE = 4;
+
+    private const CONDICIONES = [
+        1 => '1. Cond. Inseguras',
+        2 => '2. Herramientas',
+        3 => '3. Falta EPP',
+        4 => '4. Capacitación',
+        5 => '5. Procedimientos',
+        6 => '6. Recursos',
+        7 => '7. AST/VATS/ERT',
+        8 => '8. Permisos',
+        9 => '9. Est. Físico/Mental',
+        10 => '10. Otros',
+    ];
+
     public function dashboard()
     {
-        $tarjetasPare = Evento::select(
-                DB::raw('DATE(created_at) as fecha'),
-                DB::raw("SUM(CASE WHEN condicion = '1' THEN 1 ELSE 0 END) as c1"),
-                DB::raw("SUM(CASE WHEN condicion = '2' THEN 1 ELSE 0 END) as c2"),
-                DB::raw("SUM(CASE WHEN condicion = '3' THEN 1 ELSE 0 END) as c3"),
-                DB::raw("SUM(CASE WHEN condicion = '4' THEN 1 ELSE 0 END) as c4"),
-                DB::raw("SUM(CASE WHEN condicion = '5' THEN 1 ELSE 0 END) as c5"),
-                DB::raw("SUM(CASE WHEN condicion = '6' THEN 1 ELSE 0 END) as c6"),
-                DB::raw("SUM(CASE WHEN condicion = '7' THEN 1 ELSE 0 END) as c7"),
-                DB::raw("SUM(CASE WHEN condicion = '8' THEN 1 ELSE 0 END) as c8"),
-                DB::raw("SUM(CASE WHEN condicion = '9' THEN 1 ELSE 0 END) as c9"),
-                DB::raw("SUM(CASE WHEN condicion = '10' THEN 1 ELSE 0 END) as c10")
-            )
-            ->where('tipo_evento', 4) 
-            ->where('created_at', '>=', now()->subDays(7))
-            ->groupBy(DB::raw('DATE(created_at)'))
+        $columnas = [DB::raw('DATE(fecha_creacion) as fecha')];
+
+        foreach (array_keys(self::CONDICIONES) as $id) {
+            $columnas[] = DB::raw("SUM(CASE WHEN condicion = {$id} THEN 1 ELSE 0 END) as c{$id}");
+        }
+
+        $tarjetasPare = Evento::select($columnas)
+            ->where('id_tipo_evento', self::TIPO_EVENTO_PARE)
+            ->where('fecha_creacion', '>=', now()->subDays(7))
+            ->groupBy(DB::raw('DATE(fecha_creacion)'))
             ->orderBy('fecha', 'asc')
             ->get();
 
-            dd('¡Sí pasé por el controlador!', $tarjetasPare);
-
         return Inertia::render('dashboard', [
-            'datosGrafico' => $tarjetasPare
+            'datosGrafico' => $tarjetasPare,
         ]);
     }
-    public function index()
+
+    public function index(Request $request)
     {
-        $eventos = Evento::with(['tipoEvento', 'proyecto', 'area'])
-            ->orderByDesc('fecha_creacion')
-            ->get();
+        $query = Evento::with(['tipoEvento', 'proyecto']);
+
+        if ($request->filled('id_proyecto')) {
+            $query->where('id_proyecto', $request->id_proyecto);
+        }
+
+        if ($request->filled('condicion')) {
+            $query->where('condicion', $request->condicion);
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('fecha_inicio')) {
+            $query->whereDate('fecha_creacion', '>=', $request->fecha_inicio);
+        }
+
+        if ($request->filled('fecha_fin')) {
+            $query->whereDate('fecha_creacion', '<=', $request->fecha_fin);
+        }
 
         return Inertia::render('Eventos/Index', [
-            'eventos' => $eventos,
+            'eventos' => $query->orderByDesc('fecha_creacion')->get(),
+            'proyectos' => Proyecto::all(),
+            'filtros' => $request->only(['id_proyecto', 'condicion', 'estado', 'fecha_inicio', 'fecha_fin']),
         ]);
     }
-    public function indexGrafico()
-    {
-        $eventos = Evento::select('fecha_creacion', 'condicion')
-            ->where('fecha_creacion', '>=', now()->subDays(7))
-            ->get()
-            ->groupBy(function ($item) {
-                return \Carbon\Carbon::parse($item->fecha_creacion)->format('Y-m-d');
-            });
 
-        $datosGrafico = $eventos->map(function ($grupo, $fecha) {
-            $fila = ['fecha' => $fecha];
-            for ($i = 1; $i <= 10; $i++) {
-                $fila["c{$i}"] = $grupo->where('condicion', $i)->count();
-            }
-            return $fila;
-        })->values();
+    public function MisReportes(Request $request)
+    {
+        $trabajador = Auth::user()->trabajador;
+
+        abort_if(! $trabajador, 403, 'El usuario no está registrado como trabajador.');
+
+        $query = Evento::with(['tipoEvento', 'proyecto'])
+            ->where('id_trabajador', $trabajador->id_trabajador);
+
+        if ($request->filled('id_proyecto')) {
+            $query->where('id_proyecto', $request->id_proyecto);
+        }
+
+        if ($request->filled('condicion')) {
+            $query->where('condicion', $request->condicion);
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('fecha_inicio')) {
+            $query->whereDate('fecha_creacion', '>=', $request->fecha_inicio);
+        }
+
+        if ($request->filled('fecha_fin')) {
+            $query->whereDate('fecha_creacion', '<=', $request->fecha_fin);
+        }
+
+        return Inertia::render('Eventos/MisReportes', [
+            'eventos' => $query->orderByDesc('fecha_creacion')->get(),
+            'proyectos' => Proyecto::all(),
+            'filtros' => $request->only([
+                'id_proyecto',
+                'condicion',
+                'estado',
+                'fecha_inicio',
+                'fecha_fin',
+            ]),
+        ]);
+    }
+
+    public function indexGrafico(Request $request)
+    {
+        $query = Evento::where('id_tipo_evento', self::TIPO_EVENTO_PARE);
+
+        if ($request->filled('id_proyecto')) {
+            $query->where('id_proyecto', $request->id_proyecto);
+        }
+        if ($request->filled('fecha_inicio')) {
+            $query->whereDate('fecha_creacion', '>=', $request->fecha_inicio);
+        }
+        if ($request->filled('fecha_fin')) {
+            $query->whereDate('fecha_creacion', '<=', $request->fecha_fin);
+        }
+
+        $conteos = $query
+            ->select('condicion', DB::raw('COUNT(*) as total'))
+            ->groupBy('condicion')
+            ->get()
+            ->mapWithKeys(fn ($fila) => [(int) $fila->condicion => (int) $fila->total]);
+
+        $datosGrafico = [];
+        foreach (self::CONDICIONES as $id => $nombre) {
+            $datosGrafico[] = [
+                'id' => "c{$id}",
+                'condicion' => $nombre,
+                'hallazgos' => $conteos->get($id, 0),
+            ];
+        }
 
         return Inertia::render('dashboard', [
-            'datosGrafico' => $datosGrafico
+            'datosGrafico' => $datosGrafico,
+            'proyectos' => Proyecto::all(),
+            'filtros' => $request->only(['id_proyecto', 'fecha_inicio', 'fecha_fin']),
         ]);
     }
 
-    private function proyectoActualDelTrabajador()
+    public function create()
+    {
+        return Inertia::render('Eventos/Create', [
+            'tiposEvento' => TipoEvento::all(),
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'id_tipo_evento' => 'required|integer|exists:tipo_eventos,id_tipo_evento',
+            'condicion' => 'required|integer|between:1,10',
+            'descripcion' => 'required|string|max:500',
+            'referencia' => 'required|string|max:255',
+            'severidad' => 'nullable|string|max:50',
+            'evidencia' => 'nullable|array|max:3',
+            'evidencia.*' => 'file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+        ]);
+
+        $rutasArchivos = $this->guardarArchivos($request, 'evidencia', 'evidencias');
+
+        $datos = [
+            'id_tipo_evento' => $request->id_tipo_evento,
+            'condicion' => $request->condicion,
+            'descripcion' => $request->descripcion,
+            'referencia' => $request->referencia,
+            'id_proyecto' => $this->proyectoActualDelTrabajador(),
+            'id_trabajador' => auth()->user()->trabajador?->id_trabajador,
+            'estado' => 'abierta',
+            'evidencia' => $rutasArchivos,
+        ];
+
+        if ($request->filled('severidad')) {
+            $datos['severidad'] = $request->severidad;
+        }
+
+        $evento = Evento::create($datos);
+
+        Log::alert("ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE registrada. Evento ID: {$evento->id_evento}, Proyecto ID: {$evento->id_proyecto}");
+
+        return redirect()->route('eventos.index')->with('success', 'Reporte creado con éxito');
+    }
+
+    public function show(Evento $evento)
+    {
+        $evento->load(['tipoEvento', 'proyecto', 'area', 'administrador', 'trabajador.persona', 'evidencias']);
+
+        return Inertia::render('Eventos/Show', [
+            'evento' => $evento,
+        ]);
+    }
+
+    public function edit(Evento $evento)
+    {
+        $evento->load(['tipoEvento', 'proyecto']);
+
+        return Inertia::render('Eventos/Edit', [
+            'evento' => $evento,
+        ]);
+    }
+
+    public function update(Request $request, Evento $evento)
+    {
+        $validated = $request->validate([
+            'condicion' => 'required|integer|between:1,10',
+            'descripcion' => 'required|string|max:500',
+            'referencia' => 'required|string|max:255',
+        ]);
+
+        $evento->update($validated);
+
+        return redirect()->route('eventos.show', $evento->id_evento);
+    }
+
+    public function tomarReporte(Evento $evento)
+    {
+        $supervisor = $this->supervisorAutenticado();
+        $cuadrilla = $evento->trabajador?->obrero?->cuadrilla;
+
+        abort_if(! $cuadrilla, 422, 'El trabajador no tiene cuadrilla asignada.');
+        abort_unless(
+            (int) $cuadrilla->id_supervisor === (int) $supervisor->id_trabajador,
+            403,
+            'No eres el supervisor asignado a esta cuadrilla.'
+        );
+        abort_if($evento->estado !== 'abierta', 422, 'El evento ya fue tomado o cerrado.');
+
+        $evento->update([
+            'id_supervisor' => $supervisor->id_trabajador,
+            'estado' => 'proceso',
+        ]);
+
+        return redirect()->route('eventos.show', $evento->id_evento);
+    }
+
+    public function cerrar(Request $request, Evento $evento)
+    {
+        $administrativo = $this->administrativoAutenticado();
+
+        abort_if(
+            ! in_array($evento->estado, ['abierta', 'proceso']),
+            422,
+            'El evento debe estar abierto o en proceso antes de cerrarse.'
+        );
+
+        $request->validate([
+            'justificacion' => 'required|string|max:500',
+            'evidencia_cierre' => 'nullable|array|max:3',
+            'evidencia_cierre.*' => 'file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+        ]);
+
+        $evento->update([
+            'id_administrador' => $administrativo->id_trabajador,
+            'estado' => 'cerrada',
+            'justificacion' => $request->justificacion,
+            'evidencia_cierre' => $this->guardarArchivos($request, 'evidencia_cierre', 'evidencias_cierre'),
+            'fecha_cierre' => now(),
+        ]);
+
+        return redirect()->route('eventos.show', $evento->id_evento)->with('success', 'Evento cerrado con éxito');
+    }
+
+    public function destroy(Evento $evento)
+    {
+        $evento->delete();
+
+        return redirect()->route('eventos.index');
+    }
+
+    private function guardarArchivos(Request $request, string $campo, string $carpeta): array
+    {
+        $rutas = [];
+
+        if ($request->hasFile($campo)) {
+            foreach ($request->file($campo) as $archivo) {
+                $rutas[] = $archivo->store($carpeta, 'public');
+            }
+        }
+
+        return $rutas;
+    }
+
+    private function proyectoActualDelTrabajador(): int
     {
         $trabajador = auth()->user()->trabajador;
 
         abort_if(! $trabajador, 403, 'El usuario autenticado no está registrado como trabajador.');
 
-        // Administrativo: administra proyectos vía asignaciones directas
         if ($trabajador->administrativo) {
-            $asignacion = Asignacion::where('id_administrador', $trabajador->id_trabajador)
-                ->where('fecha_inicio', '<=', now())
-                ->where(function ($q) {
-                    $q->whereNull('fecha_termino')
-                    ->orWhere('fecha_termino', '>=', now());
-                })
-                ->latest('fecha_inicio')
-                ->first();
-
-            abort_if(! $asignacion, 422, 'No tienes un proyecto asignado actualmente.');
-
-            return $asignacion->id_proyecto;
+            return $this->proyectoVigente(
+                'id_administrador',
+                [$trabajador->id_trabajador],
+                'No tienes un proyecto asignado actualmente.'
+            );
         }
 
-        // Supervisor: tiene cuadrillas a cargo, las cuadrillas tienen asignaciones
         if ($trabajador->supervisor) {
-            $cuadrilla = \App\Models\Cuadrilla::where('id_supervisor', $trabajador->id_trabajador)->first();
+            $cuadrillas = Cuadrilla::where('id_supervisor', $trabajador->id_trabajador)->pluck('id_cuadrilla')->all();
 
-            abort_if(! $cuadrilla, 422, 'No tienes una cuadrilla asignada.');
+            abort_if(empty($cuadrillas), 422, 'No tienes una cuadrilla asignada.');
 
-            $asignacion = Asignacion::where('id_cuadrilla', $cuadrilla->id_cuadrilla)
-                ->where('fecha_inicio', '<=', now())
-                ->where(function ($q) {
-                    $q->whereNull('fecha_termino')
-                    ->orWhere('fecha_termino', '>=', now());
-                })
-                ->latest('fecha_inicio')
-                ->first();
-
-            abort_if(! $asignacion, 422, 'Tu cuadrilla no tiene un proyecto asignado actualmente.');
-
-            return $asignacion->id_proyecto;
+            return $this->proyectoVigente(
+                'id_cuadrilla',
+                $cuadrillas,
+                'Tu cuadrilla no tiene un proyecto asignado actualmente.'
+            );
         }
 
-        // Obrero: pertenece a una cuadrilla
         if ($trabajador->obrero) {
             abort_if(! $trabajador->obrero->id_cuadrilla, 422, 'No tienes una cuadrilla asignada.');
 
-            $asignacion = Asignacion::where('id_cuadrilla', $trabajador->obrero->id_cuadrilla)
-                ->where('fecha_inicio', '<=', now())
-                ->where(function ($q) {
-                    $q->whereNull('fecha_termino')
-                    ->orWhere('fecha_termino', '>=', now());
-                })
-                ->latest('fecha_inicio')
-                ->first();
-
-            abort_if(! $asignacion, 422, 'Tu cuadrilla no tiene un proyecto asignado actualmente.');
-
-            return $asignacion->id_proyecto;
+            return $this->proyectoVigente(
+                'id_cuadrilla',
+                [$trabajador->obrero->id_cuadrilla],
+                'Tu cuadrilla no tiene un proyecto asignado actualmente.'
+            );
         }
 
         abort(403, 'El usuario no tiene un rol válido (obrero, supervisor o administrativo).');
     }
 
-    public function store(Request $request)
-{
-    // 1. Validar que evidencia sea un arreglo y cada archivo cumpla las reglas
-    $request->validate([
-        'id_tipo_evento' => 'required|integer',
-        'condicion'      => 'required|integer',
-        'descripcion'    => 'required|string',
-        'referencia'     => 'required|string',
-        'evidencia'      => 'nullable|array|max:3',
-        'evidencia.*'    => 'file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120', // Máximo 5MB por archivo
-    ]);
-
-    $rutasArchivos = [];
-
-    // 2. Si vienen archivos, los recorremos y guardamos
-    if ($request->hasFile('evidencia')) {
-        foreach ($request->file('evidencia') as $archivo) {
-            // Guarda en storage/app/public/evidencias y devuelve la ruta
-            $ruta = $archivo->store('evidencias', 'public');
-            $rutasArchivos[] = $ruta;
-        }
-    }
-
-    // 3. Crear el registro en la base de datos
-    Evento::create([
-        'id_tipo_evento' => $request->id_tipo_evento,
-        'condicion'      => $request->condicion,
-        'descripcion'    => $request->descripcion,
-        'referencia'     => $request->referencia,
-        // Convertimos el arreglo de rutas a JSON para guardarlo en una sola columna
-        'evidencia'      => json_encode($rutasArchivos), 
-    ]);
-
-    return redirect()->route('dashboard')->with('success', 'Reporte creado con éxito');
-}
-
-
-    public function create()
+    private function proyectoVigente(string $columna, array $ids, string $mensaje): int
     {
-        return Inertia::render('Eventos/Create', [
-            'tiposEvento' => \App\Models\TipoEvento::all(),
-        ]);
+        $hoy = now()->toDateString();
+
+        $asignacion = Asignacion::whereIn($columna, $ids)
+            ->whereDate('fecha_inicio', '<=', $hoy)
+            ->where(function ($q) use ($hoy) {
+                $q->whereNull('fecha_termino')
+                    ->orWhereDate('fecha_termino', '>=', $hoy);
+            })
+            ->latest('fecha_inicio')
+            ->first();
+
+        abort_if(! $asignacion, 422, $mensaje);
+
+        return $asignacion->id_proyecto;
     }
 
     private function obreroAutenticado(): Obrero
@@ -198,6 +378,20 @@ class EventoController extends Controller
 
         return $supervisor;
     }
+    public function apiSinAdministrador()
+    {
+        $eventos = Evento::with([
+            'tipoEvento',
+            'proyecto',
+            'trabajador.persona',
+            'supervisor.trabajador.persona',
+        ])
+        ->whereNull('id_administrador')
+        ->orderByDesc('fecha_creacion')
+        ->get();
+
+        return response()->json($eventos);
+    }
 
     private function administrativoAutenticado(): Administrativo
     {
@@ -206,80 +400,5 @@ class EventoController extends Controller
         abort_if(! $administrativo, 403, 'El usuario autenticado no está registrado como administrativo.');
 
         return $administrativo;
-    }
-
-    
-    public function show(Evento $evento)
-    {
-        $evento->load(['tipoEvento', 'area', 'proyecto', 'administrador']);
-
-        return Inertia::render('Eventos/Show', [
-            'evento' => $evento,
-        ]);
-    }
-
-    public function edit(Evento $evento)
-    {
-        $evento->load(['incidente', 'fatalidad']);
-
-        return Inertia::render('Eventos/Edit', [
-            'evento' => $evento,
-        ]);
-    }
-
-    public function update(Request $request, Evento $evento)
-    {
-        $validated = $request->validate([
-            'condicion' => 'required|string',
-            'descripcion' => 'required|string',
-            'referencia' => 'required|string',
-        ]);
-
-        $evento->update([
-            'condicion' => $validated['condicion'],
-            'descripcion' => $validated['descripcion'],
-            'referencia' => $validated['referencia'],
-        ]);
-
-        return redirect()->route('eventos.show', $evento->id_evento);
-    }
-
-    public function tomarReporte(Evento $evento)
-    {
-        $supervisor = $this->supervisorAutenticado();
-        $cuadrillaObrero = $evento->trabajador->cuadrilla;
-
-        abort_if(! $cuadrillaObrero, 422, 'El trabajador no tiene cuadrilla asignada.');
-        abort_unless($cuadrillaObrero->id_supervisor === $supervisor->id_trabajador, 403, 'No eres el supervisor asignado a esta cuadrilla.');
-        abort_if($evento->estado !== 'abierta', 422, 'El evento ya fue tomado o cerrado.');
-
-        $evento->update([
-            'id_supervisor' => $supervisor->id_trabajador,
-            'estado' => 'proceso',
-        ]);
-
-        return redirect()->route('eventos.show', $evento->id_evento);
-    }
-
-    public function cerrar(Evento $evento)
-    {
-        $administrativo = $this->administrativoAutenticado();
-
-        abort_if($evento->estado !== 'abierto', 422, 'El evento debe estar en proceso antes de cerrarse.');
-
-        $evento->update([
-            'id_administrativo' => $administrativo->id_trabajador,
-            'estado' => 'cerrada',
-            'fecha_cierre' => now(),
-        ]);
-
-        return redirect()->route('eventos.show', $evento->id_evento);
-    }
-
-    public function destroy(Evento $evento)
-    {
-        $evento->delete();
-
-        return redirect()->route('eventos.index');
     }
 }

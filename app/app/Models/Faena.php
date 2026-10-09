@@ -2,19 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Faena extends Model
 {
-    use HasFactory;
-
-    protected $table = 'faenas';
-    protected $primaryKey = 'id_faena';
+    protected $table = 'public.faenas';   // esquema correcto
+    protected $primaryKey = 'id_faena';   // el nombre real de tu PK
     public $timestamps = false;
-
-    protected $fillable = [
-        'codigo_faena',
-        'nombre',
-    ];
 }

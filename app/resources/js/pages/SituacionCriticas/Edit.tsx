@@ -54,11 +54,11 @@ export default function Edit({ situacionCritica, trabajadores, supervisores, eve
 
             <div className="mx-auto max-w-2xl p-6 lg:p-8">
                 <div className="mb-8">
-                    <h1 className="mb-1 text-2xl font-bold text-white">Editar situación crítica</h1>
-                    <p className="text-sm text-[#7a7f85]">Actualiza los datos del evento crítico.</p>
+                    <h1 className="mb-1 text-2xl font-bold text-gris-2">Editar situación crítica</h1>
+                    <p className="text-sm text-gris-1">Actualiza los datos del evento crítico.</p>
                 </div>
 
-                <div className="rounded-xl border border-white/5 bg-[#15181c] p-6">
+                <div className="rounded-xl border border-verde-3 bg-white p-6">
                     <SituacionCriticaForm
                         trabajadores={trabajadores}
                         supervisores={supervisores}
