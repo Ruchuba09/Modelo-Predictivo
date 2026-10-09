@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+
 class EventoController extends Controller
 {
     private const TIPO_EVENTO_PARE = 4;
@@ -376,6 +377,20 @@ class EventoController extends Controller
         abort_if(! $supervisor, 403, 'El usuario autenticado no está registrado como supervisor.');
 
         return $supervisor;
+    }
+    public function apiSinAdministrador()
+    {
+        $eventos = Evento::with([
+            'tipoEvento',
+            'proyecto',
+            'trabajador.persona',
+            'supervisor.trabajador.persona',
+        ])
+        ->whereNull('id_administrador')
+        ->orderByDesc('fecha_creacion')
+        ->get();
+
+        return response()->json($eventos);
     }
 
     private function administrativoAutenticado(): Administrativo
