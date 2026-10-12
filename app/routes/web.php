@@ -4,7 +4,7 @@ use App\Http\Controllers\TrabajadorController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\PermisoController;
-
+use App\Http\Controllers\CuadrillaController;
 use App\Http\Controllers\SituacionCriticaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EventoController;
@@ -51,9 +51,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('/trabajadores', TrabajadorController::class)
     ->parameters(['trabajadores' => 'trabajador']);
 
+    Route::get('/eventos/mis-reportes', [EventoController::class, 'MisReportes'])
+        ->name('eventos.mis-reportes');
+
     Route::resource('eventos', EventoController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    
     Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])->name('eventos.tomar');
     Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])->name('eventos.cerrar');
+    
     
     Route::get('/proyectos', function () {
         return Inertia::render('proyectos/Index');
@@ -76,6 +81,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/situacion-criticas/{situacionCritica}/editar', [SituacionCriticaController::class, 'edit'])->name('situacion-criticas.editar');
     Route::put('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'update'])->name('situacion-criticas.update');
     Route::delete('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'destroy'])->name('situacion-criticas.destroy');
+
+    Route::get('/cuadrillas', fn () => Inertia::render('Cuadrillas/Index'))
+        ->name('cuadrillas.index');
+
+    Route::get('/api/cuadrillas/supervisores', [CuadrillaController::class, 'supervisores']);
+
+    Route::apiResource('/api/cuadrillas', CuadrillaController::class)
+        ->parameters(['cuadrillas' => 'cuadrilla'])
+        ->whereNumber('cuadrilla')
+        ->names('api.cuadrillas');
 });
 
 Route::get('/portal', function () {
