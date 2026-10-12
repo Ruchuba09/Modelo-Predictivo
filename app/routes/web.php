@@ -52,6 +52,8 @@ Route::middleware('auth')->group(function () {
     ->parameters(['trabajadores' => 'trabajador']);
 
     Route::resource('eventos', EventoController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::get('/eventos/archivo/{archivo}', [EventoController::class, 'verArchivo'])->name('eventos.archivo');
+    Route::get('/eventos/{evento}/evidencias', [EventoController::class, 'obtenerEvidencias'])->name('eventos.evidencias');
     Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])->name('eventos.tomar');
     Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])->name('eventos.cerrar');
     

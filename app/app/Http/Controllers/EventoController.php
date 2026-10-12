@@ -266,10 +266,61 @@ class EventoController extends Controller
     
     public function show(Evento $evento)
     {
-        $evento->load(['tipoEvento', 'proyecto', 'administrador']);
+        $evento->load(['tipoEvento', 'proyecto', 'administrador', 'trabajador']);
 
         return Inertia::render('Eventos/Show', [
             'evento' => $evento,
+        ]);
+    }
+
+    public function verArchivo(string $archivo)
+    {
+        $nombreSeguro = basename($archivo);
+
+        // 1. Verificar en evidencias
+        $ruta = 'evidencias/' . $nombreSeguro;
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($ruta)) {
+            return \Illuminate\Support\Facades\Storage::disk('public')->response($ruta);
+        }
+
+        // 2. Verificar en evidencias_cierre
+        $rutaCierre = 'evidencias_cierre/' . $nombreSeguro;
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($rutaCierre)) {
+            return \Illuminate\Support\Facades\Storage::disk('public')->response($rutaCierre);
+        }
+
+        abort(404, 'Archivo no encontrado');
+    }
+
+    public function obtenerEvidencias(Evento $evento)
+    {
+        $evidenciasRaw = $evento->evidencia;
+
+        if (is_string($evidenciasRaw)) {
+            $evidencias = json_decode($evidenciasRaw, true) ?: [];
+        } elseif (is_array($evidenciasRaw)) {
+            $evidencias = $evidenciasRaw;
+        } else {
+            $evidencias = [];
+        }
+
+        $archivos = [];
+        foreach ($evidencias as $ruta) {
+            $nombreArchivo = basename($ruta);
+            $extension = strtolower(pathinfo($ruta, PATHINFO_EXTENSION));
+            $esImagen = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+
+            $archivos[] = [
+                'nombre'    => $nombreArchivo,
+                'ruta'      => route('eventos.archivo', ['archivo' => $nombreArchivo]),
+                'extension' => $extension ?: 'archivo',
+                'es_imagen' => $esImagen,
+            ];
+        }
+
+        return response()->json([
+            'total'      => count($archivos),
+            'evidencias' => $archivos,
         ]);
     }
 
