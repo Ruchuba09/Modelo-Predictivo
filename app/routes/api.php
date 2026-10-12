@@ -13,7 +13,7 @@ Route::get('/user', function (Request $request) {
 
 Route::apiResource('proyectos', ProyectoController::class);
 Route::apiResource('asignaciones', AsignacionController::class);
-
+Route::apiResource('eventos', AsignacionController::class);
 
 Route::get('/eventos/sin-administrador', [
     EventoController::class,
