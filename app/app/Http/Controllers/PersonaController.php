@@ -2,17 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PersonaRequest;
 use App\Models\Persona;
-use Illuminate\Http\Request;
+use App\Services\PersonaService;
+use Inertia\Inertia;
 
 class PersonaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct(
+        private readonly PersonaService $servicio
+    ) {}
+
     public function index()
     {
-        //
+        return Inertia::render('Personas/Index', [
+            'personas' => $this->servicio->listarConTrabajador(),
+        ]);
     }
 
     /**
@@ -23,12 +28,13 @@ class PersonaController extends Controller
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(PersonaRequest $request)
     {
-        //
+        $this->servicio->crear($request->toData());
+
+        return redirect()
+            ->route('personas.index')
+            ->with('success', 'Persona creada correctamente.');
     }
 
     /**
@@ -36,7 +42,9 @@ class PersonaController extends Controller
      */
     public function show(Persona $persona)
     {
-        //
+        return Inertia::render('Personas/Show', [
+            'persona' => $this->servicio->obtenerConTrabajador($persona),
+        ]);
     }
 
     /**
@@ -47,12 +55,13 @@ class PersonaController extends Controller
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Persona $persona)
+    public function update(PersonaRequest $request, Persona $persona)
     {
-        //
+        $this->servicio->actualizar($persona, $request->toData());
+
+        return redirect()
+            ->route('personas.index')
+            ->with('success', 'Persona actualizada correctamente.');
     }
 
     /**
@@ -60,6 +69,10 @@ class PersonaController extends Controller
      */
     public function destroy(Persona $persona)
     {
-        //
+        $this->servicio->eliminar($persona);
+
+        return redirect()
+            ->route('personas.index')
+            ->with('success', 'Persona eliminada correctamente.');
     }
 }

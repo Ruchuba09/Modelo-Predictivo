@@ -8,3 +8,10 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::apiResource('proyectos', ProyectoController::class);
+Route::apiResource('asignaciones', AsignacionController::class);
+Route::apiResource('eventos', AsignacionController::class);
+
+Route::get('/eventos/sin-administrador', [
+    EventoController::class,
+    'apiSinAdministrador'
+]);
