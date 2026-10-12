@@ -2,7 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { useState, useEffect, PropsWithChildren } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 
-// Arreglo de roles original de tu compañero
+// Arreglo de roles
 const NAV_ITEMS: { href: string; label: string; roles?: string[] }[] = [
     { href: '/portal', label: 'Inicio' },
     { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'supervisor'] },
@@ -116,10 +116,10 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
 
             </aside>
 
-            {/* Contenedor Principal (Header + Contenido) */}
+            {/* Contenedor Principal (Barra superior + Contenido) */}
             <div className={`flex flex-col flex-1 overflow-hidden ${bgClass}`}>
                 
-                {/* Header Global (Top bar) */}
+                {/* Barra superior global */}
                 <header className="h-16 shrink-0 bg-white border-b border-verde-3 flex items-center justify-end px-8 z-40 relative shadow-sm">
                     <div className="flex items-center gap-4 relative">
                         <button
@@ -137,7 +137,7 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
                             </div>
                         </button>
 
-                        {/* Menú Flotante Perfil (Abre hacia abajo) */}
+                        {/* Menú Flotante Perfil */}
                         {menuPerfilAbierto && (
                             <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-verde-3 rounded-lg shadow-xl py-1 z-50 overflow-hidden flex flex-col">
                                 <div className="px-4 py-3 border-b border-verde-3 bg-verde-1">
@@ -169,23 +169,23 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
                 </main>
             </div>
 
-            {/* Notification Bell Floating Button */}
+            {/* Notificación */}
             <div className="fixed bottom-6 right-6 z-[60]">
                 <button 
                     onClick={toggleNotificaciones}
                     className="w-14 h-14 bg-verde-5 hover:bg-verde-6 text-gris-2 rounded-full flex items-center justify-center shadow-lg shadow-verde-5/30 transition-transform hover:scale-110 relative focus:outline-none border border-verde-4"
                 >
-                    {/* Bell Icon */}
+                    {/* Icono de notificación */}
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
-                    {/* Badge */}
+                    {/* Badge de notificaciones nuevas */}
                     {tieneNotificacionesNuevas && (
                         <span className="absolute top-0 right-0 w-4 h-4 bg-rojo-1 border-2 border-white rounded-full"></span>
                     )}
                 </button>
 
-                {/* Notifications Panel */}
+                {/* Panel de notificaciones */}
                 {notificacionesAbiertas && (
                     <div className="absolute bottom-16 right-0 w-80 bg-white border border-verde-3 rounded-xl shadow-2xl overflow-hidden flex flex-col mb-4">
                         <div className="px-4 py-3 border-b border-verde-3 bg-verde-2">
