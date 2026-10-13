@@ -6,8 +6,10 @@ use App\Http\Controllers\RolController;
 use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\CuadrillaController;
 use App\Http\Controllers\SituacionCriticaController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EventoController;
+use App\Http\Controllers\EventoEstadisticaController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -29,7 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/usuarios/{usuario}/editar', [UserController::class, 'edit'])->name('usuarios.editar');
     Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
     Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
-    
+
     Route::get('/roles', [RolController::class, 'index'])->name('roles.index');
     Route::get('/roles/crear', [RolController::class, 'create'])->name('roles.crear');
     Route::post('/roles', [RolController::class, 'store'])->name('roles.store');
@@ -49,17 +51,45 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [EventoController::class, 'indexGrafico'])->name('dashboard');
 
     Route::resource('/trabajadores', TrabajadorController::class)
-    ->parameters(['trabajadores' => 'trabajador']);
+        ->parameters(['trabajadores' => 'trabajador']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Eventos
+    |--------------------------------------------------------------------------
+    | Las rutas con texto fijo (mis-reportes, estadisticas) van ANTES del
+    | resource; si no, Laravel las interpreta como /eventos/{evento}.
+    */
+
+    // Estadísticas: pantalla (Inertia)
+    Route::get('/eventos/estadisticas', fn () => Inertia::render('Eventos/EventosEstadisticas'))
+        ->name('eventos.estadisticas');
+
+    // Estadísticas: datos (JSON)
+    Route::get('/api/eventos/estadisticas', [EventoEstadisticaController::class, 'index'])
+        ->name('api.eventos.estadisticas');
+
+    Route::get('/api/eventos/estadisticas/{seccion}', [EventoEstadisticaController::class, 'seccion'])
+        ->whereIn('seccion', [
+            'resumen', 'distribuciones', 'cruces', 'tendencias', 'tiempos', 'aging',
+            'trabajadores', 'hallazgos', 'cierre', 'calidad_datos', 'destacados', 'actividad_reciente',
+        ])
+        ->name('api.eventos.estadisticas.seccion');
 
     Route::get('/eventos/mis-reportes', [EventoController::class, 'MisReportes'])
         ->name('eventos.mis-reportes');
 
-    Route::resource('eventos', EventoController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
-    
-    Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])->name('eventos.tomar');
-    Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])->name('eventos.cerrar');
-    
-    
+    Route::resource('eventos', EventoController::class)
+        ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
+        ->whereNumber('evento');
+
+    Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])
+        ->whereNumber('evento')
+        ->name('eventos.tomar');
+    Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])
+        ->whereNumber('evento')
+        ->name('eventos.cerrar');
+
     Route::get('/proyectos', function () {
         return Inertia::render('proyectos/Index');
     })->name('proyectos.index');
@@ -73,7 +103,7 @@ Route::middleware('auth')->group(function () {
             'id' => $id,
         ]);
     })->name('proyectos.show');
-    
+
     Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
     Route::get('/situacion-criticas/crear', [SituacionCriticaController::class, 'create'])->name('situacion-criticas.crear');
     Route::post('/situacion-criticas', [SituacionCriticaController::class, 'store'])->name('situacion-criticas.store');
@@ -96,8 +126,6 @@ Route::middleware('auth')->group(function () {
 Route::get('/portal', function () {
     return Inertia::render('portal');
 });
-
-
 
 Route::get('/reportes', function () {
     return Inertia::render('reportes');

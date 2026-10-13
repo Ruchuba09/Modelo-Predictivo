@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProyectoRequest;
 use App\Models\Proyecto;
-use App\Services\ProyectoService;
+use App\Http\Services\ProyectoService;
 use Illuminate\Http\JsonResponse;
 
 class ProyectoController extends Controller

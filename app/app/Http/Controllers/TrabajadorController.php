@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\TrabajadorRequest;
 use App\Models\Trabajador;
-use App\Services\TrabajadorService;
+use App\Http\Services\TrabajadorService;
 use Inertia\Inertia;
 
 class TrabajadorController extends Controller
