@@ -13,9 +13,7 @@ Route::get('/user', function (Request $request) {
 
 Route::apiResource('proyectos', ProyectoController::class);
 Route::apiResource('asignaciones', AsignacionController::class);
-
-Route::get('/faenas', fn () => \App\Models\Faena::orderBy('nombre')->get());
-Route::get('/clientes', fn () => \App\Models\Cliente::orderBy('nombre')->get());
+Route::apiResource('eventos', AsignacionController::class);
 
 Route::get('/eventos/sin-administrador', [
     EventoController::class,

@@ -2,64 +2,67 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\TipoObreroRequest;
 use App\Models\tipo_obrero;
-use Illuminate\Http\Request;
+use App\Services\TipoObreroService;
+use Inertia\Inertia;
 
 class TipoObreroController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct(
+        private readonly TipoObreroService $servicio
+    ) {}
+
     public function index()
     {
-        //
+        return Inertia::render('TipoObreros/Index', [
+            'tipoObreros' => $this->servicio->listar(),
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return Inertia::render('TipoObreros/Create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(TipoObreroRequest $request)
     {
-        //
+        $this->servicio->crear($request->toData());
+
+        return redirect()
+            ->route('tipo-obreros.index')
+            ->with('success', 'Tipo de obrero creado correctamente.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(tipo_obrero $tipo_obrero)
     {
-        //
+        return Inertia::render('TipoObreros/Show', [
+            'tipoObrero' => $tipo_obrero,
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(tipo_obrero $tipo_obrero)
     {
-        //
+        return Inertia::render('TipoObreros/Edit', [
+            'tipoObrero' => $tipo_obrero,
+        ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, tipo_obrero $tipo_obrero)
+    public function update(TipoObreroRequest $request, tipo_obrero $tipo_obrero)
     {
-        //
+        $this->servicio->actualizar($tipo_obrero, $request->toData());
+
+        return redirect()
+            ->route('tipo-obreros.index')
+            ->with('success', 'Tipo de obrero actualizado correctamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(tipo_obrero $tipo_obrero)
     {
-        //
+        $this->servicio->eliminar($tipo_obrero);
+
+        return redirect()
+            ->route('tipo-obreros.index')
+            ->with('success', 'Tipo de obrero eliminado correctamente.');
     }
 }

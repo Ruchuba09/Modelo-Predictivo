@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PersonaRequest;
 use App\Models\Persona;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use App\Services\PersonaService;
 use Inertia\Inertia;
 
 class PersonaController extends Controller
 {
+    public function __construct(
+        private readonly PersonaService $servicio
+    ) {}
+
     public function index()
     {
         return Inertia::render('Personas/Index', [
-            'personas' => Persona::with('trabajador')
-                ->orderBy('apellido_1')
-                ->orderBy('nombre_1')
-                ->get(),
+            'personas' => $this->servicio->listarConTrabajador(),
         ]);
     }
 
@@ -24,9 +25,9 @@ class PersonaController extends Controller
         return Inertia::render('Personas/Create');
     }
 
-    public function store(Request $request)
+    public function store(PersonaRequest $request)
     {
-        Persona::create($this->validarDatos($request));
+        $this->servicio->crear($request->toData());
 
         return redirect()
             ->route('personas.index')
@@ -35,10 +36,8 @@ class PersonaController extends Controller
 
     public function show(Persona $persona)
     {
-        $persona->load('trabajador');
-
         return Inertia::render('Personas/Show', [
-            'persona' => $persona,
+            'persona' => $this->servicio->obtenerConTrabajador($persona),
         ]);
     }
 
@@ -49,9 +48,9 @@ class PersonaController extends Controller
         ]);
     }
 
-    public function update(Request $request, Persona $persona)
+    public function update(PersonaRequest $request, Persona $persona)
     {
-        $persona->update($this->validarDatos($request, $persona));
+        $this->servicio->actualizar($persona, $request->toData());
 
         return redirect()
             ->route('personas.index')
@@ -60,8 +59,7 @@ class PersonaController extends Controller
 
     public function destroy(Persona $persona)
     {
-        // trabajadores.id_persona hace cascade (y desde ahí subtipo, user y pivotes)
-        $persona->delete();
+        $this->servicio->eliminar($persona);
 
         return redirect()
             ->route('personas.index')
