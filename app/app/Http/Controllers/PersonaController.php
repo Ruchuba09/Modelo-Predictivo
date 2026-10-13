@@ -65,20 +65,4 @@ class PersonaController extends Controller
             ->route('personas.index')
             ->with('success', 'Persona eliminada correctamente.');
     }
-
-    private function validarDatos(Request $request, ?Persona $persona = null): array
-    {
-        return $request->validate([
-            'rut' => [
-                'required',
-                'string',
-                'max:20',
-                Rule::unique('personas', 'rut')->ignore($persona?->id_persona, 'id_persona'),
-            ],
-            'nombre_1' => 'required|string|max:100',
-            'nombre_2' => 'nullable|string|max:100',
-            'apellido_1' => 'required|string|max:100',
-            'apellido_2' => 'nullable|string|max:100',
-        ]);
-    }
 }

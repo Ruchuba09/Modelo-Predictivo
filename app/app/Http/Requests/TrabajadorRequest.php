@@ -29,7 +29,6 @@ class TrabajadorRequest extends FormRequest
             'id_tipo_trabajador' => ['required', 'string', 'in:obrero,supervisor,administrativo'],
             'id_tipo_obrero' => [
                 'nullable',
-                'required_if:id_tipo_trabajador,obrero',
                 'integer',
                 'exists:tipo_obreros,id_tipo_obrero',
             ],
