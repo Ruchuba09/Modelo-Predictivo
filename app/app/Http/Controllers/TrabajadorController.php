@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Administrativo;
 use App\Models\Obrero;
+use App\Models\Persona;
 use App\Models\Supervisor;
 use App\Models\Trabajador;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class TrabajadorController extends Controller
@@ -19,48 +21,45 @@ class TrabajadorController extends Controller
      */
     private const PASSWORD_DEFAULT = '12345678';
 
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $trabajadores = Trabajador::latest()->get();
+        $trabajadores = Trabajador::with(['persona', 'usuario', 'obrero', 'supervisor', 'administrativo'])
+            ->latest('fecha_creacion')
+            ->get()
+            ->map(fn (Trabajador $t) => $this->formatear($t));
 
         return Inertia::render('Trabajadores/Trabajadores', [
             'trabajadores' => $trabajadores,
         ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         return Inertia::render('Trabajadores/Create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validated = $this->validarDatos($request);
 
-        $trabajador = DB::transaction(function () use ($validated) {
-            $trabajador = Trabajador::create($this->datosTrabajador($validated));
+        DB::transaction(function () use ($validated) {
+            $persona = Persona::create($this->datosPersona($validated));
 
-            $this->crearSubtipo($trabajador, $validated['id_tipo_trabajador']);
+            $trabajador = Trabajador::create(
+                $this->datosTrabajador($validated) + ['id_persona' => $persona->id_persona]
+            );
 
-            // Se crea el usuario asociado usando el mismo rut del trabajador
-            // y el email recibido desde el front. La contraseña queda hasheada
-            // automáticamente por el cast "hashed" del modelo User.
+            $this->crearSubtipo(
+                $trabajador,
+                $validated['id_tipo_trabajador'],
+                $validated['id_tipo_obrero'] ?? null
+            );
+
             User::create([
-                'rut' => $trabajador->rut,
+                'id_trabajador' => $trabajador->id_trabajador,
                 'email' => $validated['email'],
                 'password' => self::PASSWORD_DEFAULT,
             ]);
-
-            return $trabajador;
         });
 
         return redirect()
@@ -68,60 +67,47 @@ class TrabajadorController extends Controller
             ->with('success', 'Trabajador creado correctamente.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Trabajador $trabajador)
     {
         return Inertia::render('Trabajadores/Show', [
-            'trabajador' => $trabajador,
+            'trabajador' => $this->formatear($trabajador),
         ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Trabajador $trabajador)
     {
         return Inertia::render('Trabajadores/Edit', [
-            'trabajador' => $trabajador->load('usuario'),
+            'trabajador' => $this->formatear($trabajador),
         ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Trabajador $trabajador)
     {
         $validated = $this->validarDatos($request, $trabajador);
 
         DB::transaction(function () use ($trabajador, $validated) {
-            $tipoAnterior = $trabajador->id_tipo_trabajador;
+            $tipoAnterior = $this->tipoActual($trabajador);
             $tipoNuevo = $validated['id_tipo_trabajador'];
-            $rutAnterior = $trabajador->rut;
+            $idTipoObrero = $validated['id_tipo_obrero'] ?? null;
 
+            $trabajador->persona->update($this->datosPersona($validated));
             $trabajador->update($this->datosTrabajador($validated));
 
-            // Si el tipo de trabajador cambió, hay que borrar el registro
-            // hijo anterior (obrero/supervisor/administrativo) y crear el nuevo.
             if ($tipoAnterior !== $tipoNuevo) {
                 $this->eliminarSubtipo($trabajador, $tipoAnterior);
-                $this->crearSubtipo($trabajador, $tipoNuevo);
+                $this->crearSubtipo($trabajador, $tipoNuevo, $idTipoObrero);
+            } elseif ($tipoNuevo === 'obrero' && $idTipoObrero) {
+                Obrero::where('id_trabajador', $trabajador->id_trabajador)
+                    ->update(['id_tipo_obrero' => $idTipoObrero]);
             }
 
-            // Mantiene sincronizado al usuario asociado (relación por rut).
-            $usuario = User::where('rut', $rutAnterior)->first();
+            $usuario = $trabajador->usuario;
 
             if ($usuario) {
-                $usuario->update([
-                    'rut' => $trabajador->rut,
-                    'email' => $validated['email'],
-                ]);
+                $usuario->update(['email' => $validated['email']]);
             } else {
-                // El trabajador no tenía usuario (p. ej. fue creado antes de
-                // este flujo): se crea ahora con la contraseña por defecto.
                 User::create([
-                    'rut' => $trabajador->rut,
+                    'id_trabajador' => $trabajador->id_trabajador,
                     'email' => $validated['email'],
                     'password' => self::PASSWORD_DEFAULT,
                 ]);
@@ -133,37 +119,42 @@ class TrabajadorController extends Controller
             ->with('success', 'Trabajador actualizado correctamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Trabajador $trabajador)
     {
-        // No hace falta borrar el subtipo manualmente si las FKs tienen
-        // ->cascadeOnDelete() (como en tus migraciones de obreros/supervisors).
-        // Si además quieres eliminar el usuario asociado, descomenta:
-        // User::where('rut', $trabajador->rut)->delete();
-        $trabajador->delete();
+        // Las FKs hacen cascade: subtipo, user, pivotes.
+        DB::transaction(function () use ($trabajador) {
+            $persona = $trabajador->persona;
+            $trabajador->delete();
+            $persona?->delete();
+        });
 
         return redirect()
             ->route('trabajadores.index')
             ->with('success', 'Trabajador eliminado correctamente.');
     }
 
-    /**
-     * Crea el registro correspondiente en la tabla hija según el tipo.
-     */
-    private function crearSubtipo(Trabajador $trabajador, string $tipo): void
+    private function tipoActual(Trabajador $trabajador): ?string
+    {
+        return match (true) {
+            (bool) $trabajador->obrero => 'obrero',
+            (bool) $trabajador->supervisor => 'supervisor',
+            (bool) $trabajador->administrativo => 'administrativo',
+            default => null,
+        };
+    }
+
+    private function crearSubtipo(Trabajador $trabajador, string $tipo, ?int $idTipoObrero = null): void
     {
         match ($tipo) {
-            'obrero' => Obrero::firstOrCreate(['id_trabajador' => $trabajador->id_trabajador]),
+            'obrero' => Obrero::firstOrCreate(
+                ['id_trabajador' => $trabajador->id_trabajador],
+                ['id_tipo_obrero' => $idTipoObrero]
+            ),
             'supervisor' => Supervisor::firstOrCreate(['id_trabajador' => $trabajador->id_trabajador]),
             'administrativo' => Administrativo::firstOrCreate(['id_trabajador' => $trabajador->id_trabajador]),
         };
     }
 
-    /**
-     * Elimina el registro de la tabla hija correspondiente al tipo dado.
-     */
     private function eliminarSubtipo(Trabajador $trabajador, ?string $tipo): void
     {
         match ($tipo) {
@@ -174,45 +165,63 @@ class TrabajadorController extends Controller
         };
     }
 
-    /**
-     * Filtra del array validado solo las columnas propias de Trabajador
-     * (excluye "email", que pertenece a User).
-     */
+    private function datosPersona(array $validated): array
+    {
+        return collect($validated)
+            ->only(['rut', 'nombre_1', 'nombre_2', 'apellido_1', 'apellido_2'])
+            ->all();
+    }
+
     private function datosTrabajador(array $validated): array
     {
-        return collect($validated)->except('email')->all();
+        return collect($validated)->only(['cargo', 'estado'])->all();
     }
 
     /**
-     * Reglas de validación compartidas entre store() y update().
-     *
-     * El email se valida contra la tabla `users`, no `trabajadors`
-     * (el modelo Trabajador no tiene esa columna).
+     * Aplana trabajador + persona + usuario + tipo para el front.
      */
+    private function formatear(Trabajador $trabajador): array
+    {
+        $trabajador->loadMissing(['persona', 'usuario', 'obrero', 'supervisor', 'administrativo']);
+
+        return array_merge(
+            $trabajador->persona?->only(['rut', 'nombre_1', 'nombre_2', 'apellido_1', 'apellido_2']) ?? [],
+            $trabajador->only(['id_trabajador', 'id_persona', 'cargo', 'estado', 'fecha_creacion', 'ultima_actualizacion']),
+            [
+                'email' => $trabajador->usuario?->email,
+                'id_tipo_trabajador' => $this->tipoActual($trabajador),
+                'id_tipo_obrero' => $trabajador->obrero?->id_tipo_obrero,
+            ]
+        );
+    }
+
     private function validarDatos(Request $request, ?Trabajador $trabajador = null): array
     {
-        $idUsuarioIgnorar = $trabajador
-            ? User::where('rut', $trabajador->rut)->value('id_user')
-            : null;
-
         return $request->validate([
             'nombre_1' => 'required|string|max:100',
             'nombre_2' => 'nullable|string|max:100',
             'apellido_1' => 'required|string|max:100',
             'apellido_2' => 'nullable|string|max:100',
             'cargo' => 'required|string|max:100',
+            'estado' => 'nullable|string|max:30',
             'id_tipo_trabajador' => 'required|string|in:obrero,supervisor,administrativo',
+            'id_tipo_obrero' => [
+                'nullable',
+                'required_if:id_tipo_trabajador,obrero',
+                'integer',
+                'exists:tipo_obreros,id_tipo_obrero',
+            ],
             'rut' => [
                 'required',
                 'string',
-                'max:12',
-                'unique:usuarios.trabajadors,rut' . ($trabajador ? ",{$trabajador->id_trabajador},id_trabajador" : ''),
+                'max:20',
+                Rule::unique('personas', 'rut')->ignore($trabajador?->id_persona, 'id_persona'),
             ],
             'email' => [
                 'required',
                 'email',
-                'max:150',
-                'unique:usuarios.users,email' . ($idUsuarioIgnorar ? ",{$idUsuarioIgnorar},id_user" : ''),
+                'max:255',
+                Rule::unique('users', 'email')->ignore($trabajador?->usuario?->id_user, 'id_user'),
             ],
         ]);
     }

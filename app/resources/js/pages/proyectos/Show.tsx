@@ -1,162 +1,155 @@
-import { Link, useParams } from "react-router-dom";
+import { Head, Link, usePage } from '@inertiajs/react';
+import MainLayout from '../../layouts/MainLayout';
+import { useProyectos } from '../../hooks/useProyectos';
 
-import { useProyecto } from "../../hooks/useProyecto";
+interface PageProps {
+    id: number;
+    [key: string]: unknown;
+}
+
+const ESTADO_ESTILOS: Record<string, string> = {
+    activo: 'bg-verde-5/20 text-verde-6 border border-verde-5/40',
+    en_proceso: 'bg-amarillo-2 text-amarillo-1 border border-amarillo-1/40',
+    pausado: 'bg-naranja-2 text-naranja-1 border border-naranja-1/40',
+    finalizado: 'bg-verde-2 text-gris-1 border border-verde-3',
+    cerrado: 'bg-verde-2 text-gris-1 border border-verde-3',
+};
+
+const ESTADO_LABELS: Record<string, string> = {
+    activo: 'Activo',
+    en_proceso: 'En proceso',
+    pausado: 'Pausado',
+    finalizado: 'Finalizado',
+    cerrado: 'Cerrado',
+};
 
 export default function Show() {
-    const { id } = useParams();
-
-    const {
-        proyecto,
-        loading,
-        error,
-    } = useProyecto(id ? Number(id) : undefined);
+    const { id } = usePage<PageProps>().props;
+    const { proyecto, loading, error } = useProyectos(id ? Number(id) : undefined);
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#101010] text-white flex items-center justify-center">
-                Cargando proyecto...
-            </div>
+            <MainLayout>
+                <Head title="Cargando proyecto | AVA" />
+                <div className="max-w-[1100px] mx-auto p-6 lg:p-8">
+                    <div className="bg-white border border-verde-3 rounded-2xl p-10 shadow-2xl text-center text-gris-1 text-sm">
+                        Cargando proyecto...
+                    </div>
+                </div>
+            </MainLayout>
         );
     }
 
     if (error || !proyecto) {
         return (
-            <div className="min-h-screen bg-[#101010] text-white p-8">
-                <h1 className="text-2xl font-bold">
-                    Proyecto no encontrado
-                </h1>
-
-                <p className="text-[#7a7f85] mt-2">
-                    {error}
-                </p>
-
-                <Link
-                    to="/proyectos"
-                    className="inline-block mt-6 text-[#a0f700]"
-                >
-                    Volver
-                </Link>
-            </div>
+            <MainLayout>
+                <Head title="Proyecto no encontrado | AVA" />
+                <div className="max-w-[1100px] mx-auto p-6 lg:p-8">
+                    <div className="bg-white border border-verde-3 rounded-2xl p-8 shadow-2xl">
+                        <h1 className="text-2xl font-bold text-gris-2">Proyecto no encontrado</h1>
+                        <p className="text-gris-1 text-sm mt-2">{error || 'No se pudo encontrar el proyecto solicitado.'}</p>
+                        <Link
+                            href="/proyectos"
+                            className="inline-flex items-center mt-6 px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-sm"
+                        >
+                            ← Volver al listado
+                        </Link>
+                    </div>
+                </div>
+            </MainLayout>
         );
     }
 
+    const estadoKey = (proyecto.estado || '').toLowerCase();
+    const badgeClass = ESTADO_ESTILOS[estadoKey] ?? 'bg-verde-2 text-verde-6 border border-verde-3';
+
     return (
-        <div className="min-h-screen bg-[#101010] text-white">
-            <main className="max-w-[1700px] mx-auto p-6 lg:p-8">
+        <MainLayout>
+            <Head title={`${proyecto.nombre} | AVA`} />
 
-                <div className="flex justify-between items-center mb-8">
-
+            <div className="max-w-[1100px] mx-auto p-6 lg:p-8">
+                {/* Header */}
+                <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <div className="text-xs uppercase text-[#7a7f85] font-bold">
-                            Proyecto
-                        </div>
-
-                        <h1 className="text-3xl font-bold">
-                            {proyecto.nombre}
-                        </h1>
+                        <p className="text-xs uppercase tracking-wider text-gris-1 font-bold">
+                            Proyecto #{proyecto.id_proyecto}
+                        </p>
+                        <h1 className="text-3xl font-bold text-gris-2 mt-1">{proyecto.nombre}</h1>
                     </div>
 
                     <Link
-                        to="/proyectos"
-                        className="px-4 py-2 rounded-lg border border-[#2d3238]"
+                        href="/proyectos"
+                        className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-sm"
                     >
-                        Volver
+                        ← Volver al listado
                     </Link>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-
-                    <div className="bg-[#141414] border border-[#2d3238] rounded-2xl p-5">
-                        <div className="text-xs uppercase text-[#7a7f85]">
-                            Cliente
-                        </div>
-
-                        <div className="text-lg font-semibold mt-2">
-                            {proyecto.cliente?.nombre ??
-                                "Sin cliente"}
-                        </div>
-                    </div>
-
-                    <div className="bg-[#141414] border border-[#2d3238] rounded-2xl p-5">
-                        <div className="text-xs uppercase text-[#7a7f85]">
-                            Faena
-                        </div>
-
-                        <div className="text-lg font-semibold mt-2">
-                            {proyecto.faena?.nombre ??
-                                "Sin faena"}
-                        </div>
-                    </div>
-
-                    <div className="bg-[#141414] border border-[#2d3238] rounded-2xl p-5">
-                        <div className="text-xs uppercase text-[#7a7f85]">
-                            Estado
-                        </div>
-
-                        <div className="text-lg font-semibold mt-2 text-[#a0f700]">
-                            {proyecto.estado}
-                        </div>
-                    </div>
-
-                    <div className="bg-[#141414] border border-[#2d3238] rounded-2xl p-5">
-                        <div className="text-xs uppercase text-[#7a7f85]">
-                            Ubicación
-                        </div>
-
-                        <div className="text-lg font-semibold mt-2">
-                            {proyecto.ubicacion ??
-                                "Sin ubicación"}
-                        </div>
-                    </div>
-
-                </div>
-
-                <div className="mt-6 bg-[#141414] border border-[#2d3238] rounded-2xl p-6">
-
-                    <h2 className="text-xl font-bold mb-6">
-                        Detalles
-                    </h2>
-
-                    <div className="mb-6">
-                        <div className="text-xs uppercase text-[#7a7f85]">
-                            Descripción
-                        </div>
-
-                        <p className="mt-2 text-[#d0d3d6]">
-                            {proyecto.descripcion ??
-                                "Sin descripción"}
+                {/* Tarjetas de resumen */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-white border border-verde-3 rounded-2xl p-5 shadow-md">
+                        <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">Cliente</p>
+                        <p className="text-base font-bold text-gris-2 mt-1.5">
+                            {proyecto.cliente?.nombre ?? 'Sin cliente'}
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                        <div>
-                            <div className="text-xs uppercase text-[#7a7f85]">
-                                Fecha inicio
-                            </div>
-
-                            <p className="mt-2">
-                                {proyecto.fecha_inicio ??
-                                    "No definida"}
-                            </p>
-                        </div>
-
-                        <div>
-                            <div className="text-xs uppercase text-[#7a7f85]">
-                                Fecha término
-                            </div>
-
-                            <p className="mt-2">
-                                {proyecto.fecha_termino ??
-                                    "No definida"}
-                            </p>
-                        </div>
-
+                    <div className="bg-white border border-verde-3 rounded-2xl p-5 shadow-md">
+                        <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">Faena</p>
+                        <p className="text-base font-bold text-gris-2 mt-1.5">
+                            {proyecto.faena?.nombre ?? 'Sin faena'}
+                        </p>
                     </div>
 
+                    <div className="bg-white border border-verde-3 rounded-2xl p-5 shadow-md">
+                        <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">Estado</p>
+                        <div className="mt-2">
+                            <span
+                                className={`inline-block px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${badgeClass}`}
+                            >
+                                {ESTADO_LABELS[estadoKey] ?? proyecto.estado}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="bg-white border border-verde-3 rounded-2xl p-5 shadow-md">
+                        <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">Ubicación</p>
+                        <p className="text-base font-bold text-gris-2 mt-1.5">
+                            {proyecto.ubicacion ?? 'Sin ubicación'}
+                        </p>
+                    </div>
                 </div>
 
-            </main>
-        </div>
+                {/* Detalle completo */}
+                <div className="bg-white border border-verde-3 rounded-2xl p-6 lg:p-8 shadow-2xl space-y-6">
+                    <div className="border-b border-verde-3 pb-3">
+                        <h2 className="text-lg font-bold text-gris-2">Detalles del proyecto</h2>
+                    </div>
+
+                    <div>
+                        <p className="text-xs uppercase tracking-wider text-gris-1 font-bold mb-2">Descripción</p>
+                        <p className="text-sm text-gris-2 bg-verde-1 border border-verde-3 rounded-xl p-4 whitespace-pre-line">
+                            {proyecto.descripcion || 'Sin descripción registrada.'}
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-verde-3">
+                        <div className="bg-verde-1 border border-verde-3 rounded-xl p-4">
+                            <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">Fecha de inicio</p>
+                            <p className="text-sm font-bold text-gris-2 mt-1">
+                                {proyecto.fecha_inicio ?? 'No definida'}
+                            </p>
+                        </div>
+
+                        <div className="bg-verde-1 border border-verde-3 rounded-xl p-4">
+                            <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">Fecha de término</p>
+                            <p className="text-sm font-bold text-gris-2 mt-1">
+                                {proyecto.fecha_termino ?? 'No definida'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </MainLayout>
     );
 }

@@ -1,129 +1,183 @@
-import React, { FormEvent } from "react";
-import { Head, useForm, Link } from "@inertiajs/react";
-import "../../../css/Create.css";
+import React, { FormEvent } from 'react';
+import { Head, useForm, Link } from '@inertiajs/react';
+import MainLayout from '../../layouts/MainLayout';
 
 const Create: React.FC = () => {
     const { data, setData, post, processing, errors } = useForm({
-        nombre_1: "",
-        nombre_2: "",
-        apellido_1: "",
-        apellido_2: "",
-        cargo: "",
-        id_tipo_trabajador: "",
-        rut: "",
-        email: "",
+        nombre_1: '',
+        nombre_2: '',
+        apellido_1: '',
+        apellido_2: '',
+        cargo: '',
+        id_tipo_trabajador: '',
+        rut: '',
+        email: '',
     });
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
-        post(route("trabajadores.store"));
+        post(route('trabajadores.store'));
     };
 
+    const inputClass =
+        'w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-sm text-gris-2 focus:outline-none focus:border-verde-5 transition-colors';
+    const labelClass = 'block text-xs uppercase tracking-wider text-gris-1 font-bold mb-2';
+    const errorClass = 'text-xs text-rojo-1 mt-1 font-medium';
+
     return (
-        <>
-            <Head title="Nuevo trabajador" />
+        <MainLayout>
+            <Head title="Nuevo trabajador | AVA" />
 
-            <div className="create-page">
-                <h2>Nuevo trabajador</h2>
+            <div className="max-w-[1100px] mx-auto p-6 lg:p-8">
+                {/* Header */}
+                <div className="mb-6 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gris-2 mb-1">Nuevo trabajador</h1>
+                        <p className="text-gris-1 text-sm">
+                            Completa los datos personales y laborales para registrar un trabajador.
+                        </p>
+                    </div>
+                    <Link
+                        href={route('trabajadores.index')}
+                        className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-sm"
+                    >
+                        ← Volver al listado
+                    </Link>
+                </div>
 
-                <form className="create-form" onSubmit={submit}>
-                    <div className="create-form-group">
-                        <label>Nombre 1</label>
-                        <input
-                            className="create-input"
-                            value={data.nombre_1}
-                            onChange={(e) => setData("nombre_1", e.target.value)}
-                        />
-                        {errors.nombre_1 && <div className="create-error">{errors.nombre_1}</div>}
+                {/* Formulario */}
+                <form
+                    onSubmit={submit}
+                    className="bg-white border border-verde-3 rounded-2xl p-6 lg:p-8 shadow-2xl space-y-6"
+                >
+                    <div className="border-b border-verde-3 pb-3">
+                        <h2 className="text-lg font-bold text-gris-2">Información del trabajador</h2>
                     </div>
 
-                    <div className="create-form-group">
-                        <label>Nombre 2</label>
-                        <input
-                            className="create-input"
-                            value={data.nombre_2}
-                            onChange={(e) => setData("nombre_2", e.target.value)}
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className={labelClass}>Primer nombre *</label>
+                            <input
+                                className={inputClass}
+                                value={data.nombre_1}
+                                onChange={(e) => setData('nombre_1', e.target.value)}
+                                placeholder="Ej: Juan"
+                                required
+                            />
+                            {errors.nombre_1 && <p className={errorClass}>{errors.nombre_1}</p>}
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>Segundo nombre</label>
+                            <input
+                                className={inputClass}
+                                value={data.nombre_2}
+                                onChange={(e) => setData('nombre_2', e.target.value)}
+                                placeholder="Ej: Andrés"
+                            />
+                            {errors.nombre_2 && <p className={errorClass}>{errors.nombre_2}</p>}
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>Primer apellido *</label>
+                            <input
+                                className={inputClass}
+                                value={data.apellido_1}
+                                onChange={(e) => setData('apellido_1', e.target.value)}
+                                placeholder="Ej: Pérez"
+                                required
+                            />
+                            {errors.apellido_1 && <p className={errorClass}>{errors.apellido_1}</p>}
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>Segundo apellido</label>
+                            <input
+                                className={inputClass}
+                                value={data.apellido_2}
+                                onChange={(e) => setData('apellido_2', e.target.value)}
+                                placeholder="Ej: Soto"
+                            />
+                            {errors.apellido_2 && <p className={errorClass}>{errors.apellido_2}</p>}
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>RUT *</label>
+                            <input
+                                className={inputClass}
+                                value={data.rut}
+                                onChange={(e) => setData('rut', e.target.value)}
+                                placeholder="Ej: 12.345.678-9"
+                                required
+                            />
+                            {errors.rut && <p className={errorClass}>{errors.rut}</p>}
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>Correo electrónico *</label>
+                            <input
+                                className={inputClass}
+                                type="email"
+                                value={data.email}
+                                onChange={(e) => setData('email', e.target.value)}
+                                placeholder="nombre@ava.cl"
+                                required
+                            />
+                            {errors.email && <p className={errorClass}>{errors.email}</p>}
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>Cargo *</label>
+                            <input
+                                className={inputClass}
+                                value={data.cargo}
+                                onChange={(e) => setData('cargo', e.target.value)}
+                                placeholder="Ej: Maestro Primera, Prevencionista..."
+                                required
+                            />
+                            {errors.cargo && <p className={errorClass}>{errors.cargo}</p>}
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>Tipo de trabajador *</label>
+                            <select
+                                className={inputClass}
+                                value={data.id_tipo_trabajador}
+                                onChange={(e) => setData('id_tipo_trabajador', e.target.value)}
+                                required
+                            >
+                                <option value="" disabled>
+                                    Selecciona un tipo
+                                </option>
+                                <option value="obrero">Obrero</option>
+                                <option value="supervisor">Supervisor</option>
+                                <option value="administrativo">Administrativo</option>
+                            </select>
+                            {errors.id_tipo_trabajador && (
+                                <p className={errorClass}>{errors.id_tipo_trabajador}</p>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="create-form-group">
-                        <label>Apellido 1</label>
-                        <input
-                            className="create-input"
-                            value={data.apellido_1}
-                            onChange={(e) => setData("apellido_1", e.target.value)}
-                        />
-                        {errors.apellido_1 && <div className="create-error">{errors.apellido_1}</div>}
-                    </div>
-
-                    <div className="create-form-group">
-                        <label>Apellido 2</label>
-                        <input
-                            className="create-input"
-                            value={data.apellido_2}
-                            onChange={(e) => setData("apellido_2", e.target.value)}
-                        />
-                    </div>
-
-                    <div className="create-form-group">
-                        <label>Cargo</label>
-                        <input
-                            className="create-input"
-                            value={data.cargo}
-                            onChange={(e) => setData("cargo", e.target.value)}
-                        />
-                        {errors.cargo && <div className="create-error">{errors.cargo}</div>}
-                    </div>
-
-                    <div className="create-form-group">
-                        <label>Tipo trabajador</label>
-                        <select
-                            className="create-input"
-                            value={data.id_tipo_trabajador}
-                            onChange={(e) => setData("id_tipo_trabajador", e.target.value)}
+                    {/* Acciones */}
+                    <div className="pt-4 border-t border-verde-3 flex items-center justify-end gap-4">
+                        <Link
+                            href={route('trabajadores.index')}
+                            className="px-5 py-3 rounded-lg text-sm font-bold text-gris-1 hover:text-gris-2 transition-colors"
                         >
-                            <option value="" disabled>
-                                Selecciona un tipo
-                            </option>
-                            <option value="obrero">Obrero</option>
-                            <option value="supervisor">Supervisor</option>
-                            <option value="administrativo">Administrativo</option>
-                        </select>
-                        {errors.id_tipo_trabajador && (
-                            <div className="create-error">{errors.id_tipo_trabajador}</div>
-                        )}
-                    </div>
-
-                    <div className="create-form-group">
-                        <label>RUT</label>
-                        <input
-                            className="create-input"
-                            value={data.rut}
-                            onChange={(e) => setData("rut", e.target.value)}
-                        />
-                        {errors.rut && <div className="create-error">{errors.rut}</div>}
-                    </div>
-
-                    <div className="create-form-group">
-                        <label>Email</label>
-                        <input
-                            className="create-input"
-                            type="email"
-                            value={data.email}
-                            onChange={(e) => setData("email", e.target.value)}
-                        />
-                        {errors.email && <div className="create-error">{errors.email}</div>}
-                    </div>
-
-                    <div className="create-acciones">
-                        <button className="create-btn-guardar" type="submit" disabled={processing}>
-                            Guardar
+                            Cancelar
+                        </Link>
+                        <button
+                            type="submit"
+                            disabled={processing}
+                            className="bg-verde-5 hover:bg-verde-6 text-black rounded-lg font-bold px-6 py-3 text-sm transition-colors shadow-lg shadow-verde-5/20 disabled:opacity-50"
+                        >
+                            {processing ? 'Guardando...' : 'Guardar trabajador'}
                         </button>
-                        <Link className="create-link-cancelar" href={route("trabajadores.index")}>Cancelar</Link>
                     </div>
                 </form>
             </div>
-        </>
+        </MainLayout>
     );
 };
 

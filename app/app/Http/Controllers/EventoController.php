@@ -207,7 +207,7 @@ class EventoController extends Controller
 
     public function show(Evento $evento)
     {
-        $evento->load(['tipoEvento', 'proyecto', 'area', 'administrador', 'trabajador.persona', 'evidencias']);
+        $evento->load(['tipoEvento', 'proyecto', 'area', 'administrador', 'trabajador']);
 
         return Inertia::render('Eventos/Show', [
             'evento' => $evento,
@@ -243,11 +243,6 @@ class EventoController extends Controller
             $evidencias = $evidenciasRaw;
         } else {
             $evidencias = [];
-        }
-
-        // Si no hay en la columna evidencia, revisar relación evidencias
-        if (empty($evidencias) && $evento->relationLoaded('evidencias') && $evento->evidencias->isNotEmpty()) {
-            $evidencias = $evento->evidencias->pluck('ruta')->all();
         }
 
         $archivos = [];
@@ -434,6 +429,7 @@ class EventoController extends Controller
 
         return $supervisor;
     }
+
     public function apiSinAdministrador()
     {
         $eventos = Evento::with([
@@ -458,3 +454,4 @@ class EventoController extends Controller
         return $administrativo;
     }
 }
+

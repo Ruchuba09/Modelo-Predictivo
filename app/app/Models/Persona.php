@@ -9,8 +9,11 @@ class Persona extends Model
 {
     use HasFactory;
 
-    protected $table = 'personas';
+    protected $table = 'public.personas';
     protected $primaryKey = 'id_persona';
+    public $incrementing = true;
+
+    protected $keyType = 'int';
     public $timestamps = false;
 
     protected $fillable = [

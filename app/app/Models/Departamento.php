@@ -3,28 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Departamento extends Model
 {
     protected $table = 'departamentos';
+    protected $primaryKey = 'id_departamento';
+    public $timestamps = false;
 
     protected $fillable = [
-        'id_trabajador',
+        'nombre',
+        'descripcion',
+        'estado',
     ];
 
-    public function trabajador()
+    public function trabajadores(): BelongsToMany
     {
-        return $this->belongsTo(Trabajador::class, 'id_trabajador', 'id_trabajador');
+        return $this->belongsToMany(Trabajador::class, 'trabajador_departamento', 'id_departamento', 'id_trabajador');
     }
-
-    public function asignaciones()
-    {
-        return $this->hasMany(Asignacion::class, 'id_dpto');
-    }
-
-    public function faenas()
-    {
-        return $this->hasMany(Faena::class, 'id_dpto');
-    }
-    
 }

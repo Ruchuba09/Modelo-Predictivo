@@ -2,23 +2,24 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Asignacion extends Model
 {
-    use HasFactory; 
-    protected $table = 'asignaciones';
+    use HasFactory;
 
+    protected $table = 'asignaciones';
     protected $primaryKey = 'id_asignacion';
 
-    public $timestamps = false;
+    const CREATED_AT = 'fecha_creacion';
+    const UPDATED_AT = null;
 
     protected $fillable = [
         'id_administrador',
         'id_proyecto',
         'id_cuadrilla',
-        'fecha_creacion',
         'fecha_inicio',
         'fecha_termino',
     ];
@@ -29,20 +30,18 @@ class Asignacion extends Model
         'fecha_termino' => 'date',
     ];
 
-    // Relaciones
-
-    public function administrador()
+    public function administrador(): BelongsTo
     {
-        return $this->belongsTo(Administrador::class, 'id_administrador');
+        return $this->belongsTo(Administrativo::class, 'id_administrador', 'id_trabajador');
     }
 
-    public function proyecto()
+    public function proyecto(): BelongsTo
     {
-        return $this->belongsTo(Proyecto::class, 'id_proyecto');
+        return $this->belongsTo(Proyecto::class, 'id_proyecto', 'id_proyecto');
     }
 
-    public function cuadrilla()
+    public function cuadrilla(): BelongsTo
     {
-        return $this->belongsTo(Cuadrilla::class, 'id_cuadrilla');
+        return $this->belongsTo(Cuadrilla::class, 'id_cuadrilla', 'id_cuadrilla');
     }
 }

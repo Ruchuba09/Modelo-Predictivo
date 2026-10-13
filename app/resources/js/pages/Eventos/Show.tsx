@@ -95,9 +95,7 @@ export default function Show() {
             setErrorEvidencia(null);
 
             try {
-                const url = typeof route === 'function'
-                    ? route('eventos.evidencias', evento.id_evento)
-                    : `/eventos/${evento.id_evento}/evidencias`;
+                const url = `/eventos/${evento.id_evento}/evidencias`;
 
                 const res = await fetch(url, {
                     headers: {

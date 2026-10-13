@@ -3,8 +3,21 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProyectoController;
+use App\Http\Controllers\AsignacionController;
+use App\Http\Controllers\CuadrillaController;
+use App\Http\Controllers\EventoController;
+
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
 Route::apiResource('proyectos', ProyectoController::class);
+Route::apiResource('asignaciones', AsignacionController::class);
+
+Route::get('/faenas', fn () => \App\Models\Faena::orderBy('nombre')->get());
+Route::get('/clientes', fn () => \App\Models\Cliente::orderBy('nombre')->get());
+
+Route::get('/eventos/sin-administrador', [
+    EventoController::class,
+    'apiSinAdministrador'
+]);
