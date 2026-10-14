@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/use-auth';
 const NAV_ITEMS: { href: string; label: string; roles?: string[] }[] = [
     { href: '/portal', label: 'Inicio' },
     { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'supervisor'] },
-    { href: '/usuarios', label: 'Usuarios', roles: ['Administrador'] },
+    { href: '/usuarios', label: 'Sistema', roles: ['Administrador'] },
     { href: '/trabajadores', label: 'Trabajadores', roles: ['Administrador', 'rrhh'] },
     { href: '/eventos', label: 'Reportes' },
     { href: '/eventos/mis-reportes', label: 'Mis reportes' },

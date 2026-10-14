@@ -8,6 +8,7 @@ const NAV_ITEMS: { href: string; label: string; roles?: string[] }[] = [
     { href: '/usuarios', label: 'Usuarios', roles: ['Administrador'] },
     { href: '/roles', label: 'Roles', roles: ['Administrador'] },
     { href: '/permisos', label: 'Permisos', roles: ['Administrador'] },
+    { href: '/departamentos', label: 'Departamentos', roles: ['Administrador'] },
 ];
 
 function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {
