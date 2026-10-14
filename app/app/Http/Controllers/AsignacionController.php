@@ -3,63 +3,82 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asignacion;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AsignacionController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    private const RELACIONES = [
+        'administrador.trabajador.persona',
+        'proyecto',
+        'cuadrilla',
+    ];
+
+    public function index(Request $request): JsonResponse
     {
-        //
+        $query = Asignacion::with(self::RELACIONES);
+
+        if ($request->filled('id_proyecto')) {
+            $query->where('id_proyecto', $request->id_proyecto);
+        }
+
+        if ($request->filled('id_cuadrilla')) {
+            $query->where('id_cuadrilla', $request->id_cuadrilla);
+        }
+
+        return response()->json(
+            $query->orderByDesc('fecha_inicio')->get()
+        );
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function store(Request $request): JsonResponse
     {
-        //
+        $asignacion = Asignacion::create($this->validarDatos($request));
+
+        return response()->json(
+            $asignacion->load(self::RELACIONES),
+            201
+        );
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function show(Asignacion $asignacion): JsonResponse
     {
-        //
+        return response()->json(
+            $asignacion->load([
+                'administrador.trabajador.persona',
+                'proyecto',
+                'cuadrilla.supervisor.trabajador.persona',
+            ])
+        );
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Asignacion $asignacion)
+    public function update(Request $request, Asignacion $asignacion): JsonResponse
     {
-        //
+        $asignacion->update($this->validarDatos($request, parcial: true));
+
+        return response()->json(
+            $asignacion->fresh(self::RELACIONES)
+        );
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Asignacion $asignacion)
+    public function destroy(Asignacion $asignacion): JsonResponse
     {
-        //
+        $asignacion->delete();
+
+        return response()->json(null, 204);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Asignacion $asignacion)
+    private function validarDatos(Request $request, bool $parcial = false): array
     {
-        //
-    }
+        // "sometimes" permite PUT parciales (Partial<CrearAsignacion> en el frontend)
+        $req = $parcial ? 'sometimes|required' : 'required';
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Asignacion $asignacion)
-    {
-        //
+        return $request->validate([
+            'id_administrador' => "$req|integer|exists:administrativos,id_trabajador",
+            'id_proyecto'      => "$req|integer|exists:proyectos,id_proyecto",
+            'id_cuadrilla'     => "$req|integer|exists:cuadrillas,id_cuadrilla",
+            'fecha_inicio'     => "$req|date",
+            'fecha_termino'    => 'nullable|date|after_or_equal:fecha_inicio',
+        ]);
     }
 }
