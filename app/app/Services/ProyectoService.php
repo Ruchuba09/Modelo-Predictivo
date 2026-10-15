@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Http\Services;
 
 use App\DataTransferObjects\ProyectoData;
 use App\Models\Proyecto;

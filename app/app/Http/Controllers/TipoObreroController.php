@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\TipoObreroRequest;
 use App\Models\tipo_obrero;
-use App\Services\TipoObreroService;
+use App\Http\Services\TipoObreroService;
 use Inertia\Inertia;
 
 class TipoObreroController extends Controller

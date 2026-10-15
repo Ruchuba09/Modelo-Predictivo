@@ -33,12 +33,12 @@ class AsignacionController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $asignacion = Asignacion::create($this->validarDatos($request));
+        $datos = $this->validarDatos($request);
+        $datos['id_administrador'] = $request->user()->id_trabajador; // AJUSTAR según tu modelo User
 
-        return response()->json(
-            $asignacion->load(self::RELACIONES),
-            201
-        );
+        $asignacion = Asignacion::create($datos);
+
+        return response()->json($asignacion->load(self::RELACIONES), 201);
     }
 
     public function show(Asignacion $asignacion): JsonResponse
@@ -74,7 +74,7 @@ class AsignacionController extends Controller
         $req = $parcial ? 'sometimes|required' : 'required';
 
         return $request->validate([
-            'id_administrador' => "$req|integer|exists:administrativos,id_trabajador",
+            'id_administrador' => 'sometimes|integer|exists:administrativos,id_trabajador',
             'id_proyecto'      => "$req|integer|exists:proyectos,id_proyecto",
             'id_cuadrilla'     => "$req|integer|exists:cuadrillas,id_cuadrilla",
             'fecha_inicio'     => "$req|date",

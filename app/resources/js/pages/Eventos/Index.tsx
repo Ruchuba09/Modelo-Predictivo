@@ -1,6 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import MainLayout from '../../layouts/MainLayout';
+import EventoLayout from '../../layouts/EventoLayout';
 import CerrarEvento from '@/components/eventos/CerrarEvento';
 
 const ESTADO_STYLES: { [key: string]: string } = {
@@ -81,7 +81,7 @@ export default function Index() {
     const tieneFiltrosActivos = Object.values(formFiltros).some(val => val !== '');
 
     return (
-        <MainLayout>
+        <EventoLayout>
             <Head title="Eventos | AVA" />
 
             <div className="max-w-[1700px] mx-auto p-6 lg:p-8 flex flex-col h-full min-h-[calc(100vh-80px)]">
@@ -250,7 +250,7 @@ export default function Index() {
                     )}
                 </div>
             </div>
-        </MainLayout>
+        </EventoLayout>
     );
 }
 
