@@ -7,7 +7,7 @@ interface Props {
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-export default function AsignacionCuadrillas({ idProyecto, idAdministrador }: Props) {
+export default function AsignacionCuadrillas({ idProyecto }: Props) {
     const { asignaciones, disponibles, loading, error, asignar, quitar } =
         useAsignacionCuadrillas(idProyecto);
 
@@ -41,45 +41,55 @@ export default function AsignacionCuadrillas({ idProyecto, idAdministrador }: Pr
     };
 
     const inputClass =
-        "bg-[#101010] border border-[#2d3238] rounded-lg p-2 text-sm text-white";
+        "bg-white border border-verde-3 rounded-lg px-3 py-2 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5";
 
     return (
-        <div className="bg-[#141414] border border-[#2d3238] rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-                <div className="text-xs uppercase font-bold text-[#7a7f85]">
-                    Cuadrillas asignadas
+        <div className="bg-verde-1/50 border border-verde-3 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+                <div className="text-xs uppercase font-bold text-gris-1 tracking-wider flex items-center gap-2">
+                    <svg className="w-4 h-4 text-verde-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span>Cuadrillas asignadas a este proyecto</span>
                 </div>
 
                 <div className="flex gap-2">
                     <button
+                        type="button"
                         onClick={confirmarQuitar}
                         disabled={seleccionada === null}
-                        className="px-3 py-1 rounded-lg border border-red-500/40 text-red-400 text-sm disabled:opacity-30"
+                        className="px-3 py-1.5 rounded-lg border border-rojo-1/40 bg-white text-rojo-1 text-xs font-bold hover:bg-rojo-1 hover:text-white transition-all disabled:opacity-40 cursor-pointer shadow-sm"
                     >
                         Quitar
                     </button>
                     <button
+                        type="button"
                         onClick={() => setAgregando((v) => !v)}
-                        className="px-3 py-1 rounded-lg bg-[#a0f700] text-black font-semibold text-sm"
+                        className="px-3 py-1.5 rounded-lg bg-verde-5 hover:bg-verde-6 text-black font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center gap-1"
                         title="Asignar nueva cuadrilla"
                     >
-                        +
+                        <span className="text-sm font-black">+</span>
+                        <span>Asignar</span>
                     </button>
                 </div>
             </div>
 
-            {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
+            {error && (
+                <div className="p-3 mb-3 rounded-lg border border-rojo-1/40 bg-rojo-1/10 text-rojo-1 text-xs font-bold">
+                    {error}
+                </div>
+            )}
 
             {agregando && (
-                <div className="flex flex-wrap items-end gap-2 mb-3">
+                <div className="bg-white border border-verde-3 rounded-xl p-4 mb-4 shadow-sm flex flex-wrap items-end gap-3">
                     <div className="flex-1 min-w-[200px]">
-                        <label className="block text-xs text-[#7a7f85] mb-1">Cuadrilla</label>
+                        <label className="block text-[10px] uppercase font-bold text-gris-1 tracking-wider mb-1">Cuadrilla</label>
                         <select
                             value={idCuadrilla}
                             onChange={(e) =>
                                 setIdCuadrilla(e.target.value ? Number(e.target.value) : "")
                             }
-                            className={`${inputClass} w-full`}
+                            className={`${inputClass} w-full cursor-pointer`}
                         >
                             <option value="">Selecciona una cuadrilla...</option>
                             {disponibles.map((c) => (
@@ -91,7 +101,7 @@ export default function AsignacionCuadrillas({ idProyecto, idAdministrador }: Pr
                     </div>
 
                     <div>
-                        <label className="block text-xs text-[#7a7f85] mb-1">Inicio</label>
+                        <label className="block text-[10px] uppercase font-bold text-gris-1 tracking-wider mb-1">Fecha Inicio</label>
                         <input
                             type="date"
                             value={fechaInicio}
@@ -101,7 +111,7 @@ export default function AsignacionCuadrillas({ idProyecto, idAdministrador }: Pr
                     </div>
 
                     <div>
-                        <label className="block text-xs text-[#7a7f85] mb-1">Término (opcional)</label>
+                        <label className="block text-[10px] uppercase font-bold text-gris-1 tracking-wider mb-1">Fecha Término (opcional)</label>
                         <input
                             type="date"
                             value={fechaTermino}
@@ -112,21 +122,22 @@ export default function AsignacionCuadrillas({ idProyecto, idAdministrador }: Pr
                     </div>
 
                     <button
+                        type="button"
                         onClick={confirmarAsignacion}
                         disabled={idCuadrilla === "" || !fechaInicio}
-                        className="px-3 py-2 rounded-lg bg-[#a0f700] text-black text-sm font-semibold disabled:opacity-30"
+                        className="px-4 py-2 rounded-lg bg-verde-5 hover:bg-verde-6 text-black text-xs font-bold transition-all shadow-sm disabled:opacity-40 cursor-pointer self-end"
                     >
-                        Asignar
+                        Confirmar
                     </button>
                 </div>
             )}
 
             {loading ? (
-                <p className="text-[#7a7f85] text-sm">Cargando...</p>
+                <p className="text-gris-1 text-xs font-medium py-2">Cargando cuadrillas...</p>
             ) : asignaciones.length === 0 ? (
-                <p className="text-[#7a7f85] text-sm">Sin cuadrillas asignadas</p>
+                <p className="text-gris-1 text-xs font-medium py-2 italic">Sin cuadrillas asignadas actualmente.</p>
             ) : (
-                <ul className="space-y-1">
+                <ul className="space-y-1.5">
                     {asignaciones.map((a) => (
                         <li
                             key={a.id_asignacion}
@@ -135,15 +146,17 @@ export default function AsignacionCuadrillas({ idProyecto, idAdministrador }: Pr
                                     s === a.id_asignacion ? null : a.id_asignacion
                                 )
                             }
-                            className={`flex justify-between px-3 py-2 rounded-lg cursor-pointer text-sm border ${
+                            className={`flex justify-between items-center px-4 py-2.5 rounded-xl cursor-pointer text-xs sm:text-sm border transition-all ${
                                 seleccionada === a.id_asignacion
-                                    ? "border-[#a0f700]/60 bg-[#a0f700]/10"
-                                    : "border-transparent hover:bg-[#1a1a1a]"
+                                    ? "border-verde-5 bg-white shadow-sm font-bold text-gris-2 ring-1 ring-verde-5/50"
+                                    : "border-verde-3/60 bg-white/80 hover:bg-white text-gris-2 shadow-xs"
                             }`}
                         >
-                            <span>{a.cuadrilla?.nombre ?? `Cuadrilla #${a.id_cuadrilla}`}</span>
-                            <span className="text-[#7a7f85]">
-                                {a.fecha_inicio} → {a.fecha_termino ?? "en curso"}
+                            <span className="font-semibold text-gris-2">
+                                {a.cuadrilla?.nombre ?? `Cuadrilla #${a.id_cuadrilla}`}
+                            </span>
+                            <span className="text-xs text-gris-1 font-medium bg-verde-2 px-2.5 py-1 rounded-md border border-verde-3">
+                                {a.fecha_inicio} → {a.fecha_termino ?? "En curso"}
                             </span>
                         </li>
                     ))}

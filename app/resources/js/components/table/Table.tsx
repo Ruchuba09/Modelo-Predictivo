@@ -21,7 +21,7 @@ export default function Table<T>({
     rowActions,
     renderExpanded,
     onRowClick,
-    emptyMessage = "No hay registros",
+    emptyMessage = "No hay registros disponibles",
     components,
 }: TableProps<T>) {
     const RowComponent = components?.Row ?? Row;
@@ -37,58 +37,64 @@ export default function Table<T>({
     const totalCols = columns.length + (rowActions ? 1 : 0);
 
     return (
-        <div className="bg-[#141414] border border-[#2d3238] rounded-2xl overflow-hidden">
-            <table className="w-full">
-                <thead className="bg-[#101010]">
-                    <tr>
-                        {columns.map((col) => (
-                            <th
-                                key={col.key}
-                                className={`text-left p-4 text-xs uppercase text-[#7a7f85] ${col.headerClassName ?? ""}`}
-                            >
-                                {col.header}
-                            </th>
-                        ))}
-                        {rowActions && <th className="p-4"></th>}
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {data.length === 0 ? (
+        <div className="bg-white border border-verde-3 rounded-2xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-sm">
+                    <thead className="bg-verde-2 border-b border-verde-3">
                         <tr>
-                            <td colSpan={totalCols} className="p-8 text-center text-[#7a7f85]">
-                                {emptyMessage}
-                            </td>
+                            {columns.map((col) => (
+                                <th
+                                    key={col.key}
+                                    className={`p-4 text-[11px] uppercase tracking-wider font-bold text-gris-1 ${col.headerClassName ?? ""}`}
+                                >
+                                    {col.header}
+                                </th>
+                            ))}
+                            {rowActions && (
+                                <th className="p-4 text-[11px] uppercase tracking-wider font-bold text-gris-1 text-right">
+                                    Acciones
+                                </th>
+                            )}
                         </tr>
-                    ) : (
-                        data.map((item) => {
-                            const id = getRowId(item);
-                            const expanded = expandedIds.has(id);
+                    </thead>
 
-                            return (
-                                <Fragment key={id}>
-                                    <RowComponent
-                                        item={item}
-                                        columns={columns}
-                                        onClick={onRowClick}
-                                        actions={rowActions?.(item, {
-                                            expanded,
-                                            toggle: () => toggle(id),
-                                        })}
-                                    />
-                                    {expanded && renderExpanded && (
-                                        <tr className="bg-[#101010]">
-                                            <td colSpan={totalCols} className="p-4">
-                                                {renderExpanded(item)}
-                                            </td>
-                                        </tr>
-                                    )}
-                                </Fragment>
-                            );
-                        })
-                    )}
-                </tbody>
-            </table>
+                    <tbody className="divide-y divide-verde-3/60 bg-white">
+                        {data.length === 0 ? (
+                            <tr>
+                                <td colSpan={totalCols} className="p-8 text-center text-gris-1 text-sm bg-verde-1/30">
+                                    {emptyMessage}
+                                </td>
+                            </tr>
+                        ) : (
+                            data.map((item) => {
+                                const id = getRowId(item);
+                                const expanded = expandedIds.has(id);
+
+                                return (
+                                    <Fragment key={id}>
+                                        <RowComponent
+                                            item={item}
+                                            columns={columns}
+                                            onClick={onRowClick}
+                                            actions={rowActions?.(item, {
+                                                expanded,
+                                                toggle: () => toggle(id),
+                                            })}
+                                        />
+                                        {expanded && renderExpanded && (
+                                            <tr className="bg-verde-1/30">
+                                                <td colSpan={totalCols} className="p-4 border-t border-verde-3/40">
+                                                    {renderExpanded(item)}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </Fragment>
+                                );
+                            })
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }

@@ -83,6 +83,12 @@ Route::middleware('auth')->group(function () {
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
         ->whereNumber('evento');
 
+    Route::get('/eventos/archivo/{archivo}', [EventoController::class, 'verArchivo'])
+        ->name('eventos.archivo');
+    Route::get('/eventos/{evento}/evidencias', [EventoController::class, 'obtenerEvidencias'])
+        ->whereNumber('evento')
+        ->name('eventos.evidencias');
+
     Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])
         ->whereNumber('evento')
         ->name('eventos.tomar');

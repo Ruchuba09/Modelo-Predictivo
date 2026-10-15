@@ -52,6 +52,7 @@ interface Evento {
     proyecto?: { id_proyecto: number; nombre: string };
     area?: { id_area: number; nombre: string } | null;
     administrador?: Administrador | null;
+    administrativo?: Administrador | null;
     trabajador?: any;
     supervisor?: any;
 }

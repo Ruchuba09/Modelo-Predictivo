@@ -12,8 +12,11 @@ interface TrabajadoresProps {
 }
 
 const Trabajadores: React.FC<TrabajadoresProps> = ({ trabajadores }) => {
-    const eliminar = (id: number, nombre: string) => {
-        if (confirm(`¿Seguro que deseas eliminar al trabajador "${nombre}"?`)) {
+    const eliminar = (id: number, nombre?: string) => {
+        const mensaje = nombre
+            ? `¿Seguro que deseas eliminar al trabajador "${nombre}"?`
+            : '¿Seguro que deseas eliminar este trabajador?';
+        if (confirm(mensaje)) {
             router.delete(route('trabajadores.destroy', id));
         }
     };

@@ -82,14 +82,23 @@ export default function Index() {
 
     return (
         <EventoLayout>
-            <Head title="Eventos | AVA" />
+            <Head title="Reportes | AVA" />
 
             <div className="max-w-[1700px] mx-auto p-6 lg:p-8 flex flex-col h-full min-h-[calc(100vh-80px)]">
                 {/* Header & Filtros Compactos */}
                 <div className="mb-6 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 shrink-0">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gris-2 mb-1">Eventos</h1>
-                        <p className="text-gris-1 text-sm">Listado de reportes registrados.</p>
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gris-2 mb-1">Reportes</h1>
+                            <p className="text-gris-1 text-sm">Listado de reportes registrados.</p>
+                        </div>
+                        <Link
+                            href="/eventos/estadisticas"
+                            className="bg-white border border-verde-5 text-verde-6 hover:bg-verde-5 hover:text-black transition-all px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                            Ver Estadísticas
+                        </Link>
                     </div>
 
                     {/* Barra de Filtros Ordenada */}

@@ -29,7 +29,7 @@ async function request<R>(url: string, init?: RequestInit): Promise<R> {
 
 export type DatosNuevaAsignacion = Omit<CrearAsignacion, "id_proyecto" | "id_administrador">;
 
-export function useAsignacionCuadrillas(idProyecto: number, idAdministrador: number) {
+export function useAsignacionCuadrillas(idProyecto: number, idAdministrador?: number) {
     const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
     const [disponibles, setDisponibles] = useState<Cuadrilla[]>([]);
     const [loading, setLoading] = useState(true);

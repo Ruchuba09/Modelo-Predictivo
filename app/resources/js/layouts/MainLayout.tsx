@@ -9,6 +9,7 @@ const NAV_ITEMS: { href: string; label: string; roles?: string[] }[] = [
     { href: '/trabajadores', label: 'Trabajadores', roles: ['Administrador', 'rrhh'] },
     { href: '/eventos', label: 'Reportes' },
     { href: '/eventos/mis-reportes', label: 'Mis reportes' },
+    { href: '/eventos/estadisticas', label: 'Estadísticas' },
     { href: '/proyectos', label: 'Proyectos' },
     { href: '/cuadrillas', label: 'Cuadrillas', roles: ['Administrador', 'supervisor'] },
 ];
