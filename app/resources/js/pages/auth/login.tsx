@@ -52,7 +52,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
         setValidacionLocal('');
 
         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.rut);
-        const isRut = validate(data.rut);
+        const isRut = validate(data.rut) || /^\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]$/i.test(data.rut);
 
         if (!isEmail && !isRut) {
             setValidacionLocal('Ingrese un correo corporativo válido o RUT correcto.');
@@ -107,7 +107,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                     {status && <div className="mb-4 text-sm font-medium text-verde-6">{status}</div>}
 
                     {/* ALERTA DE ERROR GLOBAL (Cuenta o contraseña errónea) */}
-                    {(errors.email || errors.password) && (
+                    {(errors.rut || (errors as Record<string, string>).email || errors.password) && (
                         <div className="bg-rojo-1/10 border border-rojo-1 p-4 rounded-lg flex items-center gap-3 text-rojo-1">
                             <AlertCircle className="w-5 h-5 flex-shrink-0" />
                             <span className="text-sm font-medium">Cuenta o contraseña errónea. Verifique sus credenciales.</span>

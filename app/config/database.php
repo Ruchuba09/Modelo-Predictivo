@@ -21,7 +21,7 @@ foreach($postgres as $base) {
         "charset" => env("PG_CHARSET", "utf8"),
         "prefix" => "",
         "prefix_indexes" => true,
-        "search_path" => "usuarios,public,laravel",
+        "search_path" => "public,laravel,usuarios",
         "sslmode" => "prefer",
     ];
 }
@@ -117,7 +117,7 @@ return [
             "charset" => env("DB_CHARSET", "utf8"),
             "prefix" => "",
             "prefix_indexes" => true,
-            "search_path" => "usuarios,public,laravel",
+            "search_path" => "public,laravel,usuarios",
             "sslmode" => "prefer",
         ],
 
