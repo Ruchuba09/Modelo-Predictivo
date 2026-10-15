@@ -27,7 +27,6 @@ const ESTADO_STYLES: { [key: string]: string } = {
     en_revision: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
     proceso: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
     cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
-    cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
 };
 
 interface Administrador {
