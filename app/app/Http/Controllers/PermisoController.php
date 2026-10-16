@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PermisoRequest;
 use App\Models\Permiso;
-use App\Http\Services\PermisoService;
+use App\Services\PermisoService;
 use Inertia\Inertia;
 
 class PermisoController extends Controller

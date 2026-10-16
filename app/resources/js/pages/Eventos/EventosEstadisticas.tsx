@@ -673,12 +673,7 @@ export default function EventosEstadisticas() {
         {/* Cabecera y Filtros */}
         <div className="mb-6 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 shrink-0">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-gris-2 mb-1">Estadísticas de Reportes</h1>
-              <span className="bg-verde-2 border border-verde-3 text-verde-6 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                Métricas AVA
-              </span>
-            </div>
+            <h1 className="text-3xl font-bold text-gris-2 mb-1">Estadísticas de Reportes</h1>
             <p className="text-gris-1 text-sm">
               {data ? `${data.meta.total_eventos} reportes analizados` : 'Cargando estadísticas...'}
             </p>

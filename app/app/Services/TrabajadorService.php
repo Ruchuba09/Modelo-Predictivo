@@ -1,7 +1,7 @@
 <?php
 
 
-namespace App\Http\Services;
+namespace App\Services;
 
 use App\DataTransferObjects\TrabajadorData;
 use App\Models\Administrativo;

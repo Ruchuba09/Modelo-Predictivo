@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Services;
+namespace App\Services;
 
 use App\DataTransferObjects\RolData;
 use App\Models\Permiso;

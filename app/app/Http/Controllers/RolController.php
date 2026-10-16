@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\RolRequest;
 use App\Models\Rol;
-use App\Http\Services\RolService;
+use App\Services\RolService;
 use Inertia\Inertia;
 
 class RolController extends Controller

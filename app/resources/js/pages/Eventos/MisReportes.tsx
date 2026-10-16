@@ -121,7 +121,7 @@ export default function MisReportes() {
                                     <tr className="border-b border-verde-3 text-left">
 
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
-                                            #
+                                            ID
                                         </th>
 
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
@@ -165,7 +165,7 @@ export default function MisReportes() {
 
                                             {/* ID */}
                                             <td className="px-6 py-4 text-gris-1 font-bold">
-                                                #{evento.id_evento}
+                                                {evento.id_evento}
                                             </td>
 
                                             {/* Referencia */}
@@ -185,7 +185,9 @@ export default function MisReportes() {
 
                                             {/* Condición */}
                                             <td className="px-6 py-4 text-gris-1">
-                                                #{evento.condicion}
+                                                {evento.condicion != null && evento.condicion !== ''
+                                                    ? parseInt(String(evento.condicion), 10)
+                                                    : '—'}
                                             </td>
 
                                             {/* Fecha */}

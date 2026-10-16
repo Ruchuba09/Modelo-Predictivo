@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PersonaRequest;
 use App\Models\Persona;
-use App\Http\Services\PersonaService;
+use App\Services\PersonaService;
 use Inertia\Inertia;
 
 class PersonaController extends Controller

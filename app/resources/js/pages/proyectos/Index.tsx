@@ -33,12 +33,7 @@ export default function Index() {
                 {/* Cabecera */}
                 <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
                     <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-3xl font-bold text-gris-2 mb-1">Proyectos</h1>
-                            <span className="bg-verde-2 border border-verde-3 text-verde-6 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                                Gestión
-                            </span>
-                        </div>
+                        <h1 className="text-3xl font-bold text-gris-2 mb-1">Proyectos</h1>
                         <p className="text-gris-1 text-sm">Listado y administración de proyectos de faena.</p>
                     </div>
 

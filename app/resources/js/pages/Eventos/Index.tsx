@@ -1,6 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import EventoLayout from '../../layouts/EventoLayout';
+import MainLayout from '../../layouts/MainLayout';
 import CerrarEvento from '@/components/eventos/CerrarEvento';
 
 const ESTADO_STYLES: { [key: string]: string } = {
@@ -81,7 +81,7 @@ export default function Index() {
     const tieneFiltrosActivos = Object.values(formFiltros).some(val => val !== '');
 
     return (
-        <EventoLayout>
+        <MainLayout>
             <Head title="Reportes | AVA" />
 
             <div className="max-w-[1700px] mx-auto p-6 lg:p-8 flex flex-col h-full min-h-[calc(100vh-80px)]">
@@ -193,7 +193,7 @@ export default function Index() {
                                 <thead className="sticky top-0 bg-white z-10 shadow-sm">
                                     <tr className="border-b border-verde-3 text-left">
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold text-center w-16">
-                                            #
+                                            ID
                                         </th>
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
                                             Referencia
@@ -222,7 +222,7 @@ export default function Index() {
                                             className="border-b border-verde-3/60 last:border-b-0 hover:bg-verde-2 transition-colors"
                                         >
                                             <td className="px-6 py-4 text-gris-1 font-bold text-center">
-                                                #{evento.id_evento}
+                                                {evento.id_evento}
                                             </td>
                                             <td className="px-6 py-4 text-gris-1">
                                                 {evento.referencia ?? '—'}
@@ -231,7 +231,9 @@ export default function Index() {
                                                 {evento.proyecto?.nombre ?? '—'}
                                             </td>
                                             <td className="px-6 py-4 text-gris-1 font-bold text-center whitespace-nowrap">
-                                                C-{evento.condicion}
+                                                {evento.condicion != null && evento.condicion !== ''
+                                                    ? parseInt(String(evento.condicion), 10)
+                                                    : '—'}
                                             </td>
                                             <td className="px-6 py-4 text-gris-1 text-center whitespace-nowrap">
                                                 {evento.fecha_creacion
@@ -259,7 +261,7 @@ export default function Index() {
                     )}
                 </div>
             </div>
-        </EventoLayout>
+        </MainLayout>
     );
 }
 
