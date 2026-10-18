@@ -196,7 +196,7 @@ export default function Index() {
                                             ID
                                         </th>
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
-                                            Referencia
+                                            Área/Zona
                                         </th>
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">
                                             Proyecto
