@@ -1,4 +1,4 @@
-const API_URL = "/api/eventos";
+const API_URL = "/api/asignaciones";
 
 export interface Persona {
     nombre_1: string;
