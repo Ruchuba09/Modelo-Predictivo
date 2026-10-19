@@ -13,9 +13,12 @@ Route::get('/user', function (Request $request) {
 
 Route::apiResource('proyectos', ProyectoController::class);
 Route::apiResource('asignaciones', AsignacionController::class);
-Route::apiResource('eventos', AsignacionController::class);
 
+// Las rutas con texto fijo van ANTES de rutas dinámicas si las hubiere.
 Route::get('/eventos/sin-administrador', [
     EventoController::class,
-    'apiSinAdministrador'
+    'apiSinAdministrador',
 ]);
+
+// Las estadísticas de eventos ya NO van aquí: están en routes/web.php
+// (/api/eventos/estadisticas) para usar la sesión del usuario con Inertia.

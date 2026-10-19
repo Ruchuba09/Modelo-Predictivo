@@ -27,7 +27,6 @@ const ESTADO_STYLES: { [key: string]: string } = {
     en_revision: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
     proceso: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
     cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
-    cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
 };
 
 interface Administrador {
@@ -53,6 +52,7 @@ interface Evento {
     proyecto?: { id_proyecto: number; nombre: string };
     area?: { id_area: number; nombre: string } | null;
     administrador?: Administrador | null;
+    administrativo?: Administrador | null;
     trabajador?: any;
     supervisor?: any;
 }
@@ -163,41 +163,30 @@ export default function Show() {
 
     return (
         <MainLayout>
-            <Head title={`Evento #${evento.id_evento} | AVA`} />
+            <Head title={`Reporte #${evento.id_evento} | AVA`} />
 
-            <div className="relative w-full">
-                <div className="sticky top-8 z-40 h-0 hidden xl:block overflow-visible">
-                    <div className="absolute left-4 xl:left-6">
-                        <Link
-                            href={route('eventos.index')}
-                            className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-md shadow-verde-5/10 whitespace-nowrap"
-                        >
-                            ← Volver al listado
-                        </Link>
-                    </div>
-                </div>
-
-                <div className="max-w-[1100px] mx-auto p-6 lg:p-8">
-                    <div className="xl:hidden mb-6">
-                        <Link
-                            href={route('eventos.index')}
-                            className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-sm whitespace-nowrap"
-                        >
-                            ← Volver al listado
-                        </Link>
-                    </div>
-
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gris-2 mb-2">Evento #{evento.id_evento}</h1>
+            <div className="max-w-[1100px] mx-auto p-6 lg:p-8">
+                {/* Header */}
+                <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gris-2 mb-1">Reporte #{evento.id_evento}</h1>
                         <p className="text-gris-1 text-sm">Detalle del reporte registrado.</p>
                     </div>
+
+                    <Link
+                        href={route('eventos.index')}
+                        className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-sm whitespace-nowrap self-start sm:self-auto"
+                    >
+                        ← Volver al listado
+                    </Link>
+                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Columna principal */}
                     <div className="lg:col-span-2 bg-white border border-verde-3 rounded-2xl p-8 shadow-2xl h-fit">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-sm font-bold text-gris-2 uppercase tracking-wider">
-                                Información del evento
+                                Información del reporte
                             </h3>
                             <span
                                 className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${estadoStyle}`}
@@ -207,7 +196,7 @@ export default function Show() {
                         </div>
 
                         <div className="flex flex-col mb-3">
-                            <InfoRow label="Referencia (lugar)" value={evento.referencia} />
+                            <InfoRow label="Área/Zona" value={evento.referencia} />
                             <InfoRow
                                 label={`Condición #${evento.condicion}`}
                                 value={CONDICIONES_PARE[evento.condicion]}
@@ -369,11 +358,11 @@ export default function Show() {
                             )}
                         </div>
 
-                        {/* FORMULARIO PARA CERRAR EL EVENTO (Solo visible si no está cerrada) */}
+                        {/* FORMULARIO PARA CERRAR EL REPORTE (Solo visible si no está cerrada) */}
                         {!estaCerrada && (
                             <div className="pt-8 border-t border-verde-3">
-                                <h3 className="text-lg font-bold text-gris-2 mb-4">Cerrar Evento</h3>
-                                <p className="text-gris-1 text-sm mb-6">Proporciona los detalles y la evidencia de la resolución para dar por cerrada este reporte.</p>
+                                <h3 className="text-lg font-bold text-gris-2 mb-4">Cerrar Reporte</h3>
+                                <p className="text-gris-1 text-sm mb-6">Proporciona los detalles y la evidencia de la resolución para dar por cerrado este reporte.</p>
                                 
                                 <form onSubmit={handleCerrar} className="space-y-6">
                                     <div>
@@ -499,7 +488,6 @@ export default function Show() {
                         </div>
                     </div>
                 </div>
-            </div>
             </div>
 
             {/* Modal para ver imagen en tamaño completo (Lightbox) */}

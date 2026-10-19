@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import MainLayout from '../../layouts/MainLayout';
+import UsuariosLayout from '../../layouts/UsuariosLayout';
 
 interface Rol {
     id_rol: number;
@@ -23,7 +23,7 @@ export default function Index() {
     };
 
     return (
-        <MainLayout>
+        <UsuariosLayout>
             <Head title="Usuarios | AVA" />
 
             <div className="max-w-[1400px] mx-auto p-6 lg:p-8">
@@ -107,6 +107,6 @@ export default function Index() {
                 </div>
 
             </div>
-        </MainLayout>
+        </UsuariosLayout>
     );
 }

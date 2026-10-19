@@ -99,7 +99,7 @@ export default function Create() {
                             
                             <div>
                                 <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
-                                    Referencia 
+                                    Área/Zona
                                 </label>
                                 <input
                                     type="text"
