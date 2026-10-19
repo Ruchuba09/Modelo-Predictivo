@@ -2,105 +2,71 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\CuadrillaDTO;
+use App\Http\Requests\StoreCuadrillaRequest;
+use App\Http\Requests\UpdateCuadrillaRequest;
 use App\Models\Cuadrilla;
-use App\Models\Supervisor;
+use App\Services\CuadrillaService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CuadrillaController extends Controller
 {
+    public function __construct(
+        private readonly CuadrillaService $cuadrillaService
+    ) {}
+
     public function index(): JsonResponse
     {
         return response()->json(
-            Cuadrilla::with('supervisor.trabajador.persona')
-                ->orderBy('numero_cuadrilla')
-                ->get()
+            $this->cuadrillaService->index()
         );
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreCuadrillaRequest $request): JsonResponse
     {
-        $cuadrilla = Cuadrilla::create($this->validarDatos($request));
+        $dto = CuadrillaDTO::fromArray($request->validated());
 
-        return response()->json(
-            $cuadrilla->load('supervisor.trabajador.persona'),
-            201
-        );
+        $cuadrilla = $this->cuadrillaService->store($dto);
+
+        return response()->json($cuadrilla, 201);
     }
 
     public function show(Cuadrilla $cuadrilla): JsonResponse
     {
         return response()->json(
-            $cuadrilla->load([
-                'supervisor.trabajador.persona',
-                'obreros.trabajador.persona',
-            ])
+            $this->cuadrillaService->show($cuadrilla)
         );
     }
 
-    public function update(Request $request, Cuadrilla $cuadrilla): JsonResponse
-    {
-        $cuadrilla->update($this->validarDatos($request, $cuadrilla, parcial: true));
+    public function update(
+        UpdateCuadrillaRequest $request,
+        Cuadrilla $cuadrilla
+    ): JsonResponse {
+        $dto = CuadrillaDTO::fromArray($request->validated());
 
         return response()->json(
-            $cuadrilla->fresh('supervisor.trabajador.persona')
+            $this->cuadrillaService->update($cuadrilla, $dto)
         );
     }
 
     public function destroy(Cuadrilla $cuadrilla): JsonResponse
     {
-        // asignaciones.id_cuadrilla es ON DELETE RESTRICT
-        if ($cuadrilla->asignaciones()->exists()) {
+        try {
+            $this->cuadrillaService->destroy($cuadrilla);
+
+            return response()->json(null, 204);
+        } catch (ValidationException $e) {
             return response()->json([
-                'message' => 'No se puede eliminar: la cuadrilla tiene asignaciones registradas.',
+                'message' => $e->getMessage(),
             ], 409);
         }
-
-        // obreros.id_cuadrilla es ON DELETE SET NULL
-        $cuadrilla->delete();
-
-        return response()->json(null, 204);
     }
 
-    /**
-     * Opciones para el selector de supervisores del formulario.
-     * Ruta: GET /api/cuadrillas/supervisores
-     */
     public function supervisores(): JsonResponse
     {
-        $supervisores = Supervisor::with('trabajador.persona')
-            ->get()
-            ->map(fn (Supervisor $s) => [
-                'id_trabajador' => $s->id_trabajador,
-                'nombre' => trim(
-                    ($s->trabajador?->persona?->nombre_1 ?? '') . ' ' .
-                    ($s->trabajador?->persona?->apellido_1 ?? '')
-                ),
-            ])
-            ->values();
-
-        return response()->json($supervisores);
-    }
-
-    private function validarDatos(
-        Request $request,
-        ?Cuadrilla $cuadrilla = null,
-        bool $parcial = false
-    ): array {
-        // "sometimes" permite PUT parciales (Partial<CrearCuadrilla> en el frontend)
-        $req = $parcial ? 'sometimes|required' : 'required';
-
-        return $request->validate([
-            'id_supervisor' => "$req|integer|exists:supervisores,id_trabajador",
-            'numero_cuadrilla' => [
-                ...($parcial ? ['sometimes'] : []),
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('cuadrillas', 'numero_cuadrilla')
-                    ->ignore($cuadrilla?->id_cuadrilla, 'id_cuadrilla'),
-            ],
-        ]);
+        return response()->json(
+            $this->cuadrillaService->supervisores()
+        );
     }
 }

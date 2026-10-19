@@ -2,83 +2,63 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\AsignacionDTO;
+use App\Http\Requests\StoreAsignacionRequest;
+use App\Http\Requests\UpdateAsignacionRequest;
 use App\Models\Asignacion;
+use App\Services\AsignacionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AsignacionController extends Controller
 {
-    private const RELACIONES = [
-        'administrador.trabajador.persona',
-        'proyecto',
-        'cuadrilla',
-    ];
+    public function __construct(
+        private readonly AsignacionService $asignacionService
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
-        $query = Asignacion::with(self::RELACIONES);
-
-        if ($request->filled('id_proyecto')) {
-            $query->where('id_proyecto', $request->id_proyecto);
-        }
-
-        if ($request->filled('id_cuadrilla')) {
-            $query->where('id_cuadrilla', $request->id_cuadrilla);
-        }
-
         return response()->json(
-            $query->orderByDesc('fecha_inicio')->get()
+            $this->asignacionService->index(
+                $request->only(['id_proyecto', 'id_cuadrilla'])
+            )
         );
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreAsignacionRequest $request): JsonResponse
     {
-        $datos = $this->validarDatos($request);
-        $datos['id_administrador'] = $request->user()->id_trabajador; // AJUSTAR según tu modelo User
+        $dto = AsignacionDTO::fromArray($request->validated());
 
-        $asignacion = Asignacion::create($datos);
+        $asignacion = $this->asignacionService->store(
+            $dto,
+            (int) $request->user()->id_trabajador
+        );
 
-        return response()->json($asignacion->load(self::RELACIONES), 201);
+        return response()->json($asignacion, 201);
     }
 
     public function show(Asignacion $asignacion): JsonResponse
     {
         return response()->json(
-            $asignacion->load([
-                'administrador.trabajador.persona',
-                'proyecto',
-                'cuadrilla.supervisor.trabajador.persona',
-            ])
+            $this->asignacionService->show($asignacion)
         );
     }
 
-    public function update(Request $request, Asignacion $asignacion): JsonResponse
-    {
-        $asignacion->update($this->validarDatos($request, parcial: true));
+    public function update(
+        UpdateAsignacionRequest $request,
+        Asignacion $asignacion
+    ): JsonResponse {
+        $dto = AsignacionDTO::fromArray($request->validated());
 
         return response()->json(
-            $asignacion->fresh(self::RELACIONES)
+            $this->asignacionService->update($asignacion, $dto)
         );
     }
 
     public function destroy(Asignacion $asignacion): JsonResponse
     {
-        $asignacion->delete();
+        $this->asignacionService->destroy($asignacion);
 
         return response()->json(null, 204);
-    }
-
-    private function validarDatos(Request $request, bool $parcial = false): array
-    {
-        // "sometimes" permite PUT parciales (Partial<CrearAsignacion> en el frontend)
-        $req = $parcial ? 'sometimes|required' : 'required';
-
-        return $request->validate([
-            'id_administrador' => 'sometimes|integer|exists:administrativos,id_trabajador',
-            'id_proyecto'      => "$req|integer|exists:proyectos,id_proyecto",
-            'id_cuadrilla'     => "$req|integer|exists:cuadrillas,id_cuadrilla",
-            'fecha_inicio'     => "$req|date",
-            'fecha_termino'    => 'nullable|date|after_or_equal:fecha_inicio',
-        ]);
     }
 }
