@@ -10,11 +10,13 @@ use App\Models\Obrero;
 use App\Models\Proyecto;
 use App\Models\Supervisor;
 use App\Models\TipoEvento;
+use App\Models\Trabajador;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
 
 class EventoController extends Controller
 {
@@ -164,32 +166,93 @@ class EventoController extends Controller
 
     public function create()
     {
+        $usuario = Auth::user();
+        $trabajadorActual = $usuario?->trabajador?->loadMissing(['persona', 'obrero', 'supervisor', 'administrativo']);
+
+        $proyectosUsuario = $this->obtenerProyectosDeTrabajador($trabajadorActual);
+
+        $usuarioTrabajador = $trabajadorActual ? [
+            'id_trabajador' => $trabajadorActual->id_trabajador,
+            'nombre' => trim(($trabajadorActual->persona?->nombre_1 ?? '') . ' ' . ($trabajadorActual->persona?->apellido_1 ?? '')),
+            'cargo' => $trabajadorActual->cargo,
+            'proyectos' => $proyectosUsuario->map(fn ($p) => [
+                'id_proyecto' => $p->id_proyecto,
+                'nombre' => $p->nombre,
+            ])->values(),
+        ] : null;
+
+        $trabajadores = Trabajador::with(['persona', 'obrero', 'supervisor', 'administrativo'])
+            ->where('estado', 'activo')
+            ->get()
+            ->map(function (Trabajador $t) {
+                $proyectos = $this->obtenerProyectosDeTrabajador($t);
+                $nombre1 = $t->persona?->nombre_1 ?? '';
+                $apellido1 = $t->persona?->apellido_1 ?? '';
+                $nombreCompleto = trim("{$nombre1} {$apellido1}");
+
+                return [
+                    'id_trabajador' => $t->id_trabajador,
+                    'nombre' => $nombreCompleto ?: "Trabajador #{$t->id_trabajador}",
+                    'rut' => $t->persona?->rut ?? '',
+                    'cargo' => $t->cargo ?? '',
+                    'proyectos' => $proyectos->map(fn ($p) => [
+                        'id_proyecto' => $p->id_proyecto,
+                        'nombre' => $p->nombre,
+                    ])->values(),
+                ];
+            })
+            ->sortBy('nombre')
+            ->values();
+
+        $todosProyectos = Proyecto::where('estado', 'activo')->get(['id_proyecto', 'nombre']);
+        if ($todosProyectos->isEmpty()) {
+            $todosProyectos = Proyecto::all(['id_proyecto', 'nombre']);
+        }
+
         return Inertia::render('Eventos/Create', [
             'tiposEvento' => TipoEvento::all(),
+            'usuarioTrabajador' => $usuarioTrabajador,
+            'trabajadores' => $trabajadores,
+            'proyectos' => $todosProyectos,
         ]);
     }
 
     public function store(Request $request)
     {
+        $esParaMi = $request->boolean('es_para_mi', true);
+
         $request->validate([
             'id_tipo_evento' => 'required|integer|exists:tipo_eventos,id_tipo_evento',
             'condicion' => 'required|integer|between:1,10',
             'descripcion' => 'required|string|max:500',
             'referencia' => 'required|string|max:255',
+            'id_proyecto' => 'required|integer|exists:proyectos,id_proyecto',
+            'es_para_mi' => 'nullable|boolean',
+            'id_trabajador' => $esParaMi
+                ? 'nullable|integer|exists:trabajadores,id_trabajador'
+                : 'required|integer|exists:trabajadores,id_trabajador',
             'severidad' => 'nullable|string|max:50',
             'evidencia' => 'nullable|array|max:3',
             'evidencia.*' => 'file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+        ], [
+            'id_proyecto.required' => 'Debe seleccionar un proyecto.',
+            'id_trabajador.required' => 'Debe seleccionar a la persona reportada.',
+            'condicion.between' => 'Por favor seleccione una condición válida.',
         ]);
 
         $rutasArchivos = $this->guardarArchivos($request, 'evidencia', 'evidencias');
+
+        $idTrabajadorFinal = $esParaMi
+            ? (auth()->user()->trabajador?->id_trabajador ?? $request->input('id_trabajador'))
+            : $request->input('id_trabajador');
 
         $datos = [
             'id_tipo_evento' => $request->id_tipo_evento,
             'condicion' => $request->condicion,
             'descripcion' => $request->descripcion,
             'referencia' => $request->referencia,
-            'id_proyecto' => $this->proyectoActualDelTrabajador(),
-            'id_trabajador' => auth()->user()->trabajador?->id_trabajador,
+            'id_proyecto' => $request->id_proyecto,
+            'id_trabajador' => $idTrabajadorFinal,
             'estado' => 'abierta',
             'evidencia' => $rutasArchivos,
         ];
@@ -200,9 +263,77 @@ class EventoController extends Controller
 
         $evento = Evento::create($datos);
 
-        Log::alert("ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE registrada. Evento ID: {$evento->id_evento}, Proyecto ID: {$evento->id_proyecto}");
+        Log::alert("ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE registrada. Evento ID: {$evento->id_evento}, Proyecto ID: {$evento->id_proyecto}, Trabajador ID: {$evento->id_trabajador}");
 
         return redirect()->route('eventos.index')->with('success', 'Reporte creado con éxito');
+    }
+
+    public function obtenerProyectosDeTrabajador(?Trabajador $trabajador): Collection
+    {
+        if (! $trabajador) {
+            return collect();
+        }
+
+        $hoy = now()->toDateString();
+        $proyectoIds = collect();
+
+        if ($trabajador->administrativo) {
+            $ids = Asignacion::where('id_administrador', $trabajador->id_trabajador)
+                ->whereDate('fecha_inicio', '<=', $hoy)
+                ->where(function ($q) use ($hoy) {
+                    $q->whereNull('fecha_termino')->orWhereDate('fecha_termino', '>=', $hoy);
+                })
+                ->pluck('id_proyecto');
+
+            if ($ids->isEmpty()) {
+                $ids = Asignacion::where('id_administrador', $trabajador->id_trabajador)->pluck('id_proyecto');
+            }
+            $proyectoIds = $proyectoIds->merge($ids);
+        }
+
+        if ($trabajador->supervisor) {
+            $cuadrillas = Cuadrilla::where('id_supervisor', $trabajador->id_trabajador)->pluck('id_cuadrilla')->all();
+            if (! empty($cuadrillas)) {
+                $ids = Asignacion::whereIn('id_cuadrilla', $cuadrillas)
+                    ->whereDate('fecha_inicio', '<=', $hoy)
+                    ->where(function ($q) use ($hoy) {
+                        $q->whereNull('fecha_termino')->orWhereDate('fecha_termino', '>=', $hoy);
+                    })
+                    ->pluck('id_proyecto');
+
+                if ($ids->isEmpty()) {
+                    $ids = Asignacion::whereIn('id_cuadrilla', $cuadrillas)->pluck('id_proyecto');
+                }
+                $proyectoIds = $proyectoIds->merge($ids);
+            }
+        }
+
+        if ($trabajador->obrero && $trabajador->obrero->id_cuadrilla) {
+            $idCuadrilla = $trabajador->obrero->id_cuadrilla;
+            $ids = Asignacion::where('id_cuadrilla', $idCuadrilla)
+                ->whereDate('fecha_inicio', '<=', $hoy)
+                ->where(function ($q) use ($hoy) {
+                    $q->whereNull('fecha_termino')->orWhereDate('fecha_termino', '>=', $hoy);
+                })
+                ->pluck('id_proyecto');
+
+            if ($ids->isEmpty()) {
+                $ids = Asignacion::where('id_cuadrilla', $idCuadrilla)->pluck('id_proyecto');
+            }
+            $proyectoIds = $proyectoIds->merge($ids);
+        }
+
+        $proyectoIds = $proyectoIds->unique()->values();
+
+        if ($proyectoIds->isNotEmpty()) {
+            $proyectos = Proyecto::whereIn('id_proyecto', $proyectoIds)->get();
+            if ($proyectos->isNotEmpty()) {
+                return $proyectos;
+            }
+        }
+
+        $activos = Proyecto::where('estado', 'activo')->get();
+        return $activos->isNotEmpty() ? $activos : Proyecto::all();
     }
 
     public function show(Evento $evento)
