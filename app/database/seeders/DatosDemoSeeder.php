@@ -10,6 +10,8 @@ use Faker\Factory as Faker;
 
 class DatosDemoSeeder extends Seeder
 {
+    private const PROB_BASE_DIA = 0.006;   // sube/baja para tener mas/menos eventos
+    private const T_MEMBRESIAS = 'trabajadores_cuadrillas';
     private const T_CLIENTES     = 'clientes';
     private const T_FAENAS       = 'faenas';
     private const T_PERSONAS     = 'personas';
@@ -54,10 +56,17 @@ class DatosDemoSeeder extends Seeder
             $nombresFaena = ['Minera Norte', 'Planta Pacifico', 'Puerto Sur', 'Refineria Central',
                 'Cantera Andes', 'Parque Eolico', 'Planta Celulosa', 'Fundicion Costa',
                 'Terminal Maritimo', 'Planta Quimica'];
+
+            // Continuar la numeracion de corridas anteriores (FAE-D001, FAE-D002, ...)
+            $maxFaena = (int) DB::table(self::T_FAENAS)
+                ->where('codigo_faena', 'like', 'FAE-D%')
+                ->selectRaw("COALESCE(MAX(SUBSTRING(codigo_faena FROM 6)::int), 0) AS m")
+                ->value('m');
+
             $faenas = [];
             foreach ($nombresFaena as $i => $nombre) {
                 $faenas[] = $this->insertar(self::T_FAENAS, 'id_faena', [
-                    'codigo_faena' => sprintf('FAE-D%03d', $i + 1),
+                    'codigo_faena' => sprintf('FAE-D%03d', $maxFaena + $i + 1),
                     'nombre'       => 'Faena ' . $nombre,
                 ]);
             }
@@ -94,12 +103,16 @@ class DatosDemoSeeder extends Seeder
                     DB::table($tablaSup)->insert($this->soloColumnas($tablaSup, [$pkSup => $idSup]));
                 }
             }
+            $maxCuad = (int) DB::table(self::T_CUADRILLAS)
+                ->where('numero_cuadrilla', 'like', 'C-D%')
+                ->selectRaw("COALESCE(MAX(SUBSTRING(numero_cuadrilla FROM 4)::int), 0) AS m")
+                ->value('m');
 
             $cuadrillas = [];          // id_cuadrilla => id_supervisor
             foreach ($supervisores as $i => $idSup) {
                 $idCuad = $this->insertar(self::T_CUADRILLAS, 'id_cuadrilla', [
                     'id_supervisor'    => $idSup,
-                    'numero_cuadrilla' => sprintf('C-D%03d', $i + 1),
+                    'numero_cuadrilla' => sprintf('C-D%03d', $maxCuad + $i + 1),   // <- cambio
                 ]);
                 $cuadrillas[$idCuad] = $idSup;
             }
@@ -139,6 +152,7 @@ class DatosDemoSeeder extends Seeder
             $proyectosElegidos   = collect($proyectos)->shuffle()->take(14)->values();
 
             $asignaciones = [];
+            $infoCuad     = [];   // id_cuadrilla => ['inicio' => Carbon, 'termino' => Carbon]
             foreach ($cuadrillasAsignadas as $i => $idCuadrilla) {
                 $p = $proyectosElegidos[$i];
                 $this->insertar(self::T_ASIGNACIONES, 'id_asignacion', [
@@ -150,7 +164,10 @@ class DatosDemoSeeder extends Seeder
                     'fecha_termino'    => $p['termino']->toDateString(),
                 ]);
 
+                $infoCuad[$idCuadrilla] = ['inicio' => $p['inicio'], 'termino' => $p['termino']];
+
                 $asignaciones[] = [
+                    'cuadrilla'  => $idCuadrilla,
                     'proyecto'   => $p['id'],
                     'supervisor' => $cuadrillas[$idCuadrilla],
                     'inicio'     => $p['inicio'],
@@ -158,47 +175,170 @@ class DatosDemoSeeder extends Seeder
                 ];
             }
 
-            // ---------- 500 EVENTOS ----------
-            $tiposEvento = $this->idsReferenciados(self::T_EVENTOS, 'id_tipo_evento');
-            $areas       = $this->idsReferenciados(self::T_EVENTOS, 'id_area');
+            // ---------- MEMBRESIAS TRABAJADOR <-> CUADRILLA ----------
+            // Cada cuadrilla parte el dia que inicia su asignacion (o el 2026-01-01 si no tiene).
+            $idsCuad    = array_keys($cuadrillas);
+            $inicioBase = Carbon::create(2026, 1, 1);
+            $inicioDe   = fn (int $idCuad) => ($infoCuad[$idCuad]['inicio'] ?? $inicioBase)->copy();
 
-            $idEvento = (int) DB::table(self::T_EVENTOS)->max('id_evento') + 1;
-            $filas = [];
-            for ($i = 0; $i < 500; $i++) {
-                $a     = $asignaciones[array_rand($asignaciones)];
-                $dias  = max(1, $a['inicio']->diffInDays($a['termino']));
-                $fecha = (clone $a['inicio'])->addDays(random_int(0, $dias))
-                    ->setTime(random_int(7, 19), random_int(0, 59));
+            $membresias = [];   // cada item: ['trabajador','cuadrilla','inicio'=>Carbon,'fin'=>Carbon|null]
 
-                $estado  = $faker->randomElement(self::EVENTO_ESTADOS);
-                $cerrado = $estado === self::EVENTO_ESTADO_CIERRE;
-
-                $filas[] = [
-                    'id_evento'           => $idEvento++,
-                    'id_tipo_evento'      => $faker->randomElement($tiposEvento),
-                    'id_administrador'    => $idAdmin,
-                    'id_area'             => $faker->randomElement($areas),
-                    'id_proyecto'         => $a['proyecto'],
-                    'fecha_creacion'      => $fecha,
-                    'fecha_actualizacion' => $fecha,
-                    'descripcion'         => $faker->sentence(10),
-                    'estado'              => $estado,
-                    'condicion'           => null,
-                    'evidencia'           => null,
-                    'referencia'          => null,
-                    'id_trabajador'       => $trabajadores[array_rand($trabajadores)],
-                    'id_supervisor'       => $a['supervisor'],
-                    'fecha_cierre'        => $cerrado ? (clone $fecha)->addDays(random_int(1, 10)) : null,
-                    'justificacion'       => $cerrado ? $faker->sentence(8) : null,
-                    'evidencia_cierre'    => null,
-                    'severidad'           => $faker->randomElement(self::EVENTO_SEVERIDADES),
+            // 1) Cada supervisor es miembro vigente de su propia cuadrilla
+            foreach ($cuadrillas as $idCuad => $idSup) {
+                $membresias[] = [
+                    'trabajador' => $idSup, 'cuadrilla' => $idCuad,
+                    'inicio' => $inicioDe($idCuad), 'fin' => null,
                 ];
             }
+
+            // 2) Resto de trabajadores: reparto rotativo + casos realistas
+            $resto = collect($trabajadores)->diff($supervisores)->shuffle()->values();
+            foreach ($resto as $i => $idTrab) {
+                $cuadA = $idsCuad[$i % count($idsCuad)];
+                $ini   = $inicioDe($cuadA);
+                $r     = random_int(1, 100);
+
+                if ($r <= 15 && count($idsCuad) > 1) {
+                    // Rotacion: pasa a otra cuadrilla despues de un tiempo
+                    $finA  = $ini->copy()->addDays(random_int(30, 120));
+                    $otras = array_values(array_diff($idsCuad, [$cuadA]));
+                    $cuadB = $otras[array_rand($otras)];
+
+                    $membresias[] = ['trabajador' => $idTrab, 'cuadrilla' => $cuadA, 'inicio' => $ini, 'fin' => $finA];
+                    $membresias[] = ['trabajador' => $idTrab, 'cuadrilla' => $cuadB, 'inicio' => $finA->copy()->addDay(), 'fin' => null];
+                } elseif ($r <= 25) {
+                    // Se incorpora tarde
+                    $membresias[] = ['trabajador' => $idTrab, 'cuadrilla' => $cuadA,
+                        'inicio' => $ini->copy()->addDays(random_int(15, 90)), 'fin' => null];
+                } elseif ($r <= 30) {
+                    // Se desvincula de la cuadrilla
+                    $membresias[] = ['trabajador' => $idTrab, 'cuadrilla' => $cuadA,
+                        'inicio' => $ini, 'fin' => $ini->copy()->addDays(random_int(60, 150))];
+                } else {
+                    $membresias[] = ['trabajador' => $idTrab, 'cuadrilla' => $cuadA, 'inicio' => $ini, 'fin' => null];
+                }
+            }
+
+            foreach ($membresias as $m) {
+                $this->insertar(self::T_MEMBRESIAS, 'id_trabajador_cuadrilla', [
+                    'id_trabajador'  => $m['trabajador'],
+                    'id_cuadrilla'   => $m['cuadrilla'],
+                    'fecha_inicio'   => $m['inicio']->toDateString(),
+                    'fecha_fin'      => $m['fin']?->toDateString(),
+                    'fecha_creacion' => $now,
+                ]);
+            }
+
+                        // ---------- EVENTOS CON SEÑAL (simulacion diaria) ----------
+            $tiposEvento = $this->idsReferenciados(self::T_EVENTOS, 'id_tipo_evento');
+            $areas       = $this->idsReferenciados(self::T_EVENTOS, 'id_area');
+            $hoy         = Carbon::today();
+
+            // Factor por cargo (algunos cargos tienen mas exposicion al riesgo)
+            $factorCargo = [
+                'Ayudante' => 1.5, 'Soldador' => 1.6, 'Electricista' => 1.3, 'Mecanico' => 1.2,
+                'Operador' => 1.1, 'Instrumentista' => 1.0, 'Tecnico' => 1.0,
+                'Capataz' => 0.8, 'Supervisor' => 0.6, 'Prevencionista' => 0.5,
+            ];
+            $cargoDe = DB::table(self::T_TRABAJADORES)
+                ->whereIn('id_trabajador', $trabajadores)
+                ->pluck('cargo', 'id_trabajador')->all();
+
+            // Riesgo latente por trabajador: 20% "alto riesgo" (x4) * factor de cargo
+            $riesgo = []; $altoRiesgo = [];
+            foreach ($trabajadores as $idTrab) {
+                $alto = random_int(1, 100) <= 20;
+                $altoRiesgo[$idTrab] = $alto;
+                $riesgo[$idTrab] = ($alto ? 4.0 : 1.0) * ($factorCargo[$cargoDe[$idTrab] ?? ''] ?? 1.0);
+            }
+
+            // Asignacion por cuadrilla y multiplicador por proyecto (proyectos mas/menos riesgosos)
+            $asigPorCuad = []; $multProy = [];
+            foreach ($asignaciones as $a) {
+                $asigPorCuad[$a['cuadrilla']] = $a;
+                $multProy[$a['proyecto']]     = random_int(60, 180) / 100;
+            }
+
+            $idEvento     = (int) DB::table(self::T_EVENTOS)->max('id_evento') + 1;
+            $ultimoEvento = [];   // trabajador => Carbon del ultimo evento (para el efecto "racha")
+            $filas        = [];
+
+            // Las membresias de un mismo trabajador estan en orden cronologico
+            foreach ($membresias as $m) {
+                $a = $asigPorCuad[$m['cuadrilla']] ?? null;
+                if (!$a) {
+                    continue;   // cuadrilla sin asignacion: no esta expuesta
+                }
+                $trab  = $m['trabajador'];
+                $desde = $m['inicio']->greaterThan($a['inicio']) ? $m['inicio']->copy() : $a['inicio']->copy();
+                $hasta = $a['termino']->copy();
+                if ($m['fin'] && $m['fin']->lessThan($hasta)) { $hasta = $m['fin']->copy(); }
+                if ($hoy->lessThan($hasta))                   { $hasta = $hoy->copy(); }   // sin eventos futuros
+
+                $duracion = max(1, abs($a['inicio']->diffInDays($a['termino'])));
+
+                for ($d = $desde->copy(); $d->lessThanOrEqualTo($hasta); $d->addDay()) {
+                    $p = self::PROB_BASE_DIA * $riesgo[$trab] * $multProy[$a['proyecto']];
+
+                    if ($d->isWeekend())                                         { $p *= 0.3; }  // obra casi parada
+                    if (abs($m['inicio']->diffInDays($d)) < 30)                  { $p *= 2.0; }  // nuevo en la cuadrilla
+                    if (abs($a['inicio']->diffInDays($d)) / $duracion < 0.2)     { $p *= 1.5; }  // arranque del proyecto
+                    if (isset($ultimoEvento[$trab])
+                        && abs($ultimoEvento[$trab]->diffInDays($d)) <= 14)      { $p *= 4.0; }  // racha tras un evento
+
+                    $p = min($p, 0.5);
+                    if (random_int(1, 1000000) > (int) ($p * 1000000)) {
+                        continue;
+                    }
+
+                    $ultimoEvento[$trab] = $d->copy();
+                    $fecha = $d->copy()->setTime(random_int(7, 19), random_int(0, 59));
+
+                    // Severidad ligada al riesgo del trabajador
+                    $pAlta = $altoRiesgo[$trab] ? 0.40 : 0.15;
+                    $r     = random_int(1, 100) / 100;
+                    $sev   = $r <= $pAlta ? 'Alta' : ($r <= $pAlta + 0.35 ? 'Media' : 'Baja');
+
+                    // Estado coherente: no se puede haber cerrado en el futuro
+                    $estado  = $faker->randomElement(self::EVENTO_ESTADOS);
+                    $cierre  = null;
+                    if ($estado === self::EVENTO_ESTADO_CIERRE) {
+                        $cierre = $fecha->copy()->addDays(random_int(1, 10));
+                        if ($cierre->greaterThan($hoy)) {
+                            $estado = 'abierto';
+                            $cierre = null;
+                        }
+                    }
+
+                    $filas[] = [
+                        'id_evento'           => $idEvento++,
+                        'id_tipo_evento'      => $faker->randomElement($tiposEvento),
+                        'id_administrador'    => $idAdmin,
+                        'id_area'             => $faker->randomElement($areas),
+                        'id_proyecto'         => $a['proyecto'],
+                        'fecha_creacion'      => $fecha,
+                        'fecha_actualizacion' => $fecha,
+                        'descripcion'         => $faker->sentence(10),
+                        'estado'              => $estado,
+                        'condicion'           => null,
+                        'evidencia'           => null,
+                        'referencia'          => null,
+                        'id_trabajador'       => $trab,
+                        'id_supervisor'       => $a['supervisor'],
+                        'fecha_cierre'        => $cierre,
+                        'justificacion'       => $cierre ? $faker->sentence(8) : null,
+                        'evidencia_cierre'    => null,
+                        'severidad'           => $sev,
+                    ];
+                }
+            }
+
             foreach (array_chunk($filas, 100) as $chunk) {
                 DB::table(self::T_EVENTOS)->insert(
                     array_map(fn ($f) => $this->soloColumnas(self::T_EVENTOS, $f), $chunk)
                 );
             }
+            $this->command?->info('Eventos generados: ' . count($filas));
         });
 
         $this->resincronizarSecuencias();
@@ -217,10 +357,6 @@ class DatosDemoSeeder extends Seeder
         return $id;
     }
 
-    /**
-     * Descubre via FK a que tabla apunta $tabla.$columna y devuelve los ids existentes.
-     * Si no hay FK o el catalogo esta vacio, lanza un error claro.
-     */
     private function idsReferenciados(string $tabla, string $columna): array
     {
         $fk = DB::selectOne(
@@ -262,11 +398,17 @@ class DatosDemoSeeder extends Seeder
 
     private function rutUnico(int $base): string
     {
-        while (isset($this->rutsUsados[$base])) {
+        while (true) {
+            $rut = $this->formatRut($base);
+
+            if (!isset($this->rutsUsados[$base])
+                && !DB::table(self::T_PERSONAS)->where('rut', $rut)->exists()
+                && !DB::table(self::T_CLIENTES)->where('rut', $rut)->exists()) {
+                $this->rutsUsados[$base] = true;
+                return $rut;
+            }
             $base++;
         }
-        $this->rutsUsados[$base] = true;
-        return $this->formatRut($base);
     }
 
     private function formatRut(int $num): string
@@ -280,7 +422,6 @@ class DatosDemoSeeder extends Seeder
         $dv = $resto === 11 ? '0' : ($resto === 10 ? 'K' : (string) $resto);
         return $num . '-' . $dv;
     }
-    /** Devuelve [tabla, columna] a la que apunta la FK de $tabla.$columna. */
     private function destinoFk(string $tabla, string $columna): array
     {
         $fk = DB::selectOne(
@@ -311,6 +452,8 @@ class DatosDemoSeeder extends Seeder
             self::T_PERSONAS => 'id_persona', self::T_TRABAJADORES => 'id_trabajador',
             self::T_CUADRILLAS => 'id_cuadrilla', self::T_PROYECTOS => 'id_proyecto',
             self::T_ASIGNACIONES => 'id_asignacion', self::T_EVENTOS => 'id_evento',
+            self::T_ASIGNACIONES => 'id_asignacion', self::T_EVENTOS => 'id_evento',
+            self::T_MEMBRESIAS => 'id_trabajador_cuadrilla',
         ];
 
         foreach ($tablas as $tabla => $pk) {
