@@ -18,29 +18,57 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
     { href: '/portal', label: 'Inicio' },
-    { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'supervisor'] },
-    { href: '/usuarios', label: 'Sistema', roles: ['Administrador'] },
+    { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'Supervisor'] },
     {
         label: 'Reportes',
         subItems: [
-            { href: '/eventos', label: 'Listado de reportes' },
+            { href: '/eventos', label: 'Listado de reportes', roles: ['Administrador', 'Supervisor'] },
             { href: '/eventos/mis-reportes', label: 'Mis reportes' },
-            { href: '/eventos/estadisticas', label: 'Estadísticas' },
+            { href: '/eventos/estadisticas', label: 'Estadísticas', roles: ['Administrador'] },
         ],
     },
     {
         label: 'Operaciones',
+        roles: ['Administrador', 'Supervisor'],
         subItems: [
-            { href: '/proyectos', label: 'Proyectos' },
-            { href: '/cuadrillas', label: 'Cuadrillas', roles: ['Administrador', 'supervisor'] },
-            { href: '/trabajadores', label: 'Trabajadores', roles: ['Administrador', 'rrhh'] },
+            { href: '/proyectos', label: 'Proyectos', roles: ['Administrador', 'Supervisor'] },
+            { href: '/cuadrillas', label: 'Cuadrillas', roles: ['Administrador', 'Supervisor'] },
+            { href: '/trabajadores', label: 'Trabajadores', roles: ['Administrador'] },
+        ],
+    },
+    {
+        label: 'Sistema',
+        roles: ['Administrador'],
+        subItems: [
+            { href: '/usuarios', label: 'Usuarios', roles: ['Administrador'] },
+            { href: '/roles', label: 'Roles', roles: ['Administrador'] },
+            { href: '/permisos', label: 'Permisos', roles: ['Administrador'] },
+            { href: '/departamentos', label: 'Departamentos', roles: ['Administrador'] },
         ],
     },
 ];
 
+const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
+    '/portal': { title: 'Portal de Inicio', subtitle: 'Bienvenido al sistema de seguridad AVA' },
+    '/dashboard': { title: 'Panel Estadístico', subtitle: 'Resumen de hallazgos y reportes (Tarjeta PARE)' },
+    '/eventos': { title: 'Listado de Reportes', subtitle: 'Registro general de eventos y hallazgos' },
+    '/eventos/mis-reportes': { title: 'Mis Reportes', subtitle: 'Eventos registrados por ti' },
+    '/eventos/estadisticas': { title: 'Estadísticas', subtitle: 'Métricas predictivas y análisis de seguridad' },
+    '/eventos/create': { title: 'Ingreso de Reporte', subtitle: 'Registra un evento detallando la condición y descripción' },
+    '/proyectos': { title: 'Proyectos', subtitle: 'Gestión y control de proyectos' },
+    '/cuadrillas': { title: 'Cuadrillas', subtitle: 'Gestión de equipos de trabajo' },
+    '/trabajadores': { title: 'Trabajadores', subtitle: 'Personal y asignaciones' },
+    '/usuarios': { title: 'Usuarios del Sistema', subtitle: 'Administración de cuentas y accesos' },
+    '/roles': { title: 'Roles', subtitle: 'Roles del sistema' },
+    '/permisos': { title: 'Permisos', subtitle: 'Permisos de seguridad' },
+    '/departamentos': { title: 'Departamentos', subtitle: 'Estructura organizativa de la empresa' },
+};
+
 function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {
     if (!rolesRequeridos || rolesRequeridos.length === 0) return true;
-    return rolesRequeridos.some((rol) => rolesUsuario.includes(rol));
+    return rolesRequeridos.some((rol) =>
+        rolesUsuario.some((uRol) => uRol.toLowerCase() === rol.toLowerCase())
+    );
 }
 
 function isRutaActiva(href: string, rutaActual: string): boolean {
@@ -60,9 +88,18 @@ function isRutaActiva(href: string, rutaActual: string): boolean {
 
 interface MainLayoutProps extends PropsWithChildren {
     bgClass?: string;
+    title?: string;
+    subtitle?: string;
+    headerContent?: React.ReactNode;
 }
 
-export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLayoutProps) {
+export default function MainLayout({
+    children,
+    bgClass = 'bg-verde-1',
+    title,
+    subtitle,
+    headerContent,
+}: MainLayoutProps) {
     const { url, props } = usePage();
     const usuario = useAuth();
     const notificaciones = (props.notificaciones as any[]) || [];
@@ -78,6 +115,11 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
     });
 
     const rutaActual = url.split('?')[0];
+    const rutaNormalizada = rutaActual.endsWith('/') && rutaActual.length > 1 ? rutaActual.slice(0, -1) : rutaActual;
+    const infoRuta = RUTA_TITULOS[rutaNormalizada] || Object.entries(RUTA_TITULOS).find(([r]) => rutaNormalizada.startsWith(r + '/'))?.[1];
+
+    const displayTitle = title ?? infoRuta?.title;
+    const displaySubtitle = subtitle ?? infoRuta?.subtitle;
 
     const [colapsado, setColapsado] = useState(false);
     const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
@@ -203,8 +245,8 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
                                         title={item.label}
                                         className={`w-full flex items-center justify-center p-3 rounded-lg transition-colors cursor-pointer ${
                                             subActivoEncontrado
-                                                ? 'bg-verde-2 text-verde-6 font-bold'
-                                                : 'text-gris-1 hover:text-gris-2 hover:bg-verde-1'
+                                                ? 'bg-verde-2 dark:bg-[#20272F] text-verde-6 dark:text-verde-5 font-bold dark:border dark:border-[#2C353F] shadow-sm'
+                                                : 'text-gris-1 dark:text-gray-400 hover:text-gris-2 dark:hover:text-white hover:bg-verde-1 dark:hover:bg-[#20272F]/60'
                                         }`}
                                     >
                                         <span className="font-bold text-center w-5">{item.label.charAt(0)}</span>
@@ -219,14 +261,16 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
                                         onClick={() => toggleGrupo(item.label)}
                                         className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer group ${
                                             subActivoEncontrado
-                                                ? 'bg-verde-2/70 text-gris-2 font-bold'
-                                                : 'text-gris-1 hover:text-gris-2 hover:bg-verde-1 font-medium'
+                                                ? 'bg-verde-2/70 dark:bg-[#20272F] text-gris-2 dark:text-white font-bold dark:border dark:border-[#2C353F] shadow-sm'
+                                                : 'text-gris-1 dark:text-gray-400 hover:text-gris-2 dark:hover:text-white hover:bg-verde-1 dark:hover:bg-[#20272F]/60 font-medium'
                                         }`}
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
                                             <span
                                                 className={`font-bold text-center shrink-0 w-5 ${
-                                                    subActivoEncontrado ? 'text-verde-6' : 'text-gris-1 group-hover:text-verde-6'
+                                                    subActivoEncontrado
+                                                        ? 'text-verde-6 dark:text-verde-5'
+                                                        : 'text-gris-1 dark:text-gray-400 group-hover:text-verde-6 dark:group-hover:text-verde-5'
                                                 }`}
                                             >
                                                 {item.label.charAt(0)}
@@ -234,8 +278,10 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
                                             <span className="truncate">{item.label}</span>
                                         </div>
                                         <svg
-                                            className={`w-4 h-4 text-gris-1 transition-transform duration-200 shrink-0 ${
-                                                abierto ? 'rotate-90 text-verde-6' : 'group-hover:text-gris-2'
+                                            className={`w-4 h-4 transition-transform duration-200 shrink-0 ${
+                                                abierto
+                                                    ? 'rotate-90 text-verde-6 dark:text-verde-5'
+                                                    : 'text-gris-1 dark:text-gray-400 group-hover:text-gris-2 dark:group-hover:text-white'
                                             }`}
                                             fill="none"
                                             stroke="currentColor"
@@ -246,22 +292,24 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
                                     </button>
 
                                     {abierto && (
-                                        <div className="ml-5 pl-3 py-1 space-y-1 border-l-2 border-verde-3/70">
+                                        <div className="ml-5 pl-3 py-1 space-y-1 border-l-2 border-verde-3/70 dark:border-[#2C353F]">
                                             {subItemsVisibles.map((sub) => {
                                                 const subActivo = isRutaActiva(sub.href, rutaActual);
                                                 return (
                                                     <Link
                                                         key={sub.href}
                                                         href={sub.href}
-                                                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors ${
+                                                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all ${
                                                             subActivo
-                                                                ? 'bg-verde-5 text-black font-extrabold shadow-sm'
-                                                                : 'text-gris-1 hover:text-gris-2 hover:bg-verde-1 font-medium'
+                                                                ? 'bg-verde-5 text-black font-extrabold shadow-sm dark:bg-verde-5/15 dark:text-verde-5 dark:border dark:border-verde-5/30'
+                                                                : 'text-gris-1 dark:text-gray-400 hover:text-gris-2 dark:hover:text-white hover:bg-verde-1 dark:hover:bg-[#20272F]/60 font-medium'
                                                         }`}
                                                     >
                                                         <span
-                                                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                                                subActivo ? 'bg-black' : 'bg-verde-3'
+                                                            className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${
+                                                                subActivo
+                                                                    ? 'bg-black dark:bg-verde-5 dark:shadow-[0_0_6px_rgba(160,247,0,0.6)]'
+                                                                    : 'bg-verde-3 dark:bg-[#3D4754]'
                                                             }`}
                                                         />
                                                         <span className="truncate">{sub.label}</span>
@@ -284,13 +332,13 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
                                 title={item.label}
                                 className={
                                     activo
-                                        ? 'flex items-center gap-3 px-3 py-2.5 rounded-lg bg-verde-2 text-verde-6 text-sm font-bold transition-colors'
-                                        : 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-gris-1 hover:text-gris-2 hover:bg-verde-1 text-sm transition-colors group'
+                                        ? 'flex items-center gap-3 px-3 py-2.5 rounded-lg bg-verde-2 dark:bg-[#20272F] text-verde-6 dark:text-verde-5 text-sm font-bold transition-colors shadow-sm dark:border dark:border-[#2C353F]'
+                                        : 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-gris-1 dark:text-gray-400 hover:text-gris-2 dark:hover:text-white hover:bg-verde-1 dark:hover:bg-[#20272F]/60 text-sm transition-colors group'
                                 }
                             >
                                 <span
                                     className={`font-bold text-center shrink-0 w-5 ${
-                                        activo ? 'text-verde-6' : 'text-gris-1 group-hover:text-verde-5'
+                                        activo ? 'text-verde-6 dark:text-verde-5' : 'text-gris-1 dark:text-gray-400 group-hover:text-verde-5'
                                     }`}
                                 >
                                     {item.label.charAt(0)}
@@ -305,8 +353,26 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
             {/* Contenedor Principal (Barra superior + Contenido) */}
             <div className={`flex flex-col flex-1 overflow-hidden ${bgClass}`}>
                 {/* Header Global (Top bar) */}
-                <header className="h-16 shrink-0 bg-white dark:bg-[#181D22] border-b border-verde-3 dark:border-[#262E37] flex items-center justify-end px-8 z-40 relative shadow-sm transition-colors duration-200">
-                    <div className="flex items-center gap-4 relative">
+                <header className="h-16 shrink-0 bg-white dark:bg-[#181D22] border-b border-verde-3 dark:border-[#262E37] flex items-center justify-between px-6 lg:px-8 z-40 relative shadow-sm transition-colors duration-200">
+                    {/* Título de la vista en la barra superior */}
+                    <div className="flex items-center gap-4 min-w-0 pr-4">
+                        {headerContent ? (
+                            headerContent
+                        ) : displayTitle ? (
+                            <div className="flex flex-col justify-center min-w-0">
+                                <h1 className="text-base lg:text-lg font-bold text-gris-2 dark:text-white leading-tight truncate">
+                                    {displayTitle}
+                                </h1>
+                                {displaySubtitle && (
+                                    <p className="text-[11px] lg:text-xs text-gris-1 dark:text-gray-400 leading-tight mt-0.5 truncate hidden sm:block">
+                                        {displaySubtitle}
+                                    </p>
+                                )}
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <div className="flex items-center gap-4 relative shrink-0">
                         {/* Selector Modo Oscuro a la izquierda del perfil */}
                         <ThemeToggle />
 

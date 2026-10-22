@@ -149,26 +149,25 @@ export default function CuadrillasIndex() {
             <Head title="Cuadrillas | AVA" />
 
             <div className="max-w-[1700px] mx-auto p-6 lg:p-8 flex flex-col h-full min-h-[calc(100vh-80px)]">
-                {/* Header */}
-                <div className="mb-6 flex items-center justify-between shrink-0">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gris-2 mb-1">Cuadrillas</h1>
-                        <p className="text-gris-1 text-sm">Gestión de cuadrillas y supervisores asignados.</p>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <div className="bg-verde-2 border border-verde-3 rounded-xl px-5 py-3">
-                            <p className="text-[10px] uppercase tracking-wider text-gris-1 font-bold">Total</p>
-                            <p className="text-2xl font-bold text-verde-6">{cuadrillas.length}</p>
+                {/* Acciones y Métricas */}
+                <div className="mb-6 flex items-center justify-end gap-4 shrink-0">
+                    <div className="bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-2xl px-5 py-2.5 shadow-sm flex items-center gap-3 transition-colors">
+                        <div>
+                            <p className="text-[10px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">Total</p>
+                            <p className="text-2xl font-black text-gris-2 dark:text-white">{cuadrillas.length}</p>
                         </div>
-
-                        <button
-                            onClick={abrirCrear}
-                            className="bg-verde-5 hover:bg-verde-6 text-gris-2 rounded-lg font-bold px-5 py-3 text-sm transition-colors shadow-lg shadow-verde-5/20"
-                        >
-                            + Nueva cuadrilla
-                        </button>
                     </div>
+
+                    <button
+                        type="button"
+                        onClick={abrirCrear}
+                        className="bg-verde-5 hover:bg-verde-6 text-black rounded-xl font-bold px-5 py-3 text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Nueva cuadrilla
+                    </button>
                 </div>
 
                 {/* Mensajes */}
@@ -187,14 +186,14 @@ export default function CuadrillasIndex() {
                 )}
 
                 {/* Tabla */}
-                <div className="bg-white border border-verde-3 rounded-2xl shadow-2xl overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-2xl shadow-2xl overflow-hidden flex-1 flex flex-col min-h-0 transition-colors">
                     {cargando ? (
-                        <div className="flex items-center justify-center flex-1 p-10 text-gris-1 text-sm">
+                        <div className="flex items-center justify-center flex-1 p-10 text-gris-1 dark:text-gray-400 text-sm">
                             Cargando...
                         </div>
                     ) : cuadrillas.length === 0 ? (
                         <div className="flex flex-col items-center justify-center flex-1 p-10 text-center">
-                            <div className="w-16 h-16 rounded-full bg-verde-2 flex items-center justify-center mb-4">
+                            <div className="w-16 h-16 rounded-full bg-verde-2 dark:bg-[#252E38] flex items-center justify-center mb-4">
                                 <svg className="w-8 h-8 text-verde-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
                                         strokeLinecap="round"
@@ -204,17 +203,17 @@ export default function CuadrillasIndex() {
                                     />
                                 </svg>
                             </div>
-                            <h2 className="text-lg font-bold text-gris-2">No hay cuadrillas</h2>
-                            <p className="text-sm text-gris-1 mt-1">Crea la primera cuadrilla para comenzar.</p>
+                            <h2 className="text-lg font-bold text-gris-2 dark:text-white">No hay cuadrillas</h2>
+                            <p className="text-sm text-gris-1 dark:text-gray-400 mt-1">Crea la primera cuadrilla para comenzar.</p>
                         </div>
                     ) : (
                         <div className="overflow-auto flex-1 relative">
                             <table className="w-full text-sm">
-                                <thead className="sticky top-0 bg-white z-10 shadow-sm">
-                                    <tr className="border-b border-verde-3 text-left">
-                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">#</th>
-                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">N° Cuadrilla</th>
-                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">Supervisor</th>
+                                <thead className="sticky top-0 bg-white dark:bg-[#1E242B] z-10 shadow-sm">
+                                    <tr className="border-b border-verde-3 dark:border-[#2A333E] text-left">
+                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">#</th>
+                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">N° Cuadrilla</th>
+                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">Supervisor</th>
                                         <th className="px-6 py-4"></th>
                                     </tr>
                                 </thead>
@@ -222,11 +221,11 @@ export default function CuadrillasIndex() {
                                     {cuadrillas.map((c) => (
                                         <tr
                                             key={c.id_cuadrilla}
-                                            className="border-b border-verde-3/60 last:border-b-0 hover:bg-verde-2 transition-colors"
+                                            className="border-b border-verde-3/60 dark:border-[#2A333E]/60 last:border-b-0 hover:bg-verde-2 dark:hover:bg-[#252E38] transition-colors"
                                         >
-                                            <td className="px-6 py-4 text-gris-1 font-bold">#{c.id_cuadrilla}</td>
-                                            <td className="px-6 py-4 text-gris-2 font-medium">{c.numero_cuadrilla}</td>
-                                            <td className="px-6 py-4 text-gris-1">{nombreSupervisor(c)}</td>
+                                            <td className="px-6 py-4 text-gris-1 dark:text-gray-400 font-bold">#{c.id_cuadrilla}</td>
+                                            <td className="px-6 py-4 text-gris-2 dark:text-white font-medium">{c.numero_cuadrilla}</td>
+                                            <td className="px-6 py-4 text-gris-1 dark:text-gray-400">{nombreSupervisor(c)}</td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-4">
                                                     <button

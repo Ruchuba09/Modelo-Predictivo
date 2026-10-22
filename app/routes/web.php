@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DepartamentoController;
 use App\Http\Controllers\TrabajadorController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RolController;
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return redirect()->route('login');
+    return Auth::check() ? redirect()->route('portal') : redirect()->route('login');
 });
 
 Route::get('/test-auth', function () {
@@ -24,58 +25,92 @@ Route::get('/test-auth', function () {
 })->middleware('auth');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
-    Route::get('/usuarios/crear', [UserController::class, 'create'])->name('usuarios.crear');
-    Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
-    Route::get('/usuarios/{usuario}', [UserController::class, 'show'])->name('usuarios.show');
-    Route::get('/usuarios/{usuario}/editar', [UserController::class, 'edit'])->name('usuarios.editar');
-    Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
-    Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
+    Route::get('/portal', function () {
+        return Inertia::render('portal');
+    })->name('portal');
 
-    Route::get('/roles', [RolController::class, 'index'])->name('roles.index');
-    Route::get('/roles/crear', [RolController::class, 'create'])->name('roles.crear');
-    Route::post('/roles', [RolController::class, 'store'])->name('roles.store');
-    Route::get('/roles/{rol}', [RolController::class, 'show'])->name('roles.show');
-    Route::get('/roles/{rol}/editar', [RolController::class, 'edit'])->name('roles.editar');
-    Route::put('/roles/{rol}', [RolController::class, 'update'])->name('roles.update');
-    Route::delete('/roles/{rol}', [RolController::class, 'destroy'])->name('roles.destroy');
+    Route::get('/reportes', function () {
+        return Inertia::render('reportes');
+    });
 
-    Route::get('/permisos', [PermisoController::class, 'index'])->name('permisos.index');
-    Route::get('/permisos/crear', [PermisoController::class, 'create'])->name('permisos.crear');
-    Route::post('/permisos', [PermisoController::class, 'store'])->name('permisos.store');
-    Route::get('/permisos/{permiso}', [PermisoController::class, 'show'])->name('permisos.show');
-    Route::get('/permisos/{permiso}/editar', [PermisoController::class, 'edit'])->name('permisos.editar');
-    Route::put('/permisos/{permiso}', [PermisoController::class, 'update'])->name('permisos.update');
-    Route::delete('/permisos/{permiso}', [PermisoController::class, 'destroy'])->name('permisos.destroy');
+    // Rutas exclusivas para Administradores
+    Route::middleware('role:Administrador')->group(function () {
+        Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
+        Route::get('/usuarios/crear', [UserController::class, 'create'])->name('usuarios.crear');
+        Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
+        Route::get('/usuarios/{usuario}', [UserController::class, 'show'])->name('usuarios.show');
+        Route::get('/usuarios/{usuario}/editar', [UserController::class, 'edit'])->name('usuarios.editar');
+        Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
+        Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
 
-    Route::get('/dashboard', [EventoController::class, 'indexGrafico'])->name('dashboard');
+        Route::get('/roles', [RolController::class, 'index'])->name('roles.index');
+        Route::get('/roles/crear', [RolController::class, 'create'])->name('roles.crear');
+        Route::post('/roles', [RolController::class, 'store'])->name('roles.store');
+        Route::get('/roles/{rol}', [RolController::class, 'show'])->name('roles.show');
+        Route::get('/roles/{rol}/editar', [RolController::class, 'edit'])->name('roles.editar');
+        Route::put('/roles/{rol}', [RolController::class, 'update'])->name('roles.update');
+        Route::delete('/roles/{rol}', [RolController::class, 'destroy'])->name('roles.destroy');
 
-    Route::resource('/trabajadores', TrabajadorController::class)
-        ->parameters(['trabajadores' => 'trabajador']);
+        Route::get('/permisos', [PermisoController::class, 'index'])->name('permisos.index');
+        Route::get('/permisos/crear', [PermisoController::class, 'create'])->name('permisos.crear');
+        Route::post('/permisos', [PermisoController::class, 'store'])->name('permisos.store');
+        Route::get('/permisos/{permiso}', [PermisoController::class, 'show'])->name('permisos.show');
+        Route::get('/permisos/{permiso}/editar', [PermisoController::class, 'edit'])->name('permisos.editar');
+        Route::put('/permisos/{permiso}', [PermisoController::class, 'update'])->name('permisos.update');
+        Route::delete('/permisos/{permiso}', [PermisoController::class, 'destroy'])->name('permisos.destroy');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Eventos
-    |--------------------------------------------------------------------------
-    | Las rutas con texto fijo (mis-reportes, estadisticas) van ANTES del
-    | resource; si no, Laravel las interpreta como /eventos/{evento}.
-    */
+        Route::resource('/trabajadores', TrabajadorController::class)
+            ->parameters(['trabajadores' => 'trabajador']);
 
-    // Estadísticas: pantalla (Inertia)
-    Route::get('/eventos/estadisticas', fn () => Inertia::render('Eventos/EventosEstadisticas'))
-        ->name('eventos.estadisticas');
+        Route::resource('/departamentos', DepartamentoController::class);
 
-    // Estadísticas: datos (JSON)
-    Route::get('/api/eventos/estadisticas', [EventoEstadisticaController::class, 'index'])
-        ->name('api.eventos.estadisticas');
+        Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
+        Route::get('/situacion-criticas/crear', [SituacionCriticaController::class, 'create'])->name('situacion-criticas.crear');
+        Route::post('/situacion-criticas', [SituacionCriticaController::class, 'store'])->name('situacion-criticas.store');
+        Route::get('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'show'])->name('situacion-criticas.show');
+        Route::get('/situacion-criticas/{situacionCritica}/editar', [SituacionCriticaController::class, 'edit'])->name('situacion-criticas.editar');
+        Route::put('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'update'])->name('situacion-criticas.update');
+        Route::delete('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'destroy'])->name('situacion-criticas.destroy');
 
-    Route::get('/api/eventos/estadisticas/{seccion}', [EventoEstadisticaController::class, 'seccion'])
-        ->whereIn('seccion', [
-            'resumen', 'distribuciones', 'cruces', 'tendencias', 'tiempos', 'aging',
-            'trabajadores', 'hallazgos', 'cierre', 'calidad_datos', 'destacados', 'actividad_reciente',
-        ])
-        ->name('api.eventos.estadisticas.seccion');
+        // Estadísticas
+        Route::get('/eventos/estadisticas', fn () => Inertia::render('Eventos/EventosEstadisticas'))
+            ->name('eventos.estadisticas');
+        Route::get('/api/eventos/estadisticas', [EventoEstadisticaController::class, 'index'])
+            ->name('api.eventos.estadisticas');
+        Route::get('/api/eventos/estadisticas/{seccion}', [EventoEstadisticaController::class, 'seccion'])
+            ->whereIn('seccion', [
+                'resumen', 'distribuciones', 'cruces', 'tendencias', 'tiempos', 'aging',
+                'trabajadores', 'hallazgos', 'cierre', 'calidad_datos', 'destacados', 'actividad_reciente',
+            ])
+            ->name('api.eventos.estadisticas.seccion');
+    });
 
+    // Rutas para Administradores y Supervisores
+    Route::middleware('role:Administrador,Supervisor')->group(function () {
+        Route::get('/dashboard', [EventoController::class, 'indexGrafico'])->name('dashboard');
+
+        Route::get('/proyectos', function () {
+            return Inertia::render('proyectos/Index');
+        })->name('proyectos.index');
+        Route::get('/proyectos/create', function () {
+            return Inertia::render('proyectos/Create');
+        })->name('proyectos.create');
+        Route::get('/proyectos/{id}', function ($id) {
+            return Inertia::render('proyectos/Show', [
+                'id' => $id,
+            ]);
+        })->name('proyectos.show');
+
+        Route::get('/cuadrillas', fn () => Inertia::render('Cuadrillas/Index'))
+            ->name('cuadrillas.index');
+        Route::get('/api/cuadrillas/supervisores', [CuadrillaController::class, 'supervisores']);
+        Route::apiResource('/api/cuadrillas', CuadrillaController::class)
+            ->parameters(['cuadrillas' => 'cuadrilla'])
+            ->whereNumber('cuadrilla')
+            ->names('api.cuadrillas');
+    });
+
+    // Eventos y reportes
     Route::get('/eventos/mis-reportes', [EventoController::class, 'MisReportes'])
         ->name('eventos.mis-reportes');
 
@@ -95,46 +130,6 @@ Route::middleware('auth')->group(function () {
     Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])
         ->whereNumber('evento')
         ->name('eventos.cerrar');
-
-    Route::get('/proyectos', function () {
-        return Inertia::render('proyectos/Index');
-    })->name('proyectos.index');
-
-    Route::get('/proyectos/create', function () {
-        return Inertia::render('proyectos/Create');
-    })->name('proyectos.create');
-
-    Route::get('/proyectos/{id}', function ($id) {
-        return Inertia::render('proyectos/Show', [
-            'id' => $id,
-        ]);
-    })->name('proyectos.show');
-
-    Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
-    Route::get('/situacion-criticas/crear', [SituacionCriticaController::class, 'create'])->name('situacion-criticas.crear');
-    Route::post('/situacion-criticas', [SituacionCriticaController::class, 'store'])->name('situacion-criticas.store');
-    Route::get('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'show'])->name('situacion-criticas.show');
-    Route::get('/situacion-criticas/{situacionCritica}/editar', [SituacionCriticaController::class, 'edit'])->name('situacion-criticas.editar');
-    Route::put('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'update'])->name('situacion-criticas.update');
-    Route::delete('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'destroy'])->name('situacion-criticas.destroy');
-
-    Route::get('/cuadrillas', fn () => Inertia::render('Cuadrillas/Index'))
-        ->name('cuadrillas.index');
-
-    Route::get('/api/cuadrillas/supervisores', [CuadrillaController::class, 'supervisores']);
-
-    Route::apiResource('/api/cuadrillas', CuadrillaController::class)
-        ->parameters(['cuadrillas' => 'cuadrilla'])
-        ->whereNumber('cuadrilla')
-        ->names('api.cuadrillas');
-});
-
-Route::get('/portal', function () {
-    return Inertia::render('portal');
-});
-
-Route::get('/reportes', function () {
-    return Inertia::render('reportes');
 });
 
 require __DIR__.'/settings.php';

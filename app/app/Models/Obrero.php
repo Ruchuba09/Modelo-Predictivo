@@ -18,11 +18,17 @@ class Obrero extends Model
     protected $fillable = [
         'id_trabajador',
         'id_tipo_obrero',
+        'id_cuadrilla',
     ];
 
     public function trabajador()
     {
         return $this->belongsTo(Trabajador::class, 'id_trabajador', 'id_trabajador');
+    }
+
+    public function cuadrilla()
+    {
+        return $this->belongsTo(Cuadrilla::class, 'id_cuadrilla', 'id_cuadrilla');
     }
 
     public function tipoObrero()

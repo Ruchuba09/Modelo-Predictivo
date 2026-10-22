@@ -47,22 +47,11 @@ export default function MisReportes() {
             <Head title="Mis Reportes | AVA" />
 
             <div className="max-w-[1700px] mx-auto p-6 lg:p-8 flex flex-col h-full min-h-[calc(100vh-80px)]">
-                {/* Header */}
-                <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gris-2 mb-1">
-                            Mis Reportes
-                        </h1>
-                        <p className="text-gris-1 text-sm">
-                            Reportes registrados donde estás involucrado.
-                        </p>
-                    </div>
-
-                    <div className="bg-white border border-verde-3 rounded-2xl px-5 py-2.5 shadow-sm flex items-center gap-3">
-                        <div>
-                            <p className="text-[10px] uppercase tracking-wider text-gris-1 font-bold">Total</p>
-                            <p className="text-2xl font-black text-gris-2">{eventos.length}</p>
-                        </div>
+                {/* Contador y resumen */}
+                <div className="mb-6 flex items-center justify-end gap-4 shrink-0">
+                    <div className="bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-xl px-4 py-2 shadow-sm flex items-center gap-3 transition-colors">
+                        <span className="text-xs uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">Total Reportes:</span>
+                        <span className="text-lg font-black text-verde-6">{eventos.length}</span>
                     </div>
                 </div>
 

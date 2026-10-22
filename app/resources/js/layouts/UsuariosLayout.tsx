@@ -5,23 +5,43 @@ import ThemeToggle from '@/components/ThemeToggle';
 
 const NAV_ITEMS: { href: string; label: string; roles?: string[] }[] = [
     { href: '/portal', label: 'Inicio' },
-    { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'supervisor'] },
+    { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'Supervisor'] },
     { href: '/usuarios', label: 'Usuarios', roles: ['Administrador'] },
     { href: '/roles', label: 'Roles', roles: ['Administrador'] },
     { href: '/permisos', label: 'Permisos', roles: ['Administrador'] },
     { href: '/departamentos', label: 'Departamentos', roles: ['Administrador'] },
 ];
 
+const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
+    '/portal': { title: 'Portal de Inicio', subtitle: 'Bienvenido al sistema de seguridad AVA' },
+    '/dashboard': { title: 'Panel Estadístico', subtitle: 'Resumen de hallazgos y reportes (Tarjeta PARE)' },
+    '/usuarios': { title: 'Usuarios del Sistema', subtitle: 'Administración de cuentas y accesos' },
+    '/roles': { title: 'Roles', subtitle: 'Gestión de roles y perfiles' },
+    '/permisos': { title: 'Permisos', subtitle: 'Matriz de permisos del sistema' },
+    '/departamentos': { title: 'Departamentos', subtitle: 'Estructura organizativa de la empresa' },
+};
+
 function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {
     if (!rolesRequeridos || rolesRequeridos.length === 0) return true;
-    return rolesRequeridos.some((rol) => rolesUsuario.includes(rol));
+    return rolesRequeridos.some((rol) =>
+        rolesUsuario.some((uRol) => uRol.toLowerCase() === rol.toLowerCase())
+    );
 }
 
 interface MainLayoutProps extends PropsWithChildren {
     bgClass?: string;
+    title?: string;
+    subtitle?: string;
+    headerContent?: React.ReactNode;
 }
 
-export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: MainLayoutProps) {
+export default function UsuariosLayout({
+    children,
+    bgClass = 'bg-verde-1',
+    title,
+    subtitle,
+    headerContent,
+}: MainLayoutProps) {
     const { url, props } = usePage();
     const usuario = useAuth();
     const notificaciones = (props.notificaciones as any[]) || [];
@@ -30,6 +50,11 @@ export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: Mai
     const itemsVisibles = NAV_ITEMS.filter((item) => tieneAcceso(rolesUsuario, item.roles));
 
     const rutaActual = url.split('?')[0];
+    const rutaNormalizada = rutaActual.endsWith('/') && rutaActual.length > 1 ? rutaActual.slice(0, -1) : rutaActual;
+    const infoRuta = RUTA_TITULOS[rutaNormalizada] || Object.entries(RUTA_TITULOS).find(([r]) => rutaNormalizada.startsWith(r + '/'))?.[1];
+
+    const displayTitle = title ?? infoRuta?.title;
+    const displaySubtitle = subtitle ?? infoRuta?.subtitle;
 
     const hrefActivo = itemsVisibles
         .filter(
@@ -110,8 +135,8 @@ export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: Mai
                                 title={item.label}
                                 className={
                                     activo
-                                        ? 'flex items-center gap-3 px-3 py-2.5 rounded-lg bg-verde-2 dark:bg-[#222A33] text-verde-6 dark:text-verde-5 text-sm font-bold transition-colors'
-                                        : 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-gris-1 dark:text-gray-400 hover:text-gris-2 dark:hover:text-white hover:bg-verde-1 dark:hover:bg-[#20272F] text-sm transition-colors group'
+                                        ? 'flex items-center gap-3 px-3 py-2.5 rounded-lg bg-verde-2 dark:bg-[#20272F] text-verde-6 dark:text-verde-5 text-sm font-bold transition-colors shadow-sm dark:border dark:border-[#2C353F]'
+                                        : 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-gris-1 dark:text-gray-400 hover:text-gris-2 dark:hover:text-white hover:bg-verde-1 dark:hover:bg-[#20272F]/60 text-sm transition-colors group'
                                 }
                             >
                                 <span
@@ -133,8 +158,26 @@ export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: Mai
             <div className={`flex flex-col flex-1 overflow-hidden ${bgClass} dark:bg-[#111417]`}>
 
                 {/* Header Global (Top bar) */}
-                <header className="h-16 shrink-0 bg-white dark:bg-[#181D22] border-b border-verde-3 dark:border-[#262E37] flex items-center justify-end px-8 z-40 relative shadow-sm transition-colors duration-200">
-                    <div className="flex items-center gap-4 relative">
+                <header className="h-16 shrink-0 bg-white dark:bg-[#181D22] border-b border-verde-3 dark:border-[#262E37] flex items-center justify-between px-6 lg:px-8 z-40 relative shadow-sm transition-colors duration-200">
+                    {/* Título de la vista en la barra superior */}
+                    <div className="flex items-center gap-4 min-w-0 pr-4">
+                        {headerContent ? (
+                            headerContent
+                        ) : displayTitle ? (
+                            <div className="flex flex-col justify-center min-w-0">
+                                <h1 className="text-base lg:text-lg font-bold text-gris-2 dark:text-white leading-tight truncate">
+                                    {displayTitle}
+                                </h1>
+                                {displaySubtitle && (
+                                    <p className="text-[11px] lg:text-xs text-gris-1 dark:text-gray-400 leading-tight mt-0.5 truncate hidden sm:block">
+                                        {displaySubtitle}
+                                    </p>
+                                )}
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <div className="flex items-center gap-4 relative shrink-0">
                         {/* Selector Modo Oscuro a la izquierda del perfil */}
                         <ThemeToggle />
 

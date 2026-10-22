@@ -57,7 +57,38 @@ class EventoController extends Controller
 
     public function index(Request $request)
     {
+        $user = Auth::user();
+
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
+        // Si es sólo trabajador (sin rol de Administrador ni Supervisor), redirigir a sus propios reportes
+        if (! $user->tieneRol('Administrador', 'Supervisor')) {
+            return redirect()->route('eventos.mis-reportes');
+        }
+
         $query = Evento::with(['tipoEvento', 'proyecto']);
+
+        // Si es Supervisor (y no Administrador), filtrar únicamente reportes de su cuadrilla o propios
+        if ($user->tieneRol('Supervisor') && ! $user->tieneRol('Administrador')) {
+            $trabajador = $user->trabajador;
+            $trabajadorId = $trabajador?->id_trabajador;
+            $cuadrillaIds = Cuadrilla::where('id_supervisor', $trabajadorId)->pluck('id_cuadrilla');
+            $obrerosIds = Obrero::whereIn('id_cuadrilla', $cuadrillaIds)->pluck('id_trabajador')->all();
+
+            $query->where(function ($q) use ($obrerosIds, $trabajadorId) {
+                if (! empty($obrerosIds)) {
+                    $q->whereIn('id_trabajador', $obrerosIds);
+                } else {
+                    $q->whereRaw('1=0');
+                }
+                if ($trabajadorId) {
+                    $q->orWhere('id_supervisor', $trabajadorId)
+                      ->orWhere('id_trabajador', $trabajadorId);
+                }
+            });
+        }
 
         if ($request->filled('id_proyecto')) {
             $query->where('id_proyecto', $request->id_proyecto);
@@ -130,7 +161,28 @@ class EventoController extends Controller
 
     public function indexGrafico(Request $request)
     {
+        $user = Auth::user();
         $query = Evento::where('id_tipo_evento', self::TIPO_EVENTO_PARE);
+
+        // Si es Supervisor (y no Administrador), restringir métricas a su cuadrilla o propios
+        if ($user && $user->tieneRol('Supervisor') && ! $user->tieneRol('Administrador')) {
+            $trabajador = $user->trabajador;
+            $trabajadorId = $trabajador?->id_trabajador;
+            $cuadrillaIds = Cuadrilla::where('id_supervisor', $trabajadorId)->pluck('id_cuadrilla');
+            $obrerosIds = Obrero::whereIn('id_cuadrilla', $cuadrillaIds)->pluck('id_trabajador')->all();
+
+            $query->where(function ($q) use ($obrerosIds, $trabajadorId) {
+                if (! empty($obrerosIds)) {
+                    $q->whereIn('id_trabajador', $obrerosIds);
+                } else {
+                    $q->whereRaw('1=0');
+                }
+                if ($trabajadorId) {
+                    $q->orWhere('id_supervisor', $trabajadorId)
+                      ->orWhere('id_trabajador', $trabajadorId);
+                }
+            });
+        }
 
         if ($request->filled('id_proyecto')) {
             $query->where('id_proyecto', $request->id_proyecto);
@@ -246,6 +298,16 @@ class EventoController extends Controller
             ? (auth()->user()->trabajador?->id_trabajador ?? $request->input('id_trabajador'))
             : $request->input('id_trabajador');
 
+        $idSupervisor = null;
+        if ($idTrabajadorFinal) {
+            $obrero = Obrero::with('cuadrilla')->find($idTrabajadorFinal);
+            if ($obrero && $obrero->id_cuadrilla) {
+                $idSupervisor = $obrero->cuadrilla?->id_supervisor;
+            } elseif (Supervisor::where('id_trabajador', $idTrabajadorFinal)->exists()) {
+                $idSupervisor = $idTrabajadorFinal;
+            }
+        }
+
         $datos = [
             'id_tipo_evento' => $request->id_tipo_evento,
             'condicion' => $request->condicion,
@@ -253,6 +315,7 @@ class EventoController extends Controller
             'referencia' => $request->referencia,
             'id_proyecto' => $request->id_proyecto,
             'id_trabajador' => $idTrabajadorFinal,
+            'id_supervisor' => $idSupervisor,
             'estado' => 'abierta',
             'evidencia' => $rutasArchivos,
         ];
@@ -264,6 +327,10 @@ class EventoController extends Controller
         $evento = Evento::create($datos);
 
         Log::alert("ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE registrada. Evento ID: {$evento->id_evento}, Proyecto ID: {$evento->id_proyecto}, Trabajador ID: {$evento->id_trabajador}");
+
+        if (! auth()->user()?->tieneRol('Administrador', 'Supervisor')) {
+            return redirect()->route('eventos.mis-reportes')->with('success', 'Reporte creado con éxito');
+        }
 
         return redirect()->route('eventos.index')->with('success', 'Reporte creado con éxito');
     }
@@ -338,7 +405,46 @@ class EventoController extends Controller
 
     public function show(Evento $evento)
     {
-        $evento->load(['tipoEvento', 'proyecto', 'area', 'administrador', 'trabajador']);
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $trabajador = $user->trabajador;
+        $trabajadorId = $trabajador?->id_trabajador;
+
+        if ($user->tieneRol('Administrador')) {
+            // Administrador tiene acceso total a todos los reportes
+        } elseif ($user->tieneRol('Supervisor')) {
+            $cuadrillaIds = Cuadrilla::where('id_supervisor', $trabajadorId)->pluck('id_cuadrilla');
+            $obrerosIds = Obrero::whereIn('id_cuadrilla', $cuadrillaIds)->pluck('id_trabajador')->all();
+
+            $tieneAcceso = (
+                ($trabajadorId && (int) $evento->id_trabajador === (int) $trabajadorId) ||
+                ($trabajadorId && (int) $evento->id_supervisor === (int) $trabajadorId) ||
+                ($evento->id_trabajador && in_array((int) $evento->id_trabajador, array_map('intval', $obrerosIds), true))
+            );
+
+            abort_unless($tieneAcceso, 403, 'No tienes permisos para ver este reporte.');
+        } else {
+            // Trabajador común: solo puede ver sus propios reportes
+            $tieneAcceso = ($trabajadorId && (int) $evento->id_trabajador === (int) $trabajadorId);
+            abort_unless($tieneAcceso, 403, 'No tienes permisos para ver este reporte.');
+        }
+
+        $evento->load([
+            'tipoEvento',
+            'proyecto',
+            'area',
+            'administrador.trabajador.persona',
+            'trabajador.persona',
+            'supervisor.trabajador.persona',
+            'trabajador.obrero.cuadrilla.supervisor.trabajador.persona',
+        ]);
+
+        if (! $evento->supervisor && $evento->trabajador?->obrero?->cuadrilla?->supervisor) {
+            $evento->setRelation('supervisor', $evento->trabajador->obrero->cuadrilla->supervisor);
+        }
 
         return Inertia::render('Eventos/Show', [
             'evento' => $evento,
@@ -398,6 +504,14 @@ class EventoController extends Controller
 
     public function edit(Evento $evento)
     {
+        $user = Auth::user();
+        $trabajadorId = $user?->trabajador?->id_trabajador;
+
+        $puedeEditar = $user && ($user->tieneRol('Administrador') ||
+            ($trabajadorId && (int) $evento->id_trabajador === (int) $trabajadorId && $evento->estado === 'abierta'));
+
+        abort_unless($puedeEditar, 403, 'No tienes permiso para editar este reporte.');
+
         $evento->load(['tipoEvento', 'proyecto']);
 
         return Inertia::render('Eventos/Edit', [
@@ -407,6 +521,14 @@ class EventoController extends Controller
 
     public function update(Request $request, Evento $evento)
     {
+        $user = Auth::user();
+        $trabajadorId = $user?->trabajador?->id_trabajador;
+
+        $puedeEditar = $user && ($user->tieneRol('Administrador') ||
+            ($trabajadorId && (int) $evento->id_trabajador === (int) $trabajadorId && $evento->estado === 'abierta'));
+
+        abort_unless($puedeEditar, 403, 'No tienes permiso para editar este reporte.');
+
         $validated = $request->validate([
             'condicion' => 'required|integer|between:1,10',
             'descripcion' => 'required|string|max:500',
@@ -441,7 +563,20 @@ class EventoController extends Controller
 
     public function cerrar(Request $request, Evento $evento)
     {
-        $administrativo = $this->administrativoAutenticado();
+        abort_unless(
+            auth()->user()?->tieneRol('Administrador'),
+            403,
+            'Solo un administrador puede cerrar un reporte.'
+        );
+
+        $trabajador = auth()->user()?->trabajador;
+        $administrativo = $trabajador?->administrativo;
+
+        $idAdministrador = $administrativo?->id_trabajador;
+        if (! $idAdministrador) {
+            $primerAdmin = Administrativo::first();
+            $idAdministrador = $primerAdmin?->id_trabajador;
+        }
 
         abort_if(
             ! in_array($evento->estado, ['abierta', 'proceso']),
@@ -456,7 +591,7 @@ class EventoController extends Controller
         ]);
 
         $evento->update([
-            'id_administrador' => $administrativo->id_trabajador,
+            'id_administrador' => $idAdministrador,
             'estado' => 'cerrada',
             'justificacion' => $request->justificacion,
             'evidencia_cierre' => $this->guardarArchivos($request, 'evidencia_cierre', 'evidencias_cierre'),
@@ -468,6 +603,12 @@ class EventoController extends Controller
 
     public function destroy(Evento $evento)
     {
+        abort_unless(
+            auth()->user()?->tieneRol('Administrador'),
+            403,
+            'Solo un administrador puede eliminar reportes.'
+        );
+
         $evento->delete();
 
         return redirect()->route('eventos.index');

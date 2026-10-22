@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Cuadrilla extends Model
 {
+    protected $table = 'cuadrillas';
+    protected $primaryKey = 'id_cuadrilla';
+
     public function supervisor()
     {
         return $this->belongsTo(Supervisor::class, 'id_supervisor', 'id_trabajador');

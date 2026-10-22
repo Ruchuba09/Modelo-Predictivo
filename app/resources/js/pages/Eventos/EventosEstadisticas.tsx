@@ -64,19 +64,19 @@ function useStats(filtros) {
 function Kpi({ valor, label, color, nota }) {
   return (
     <div
-      className="bg-white border border-verde-3 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden"
+      className="bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all relative overflow-hidden"
       style={color ? { borderLeft: `5px solid ${color}` } : { borderLeft: '5px solid #2D3238' }}
     >
       <div>
-        <span className="text-2xl sm:text-3xl font-black text-gris-2 tracking-tight block">
+        <span className="text-2xl sm:text-3xl font-black text-gris-2 dark:text-white tracking-tight block">
           {valor}
         </span>
-        <span className="text-[11px] uppercase tracking-wider text-gris-1 font-bold mt-1 block">
+        <span className="text-[11px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold mt-1 block">
           {label}
         </span>
       </div>
       {nota && (
-        <span className="text-[11px] text-gris-1 font-medium mt-2 pt-1.5 border-t border-verde-3/40 block">
+        <span className="text-[11px] text-gris-1 dark:text-gray-400 font-medium mt-2 pt-1.5 border-t border-verde-3/40 dark:border-[#2A333E]/60 block">
           {nota}
         </span>
       )}
@@ -86,9 +86,9 @@ function Kpi({ valor, label, color, nota }) {
 
 function Panel({ titulo, children, ancho }) {
   return (
-    <section className={`bg-white border border-verde-3 rounded-2xl p-5 sm:p-6 shadow-sm mb-6 ${ancho === 'completo' ? 'w-full' : ''}`}>
+    <section className={`bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-2xl p-5 sm:p-6 shadow-sm mb-6 transition-colors ${ancho === 'completo' ? 'w-full' : ''}`}>
       {titulo && (
-        <h3 className="text-base sm:text-lg font-bold text-gris-2 mb-4 pb-2 border-b border-verde-3/40 flex items-center justify-between">
+        <h3 className="text-base sm:text-lg font-bold text-gris-2 dark:text-white mb-4 pb-2 border-b border-verde-3/40 dark:border-[#2A333E]/60 flex items-center justify-between">
           <span>{titulo}</span>
         </h3>
       )}
@@ -666,52 +666,47 @@ export default function EventosEstadisticas() {
   const tieneFiltros = Object.values(filtros).some((v) => v !== '');
 
   return (
-    <MainLayout>
+    <MainLayout
+      title="Estadísticas"
+      subtitle={data ? `${data.meta.total_eventos} reportes analizados • Métricas predictivas` : 'Métricas predictivas y análisis de seguridad'}
+    >
       <Head title="Estadísticas de Reportes | AVA" />
 
       <div className="max-w-[1700px] mx-auto p-6 lg:p-8 flex flex-col h-full min-h-[calc(100vh-80px)]">
-        {/* Cabecera y Filtros */}
-        <div className="mb-6 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 shrink-0">
-          <div>
-            <h1 className="text-3xl font-bold text-gris-2 mb-1">Estadísticas de Reportes</h1>
-            <p className="text-gris-1 text-sm">
-              {data ? `${data.meta.total_eventos} reportes analizados` : 'Cargando estadísticas...'}
-            </p>
-          </div>
-
-          {/* Barra de Filtros */}
+        {/* Barra de Filtros Espaciosa */}
+        <div className="mb-6 bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-xl p-3.5 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 transition-colors">
           <form
-            className="w-full 2xl:w-auto bg-white border border-verde-3 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-wrap items-end gap-3"
+            className="flex flex-wrap items-end gap-3 flex-1"
             onSubmit={(e) => e.preventDefault()}
           >
             <div className="flex flex-col">
-              <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-1">Desde</label>
+              <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Desde</label>
               <input
                 type="date"
                 value={filtros.desde}
                 onChange={set('desde')}
-                className="bg-verde-1 border border-verde-3 rounded-lg px-2.5 py-1.5 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer"
+                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer transition-colors"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-1">Hasta</label>
+              <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Hasta</label>
               <input
                 type="date"
                 value={filtros.hasta}
                 onChange={set('hasta')}
-                className="bg-verde-1 border border-verde-3 rounded-lg px-2.5 py-1.5 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer"
+                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer transition-colors"
               />
             </div>
 
             {op && (
               <>
                 <div className="flex flex-col">
-                  <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-1">Área</label>
+                  <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Área</label>
                   <select
                     value={filtros.id_area}
                     onChange={set('id_area')}
-                    className="bg-verde-1 border border-verde-3 rounded-lg px-2.5 py-1.5 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[110px]"
+                    className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[110px] transition-colors"
                   >
                     <option value="">Todas</option>
                     {op.areas.map((a) => <option key={a} value={a}>Área {a}</option>)}
@@ -719,11 +714,11 @@ export default function EventosEstadisticas() {
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-1">Proyecto</label>
+                  <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Proyecto</label>
                   <select
                     value={filtros.id_proyecto}
                     onChange={set('id_proyecto')}
-                    className="bg-verde-1 border border-verde-3 rounded-lg px-2.5 py-1.5 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[120px]"
+                    className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[120px] transition-colors"
                   >
                     <option value="">Todos</option>
                     {op.proyectos.map((a) => <option key={a} value={a}>Proyecto {a}</option>)}
@@ -731,11 +726,11 @@ export default function EventosEstadisticas() {
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-1">Tipo</label>
+                  <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Tipo</label>
                   <select
                     value={filtros.id_tipo_evento}
                     onChange={set('id_tipo_evento')}
-                    className="bg-verde-1 border border-verde-3 rounded-lg px-2.5 py-1.5 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[110px]"
+                    className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[110px] transition-colors"
                   >
                     <option value="">Todos</option>
                     {op.tipos.map((a) => <option key={a} value={a}>Tipo {a}</option>)}
@@ -758,10 +753,18 @@ export default function EventosEstadisticas() {
               </button>
             )}
           </form>
+
+          {data && (
+            <div className="flex items-center gap-2 self-start xl:self-center shrink-0">
+              <div className="bg-verde-2/60 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-xl px-4 py-2 text-xs font-bold text-gris-2 dark:text-gray-200">
+                <span className="text-verde-6 dark:text-verde-5 font-black text-sm">{data.meta.total_eventos}</span> reportes analizados
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pestañas de Navegación AVA */}
-        <nav className="flex flex-wrap gap-2 mb-6 border-b border-verde-3 pb-3 shrink-0" aria-label="Secciones de Estadísticas">
+        <nav className="flex flex-wrap gap-2 mb-6 border-b border-verde-3 dark:border-[#2A333E] pb-3 shrink-0" aria-label="Secciones de Estadísticas">
           {TABS.map(([k, n]) => {
             const activo = tab === k;
             return (
@@ -772,7 +775,7 @@ export default function EventosEstadisticas() {
                 className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                   activo
                     ? 'bg-verde-5 text-black shadow-sm font-extrabold'
-                    : 'bg-white border border-verde-3 text-gris-1 hover:text-gris-2 hover:bg-verde-2'
+                    : 'bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] text-gris-1 dark:text-gray-300 hover:text-gris-2 hover:bg-verde-2 dark:hover:bg-[#252E38]'
                 }`}
               >
                 {n}

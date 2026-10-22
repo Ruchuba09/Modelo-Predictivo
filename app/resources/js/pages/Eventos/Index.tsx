@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import CerrarEvento from '@/components/eventos/CerrarEvento';
+import { useAuth } from '@/hooks/use-auth';
 
 const ESTADO_STYLES: { [key: string]: string } = {
     abierta: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
@@ -33,6 +34,9 @@ function EstadoBadge({ estado }: { estado: string }) {
 }
 
 export default function Index() {
+    const usuario = useAuth();
+    const esAdmin = usuario?.roles?.some((r) => r.toLowerCase() === 'administrador') ?? false;
+
     const { eventos, proyectos, filtros } = usePage().props as unknown as { 
         eventos: Evento[], 
         proyectos: { id_proyecto: number; nombre: string }[],
@@ -85,99 +89,93 @@ export default function Index() {
             <Head title="Reportes | AVA" />
 
             <div className="max-w-[1700px] mx-auto p-6 lg:p-8 flex flex-col h-full min-h-[calc(100vh-80px)]">
-                {/* Header & Filtros Compactos */}
-                <div className="mb-6 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 shrink-0">
-                    <div className="flex items-center gap-4">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gris-2 mb-1">Reportes</h1>
-                            <p className="text-gris-1 text-sm">Listado de reportes registrados.</p>
+                {/* Barra de Filtros Espaciosa */}
+                <div className="mb-6 bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-xl p-3.5 shadow-sm flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 shrink-0 transition-colors">
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 flex-1">
+                        
+                        <div className="flex flex-col">
+                            <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Proyecto</label>
+                            <select 
+                                value={formFiltros.id_proyecto}
+                                onChange={(e) => handleFilterChange('id_proyecto', e.target.value)}
+                                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-md px-2.5 py-1.5 text-sm text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full transition-colors"
+                            >
+                                <option value="">Todos los proyectos</option>
+                                {proyectos?.map(p => (
+                                    <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}</option>
+                                ))}
+                            </select>
                         </div>
-                        <Link
-                            href="/eventos/estadisticas"
-                            className="bg-white border border-verde-5 text-verde-6 hover:bg-verde-5 hover:text-black transition-all px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                            Ver Estadísticas
-                        </Link>
+
+                        <div className="flex flex-col">
+                            <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Condición</label>
+                            <select 
+                                value={formFiltros.condicion}
+                                onChange={(e) => handleFilterChange('condicion', e.target.value)}
+                                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-md px-2.5 py-1.5 text-sm text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full transition-colors"
+                            >
+                                <option value="">Todas</option>
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(c => (
+                                    <option key={c} value={c}>Condición {c}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="flex flex-col">
+                            <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Estado</label>
+                            <select 
+                                value={formFiltros.estado}
+                                onChange={(e) => handleFilterChange('estado', e.target.value)}
+                                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-md px-2.5 py-1.5 text-sm text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full transition-colors"
+                            >
+                                <option value="">Todos</option>
+                                <option value="abierta">Abierta</option>
+                                <option value="proceso">Proceso</option>
+                                <option value="cerrada">Cerrada</option>
+                            </select>
+                        </div>
+
+                        <div className="flex flex-col">
+                            <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Desde</label>
+                            <input 
+                                type="date"
+                                value={formFiltros.fecha_inicio}
+                                onChange={(e) => handleFilterChange('fecha_inicio', e.target.value)}
+                                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-md px-2.5 py-1.5 text-sm text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full transition-colors"
+                            />
+                        </div>
+
+                        <div className="flex flex-col">
+                            <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Hasta</label>
+                            <input 
+                                type="date"
+                                value={formFiltros.fecha_fin}
+                                onChange={(e) => handleFilterChange('fecha_fin', e.target.value)}
+                                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-md px-2.5 py-1.5 text-sm text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full transition-colors"
+                            />
+                        </div>
                     </div>
 
-                    {/* Barra de Filtros Ordenada */}
-                    <div className="w-full 2xl:w-auto bg-white border border-verde-3 rounded-xl p-3 shadow-sm flex items-center justify-between gap-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-x-4 gap-y-2 flex-1">
-                            
-                            <div className="flex flex-col">
-                                <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-0.5">Proyecto</label>
-                                <select 
-                                    value={formFiltros.id_proyecto}
-                                    onChange={(e) => handleFilterChange('id_proyecto', e.target.value)}
-                                    className="bg-verde-1 border border-verde-3 rounded-md px-2 py-1.5 text-sm text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full"
-                                >
-                                    <option value="">Todos los proyectos</option>
-                                    {proyectos?.map(p => (
-                                        <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="flex flex-col">
-                                <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-0.5">Condición</label>
-                                <select 
-                                    value={formFiltros.condicion}
-                                    onChange={(e) => handleFilterChange('condicion', e.target.value)}
-                                    className="bg-verde-1 border border-verde-3 rounded-md px-2 py-1.5 text-sm text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full"
-                                >
-                                    <option value="">Todas</option>
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(c => (
-                                        <option key={c} value={c}>Condición {c}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="flex flex-col">
-                                <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-0.5">Estado</label>
-                                <select 
-                                    value={formFiltros.estado}
-                                    onChange={(e) => handleFilterChange('estado', e.target.value)}
-                                    className="bg-verde-1 border border-verde-3 rounded-md px-2 py-1.5 text-sm text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full"
-                                >
-                                    <option value="">Todos</option>
-                                    <option value="abierta">Abierta</option>
-                                    <option value="proceso">Proceso</option>
-                                    <option value="cerrada">Cerrada</option>
-                                </select>
-                            </div>
-
-                            <div className="flex flex-col">
-                                <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-0.5">Desde</label>
-                                <input 
-                                    type="date"
-                                    value={formFiltros.fecha_inicio}
-                                    onChange={(e) => handleFilterChange('fecha_inicio', e.target.value)}
-                                    className="bg-verde-1 border border-verde-3 rounded-md px-2 py-1.5 text-sm text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full"
-                                />
-                            </div>
-
-                            <div className="flex flex-col">
-                                <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-0.5">Hasta</label>
-                                <input 
-                                    type="date"
-                                    value={formFiltros.fecha_fin}
-                                    onChange={(e) => handleFilterChange('fecha_fin', e.target.value)}
-                                    className="bg-verde-1 border border-verde-3 rounded-md px-2 py-1.5 text-sm text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer w-full"
-                                />
-                            </div>
-                        </div>
-
+                    <div className="flex items-center gap-3 self-end 2xl:self-center">
                         {tieneFiltrosActivos && (
-                            <div className="pl-4 border-l border-verde-3/50 flex items-center justify-center h-full">
-                                <button 
-                                    onClick={limpiarFiltros}
-                                    title="Limpiar Filtros"
-                                    className="p-2 text-rojo-1 bg-rojo-1/10 rounded-md hover:bg-rojo-1 hover:text-white transition-colors flex items-center justify-center shrink-0"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
+                            <button 
+                                onClick={limpiarFiltros}
+                                title="Limpiar Filtros"
+                                className="px-3 py-2 text-xs font-bold text-rojo-1 bg-rojo-1/10 hover:bg-rojo-1 hover:text-white rounded-lg transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                                <span>Limpiar</span>
+                            </button>
+                        )}
+
+                        {esAdmin && (
+                            <Link
+                                href="/eventos/estadisticas"
+                                className="bg-white dark:bg-[#151A1F] border border-verde-5 text-verde-6 hover:bg-verde-5 hover:text-black transition-all px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm shrink-0"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                Ver Estadísticas
+                            </Link>
                         )}
                     </div>
                 </div>
