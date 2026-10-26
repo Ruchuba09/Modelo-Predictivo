@@ -1,26 +1,47 @@
 import { Link, usePage } from '@inertiajs/react';
 import { useState, useEffect, PropsWithChildren } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const NAV_ITEMS: { href: string; label: string; roles?: string[] }[] = [
     { href: '/portal', label: 'Inicio' },
-    { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'supervisor'] },
+    { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'Supervisor'] },
     { href: '/usuarios', label: 'Usuarios', roles: ['Administrador'] },
     { href: '/roles', label: 'Roles', roles: ['Administrador'] },
     { href: '/permisos', label: 'Permisos', roles: ['Administrador'] },
     { href: '/departamentos', label: 'Departamentos', roles: ['Administrador'] },
 ];
 
+const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
+    '/portal': { title: 'Portal de Inicio', subtitle: 'Bienvenido al sistema de seguridad AVA' },
+    '/dashboard': { title: 'Panel Estadístico', subtitle: 'Resumen de hallazgos y reportes (Tarjeta PARE)' },
+    '/usuarios': { title: 'Usuarios del Sistema', subtitle: 'Administración de cuentas y accesos' },
+    '/roles': { title: 'Roles', subtitle: 'Gestión de roles y perfiles' },
+    '/permisos': { title: 'Permisos', subtitle: 'Matriz de permisos del sistema' },
+    '/departamentos': { title: 'Departamentos', subtitle: 'Estructura organizativa de la empresa' },
+};
+
 function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {
     if (!rolesRequeridos || rolesRequeridos.length === 0) return true;
-    return rolesRequeridos.some((rol) => rolesUsuario.includes(rol));
+    return rolesRequeridos.some((rol) =>
+        rolesUsuario.some((uRol) => uRol.toLowerCase() === rol.toLowerCase())
+    );
 }
 
 interface MainLayoutProps extends PropsWithChildren {
     bgClass?: string;
+    title?: string;
+    subtitle?: string;
+    headerContent?: React.ReactNode;
 }
 
-export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: MainLayoutProps) {
+export default function UsuariosLayout({
+    children,
+    bgClass = 'bg-verde-1',
+    title,
+    subtitle,
+    headerContent,
+}: MainLayoutProps) {
     const { url, props } = usePage();
     const usuario = useAuth();
     const notificaciones = (props.notificaciones as any[]) || [];
@@ -29,6 +50,11 @@ export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: Mai
     const itemsVisibles = NAV_ITEMS.filter((item) => tieneAcceso(rolesUsuario, item.roles));
 
     const rutaActual = url.split('?')[0];
+    const rutaNormalizada = rutaActual.endsWith('/') && rutaActual.length > 1 ? rutaActual.slice(0, -1) : rutaActual;
+    const infoRuta = RUTA_TITULOS[rutaNormalizada] || Object.entries(RUTA_TITULOS).find(([r]) => rutaNormalizada.startsWith(r + '/'))?.[1];
+
+    const displayTitle = title ?? infoRuta?.title;
+    const displaySubtitle = subtitle ?? infoRuta?.subtitle;
 
     const hrefActivo = itemsVisibles
         .filter(
@@ -60,14 +86,14 @@ export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: Mai
     };
 
     return (
-        <div className={`flex h-screen ${bgClass} overflow-hidden`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <div className={`flex h-screen ${bgClass} dark:bg-[#111417] text-gris-2 dark:text-gray-100 overflow-hidden`} style={{ fontFamily: "'Poppins', sans-serif" }}>
 
-            <aside className={`${colapsado ? 'w-20' : 'w-64'} bg-white border-r border-verde-3 transition-all duration-300 flex flex-col relative z-50 shrink-0 shadow-sm`}>
+            <aside className={`${colapsado ? 'w-20' : 'w-64'} bg-white dark:bg-[#181D22] border-r border-verde-3 dark:border-[#262E37] transition-all duration-300 flex flex-col relative z-50 shrink-0 shadow-sm`}>
 
                 {/* Botón Colapsar */}
                 <button
                     onClick={() => setColapsado(!colapsado)}
-                    className="absolute -right-3 top-6 bg-white border border-verde-3 text-gris-2 p-1 rounded-full hover:bg-verde-5 hover:border-verde-5 hover:text-gris-2 transition-colors shadow"
+                    className="absolute -right-3 top-6 bg-white dark:bg-[#20272F] border border-verde-3 dark:border-[#2C353F] text-gris-2 dark:text-gray-200 p-1 rounded-full hover:bg-verde-5 hover:border-verde-5 hover:text-black transition-colors shadow cursor-pointer"
                 >
                     <svg className={`w-4 h-4 transition-transform duration-300 ${colapsado ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -75,19 +101,19 @@ export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: Mai
                 </button>
 
                 {/* Logo */}
-                <div className="h-16 flex items-center justify-center border-b border-verde-3 shrink-0">
+                <div className="h-16 flex items-center justify-center border-b border-verde-3 dark:border-[#262E37] shrink-0">
                     {colapsado ? (
-                        <span className="text-verde-6 font-bold text-xl tracking-wider">AVA</span>
+                        <span className="text-verde-6 dark:text-verde-5 font-bold text-xl tracking-wider">AVA</span>
                     ) : (
-                        <img src="https://cdn.intrava.cl/v2/logos/Logotipo-isotipo-02.svg" alt="AVA Montajes" className="h-10" />
+                        <img src="https://cdn.intrava.cl/v2/logos/Logotipo-isotipo-02.svg" alt="AVA Montajes" className="h-10 dark:brightness-125" />
                     )}
                 </div>
 
                 {/* Botón Principal: Nueva Tarjeta PARE */}
-                <div className="p-4 border-b border-verde-3 shrink-0">
+                <div className="p-4 border-b border-verde-3 dark:border-[#262E37] shrink-0">
                     <Link
                         href="/eventos/create"
-                        className={`flex items-center justify-center gap-2 bg-verde-5 hover:bg-verde-6 text-gris-2 rounded-lg font-bold transition-colors shadow-lg shadow-verde-5/20 ${colapsado ? 'h-10 w-10 p-0 rounded-full mx-auto' : 'px-4 py-3'}`}
+                        className={`flex items-center justify-center gap-2 bg-verde-5 hover:bg-verde-6 text-black rounded-lg font-bold transition-colors shadow-lg shadow-verde-5/20 ${colapsado ? 'h-10 w-10 p-0 rounded-full mx-auto' : 'px-4 py-3'}`}
                         title="Nueva Tarjeta PARE"
                     >
                         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,13 +135,13 @@ export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: Mai
                                 title={item.label}
                                 className={
                                     activo
-                                        ? 'flex items-center gap-3 px-3 py-3 rounded-lg bg-verde-2 text-verde-6 text-sm font-bold transition-colors'
-                                        : 'flex items-center gap-3 px-3 py-3 rounded-lg text-gris-1 hover:text-gris-2 hover:bg-verde-1 text-sm transition-colors group'
+                                        ? 'flex items-center gap-3 px-3 py-2.5 rounded-lg bg-verde-2 dark:bg-[#20272F] text-verde-6 dark:text-verde-5 text-sm font-bold transition-colors shadow-sm dark:border dark:border-[#2C353F]'
+                                        : 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-gris-1 dark:text-gray-400 hover:text-gris-2 dark:hover:text-white hover:bg-verde-1 dark:hover:bg-[#20272F]/60 text-sm transition-colors group'
                                 }
                             >
                                 <span
                                     className={`font-bold text-center shrink-0 w-5 ${
-                                        activo ? 'text-verde-6' : 'text-gris-1 group-hover:text-verde-5'
+                                        activo ? 'text-verde-6 dark:text-verde-5' : 'text-gris-1 group-hover:text-verde-5'
                                     }`}
                                 >
                                     {item.label.charAt(0)}
@@ -129,36 +155,57 @@ export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: Mai
             </aside>
 
             {/* Contenedor Principal (Header + Contenido) */}
-            <div className={`flex flex-col flex-1 overflow-hidden ${bgClass}`}>
+            <div className={`flex flex-col flex-1 overflow-hidden ${bgClass} dark:bg-[#111417]`}>
 
                 {/* Header Global (Top bar) */}
-                <header className="h-16 shrink-0 bg-white border-b border-verde-3 flex items-center justify-end px-8 z-40 relative shadow-sm">
-                    <div className="flex items-center gap-4 relative">
+                <header className="h-16 shrink-0 bg-white dark:bg-[#181D22] border-b border-verde-3 dark:border-[#262E37] flex items-center justify-between px-6 lg:px-8 z-40 relative shadow-sm transition-colors duration-200">
+                    {/* Título de la vista en la barra superior */}
+                    <div className="flex items-center gap-4 min-w-0 pr-4">
+                        {headerContent ? (
+                            headerContent
+                        ) : displayTitle ? (
+                            <div className="flex flex-col justify-center min-w-0">
+                                <h1 className="text-base lg:text-lg font-bold text-gris-2 dark:text-white leading-tight truncate">
+                                    {displayTitle}
+                                </h1>
+                                {displaySubtitle && (
+                                    <p className="text-[11px] lg:text-xs text-gris-1 dark:text-gray-400 leading-tight mt-0.5 truncate hidden sm:block">
+                                        {displaySubtitle}
+                                    </p>
+                                )}
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <div className="flex items-center gap-4 relative shrink-0">
+                        {/* Selector Modo Oscuro a la izquierda del perfil */}
+                        <ThemeToggle />
+
                         <button
                             onClick={() => setMenuPerfilAbierto(!menuPerfilAbierto)}
-                            className="flex items-center gap-3 focus:outline-none p-1 rounded-lg transition-colors group"
+                            className="flex items-center gap-3 focus:outline-none p-1 rounded-lg transition-colors group cursor-pointer"
                         >
                             <div className="text-right hidden sm:block">
-                                <p className="text-sm font-bold text-gris-2 leading-tight group-hover:text-verde-6 transition-colors">{usuario?.email ?? 'Usuario'}</p>
-                                <p className="text-[11px] uppercase tracking-wider text-gris-1">
+                                <p className="text-sm font-bold text-gris-2 dark:text-gray-100 leading-tight group-hover:text-verde-6 dark:group-hover:text-verde-5 transition-colors">{usuario?.email ?? 'Usuario'}</p>
+                                <p className="text-[11px] uppercase tracking-wider text-gris-1 dark:text-gray-400">
                                     {rolesUsuario.length > 0 ? rolesUsuario[0] : 'Sin rol'}
                                 </p>
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-verde-2 border border-verde-3 group-hover:border-verde-5 flex-shrink-0 flex items-center justify-center text-gris-2 font-bold transition-all text-sm">
+                            <div className="w-8 h-8 rounded-full bg-verde-2 dark:bg-[#20272F] border border-verde-3 dark:border-[#2C353F] group-hover:border-verde-5 flex-shrink-0 flex items-center justify-center text-gris-2 dark:text-gray-100 font-bold transition-all text-sm">
                                 {usuario?.email ? usuario.email.charAt(0).toUpperCase() : 'U'}
                             </div>
                         </button>
 
                         {/* Menú Flotante Perfil */}
                         {menuPerfilAbierto && (
-                            <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-verde-3 rounded-lg shadow-xl py-1 z-50 overflow-hidden flex flex-col">
-                                <div className="px-4 py-3 border-b border-verde-3 bg-verde-1">
-                                    <p className="text-sm text-gris-2 font-bold">Mi Cuenta</p>
-                                    <p className="text-xs text-gris-1 truncate">{usuario?.email ?? '—'}</p>
+                            <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2C353F] rounded-lg shadow-xl py-1 z-50 overflow-hidden flex flex-col">
+                                <div className="px-4 py-3 border-b border-verde-3 dark:border-[#2C353F] bg-verde-1 dark:bg-[#151A1F]">
+                                    <p className="text-sm text-gris-2 dark:text-gray-100 font-bold">Mi Cuenta</p>
+                                    <p className="text-xs text-gris-1 dark:text-gray-400 truncate">{usuario?.email ?? '—'}</p>
                                 </div>
                                 <Link
                                     href={route('profile.edit')}
-                                    className="block px-4 py-2.5 text-sm text-gris-1 hover:bg-verde-2 hover:text-gris-2 transition-colors"
+                                    className="block px-4 py-2.5 text-sm text-gris-1 dark:text-gray-300 hover:bg-verde-2 dark:hover:bg-[#242C35] hover:text-gris-2 dark:hover:text-white transition-colors"
                                 >
                                     ⚙️ Configuración de cuenta
                                 </Link>
@@ -166,7 +213,7 @@ export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: Mai
                                     href={route('logout')}
                                     method="post"
                                     as="button"
-                                    className="block w-full text-left px-4 py-2.5 text-sm text-rojo-1 hover:bg-rojo-1/10 transition-colors border-t border-verde-3"
+                                    className="block w-full text-left px-4 py-2.5 text-sm text-rojo-1 hover:bg-rojo-1/10 transition-colors border-t border-verde-3 dark:border-[#2C353F] cursor-pointer"
                                 >
                                     🚪 Cerrar Sesión
                                 </Link>
@@ -176,7 +223,7 @@ export default function UsuariosLayout({ children, bgClass = 'bg-verde-1' }: Mai
                 </header>
 
                 {/* Contenido Principal */}
-                <main className={`flex-1 overflow-y-auto ${bgClass} pr-20`}>
+                <main className={`flex-1 overflow-y-auto ${bgClass} dark:bg-[#111417] pr-20 transition-colors duration-200`}>
                     {children}
                 </main>
             </div>
