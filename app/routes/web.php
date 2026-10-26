@@ -72,9 +72,18 @@ Route::middleware('auth')->group(function () {
         Route::put('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'update'])->name('situacion-criticas.update');
         Route::delete('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'destroy'])->name('situacion-criticas.destroy');
 
+    });
+
+    // Rutas para Administradores y Supervisores
+    Route::middleware('role:Administrador,Supervisor')->group(function () {
         // Estadísticas
-        Route::get('/eventos/estadisticas', fn () => Inertia::render('Eventos/EventosEstadisticas'))
-            ->name('eventos.estadisticas');
+        Route::get('/eventos/estadisticas', function (\Illuminate\Http\Request $request) {
+            return Inertia::render('Eventos/EventosEstadisticas', [
+                'proyectos' => \App\Models\Proyecto::select('id_proyecto', 'nombre')->get(),
+                'filtrosIniciales' => $request->all(),
+            ]);
+        })->name('eventos.estadisticas');
+
         Route::get('/api/eventos/estadisticas', [EventoEstadisticaController::class, 'index'])
             ->name('api.eventos.estadisticas');
         Route::get('/api/eventos/estadisticas/{seccion}', [EventoEstadisticaController::class, 'seccion'])
@@ -83,10 +92,7 @@ Route::middleware('auth')->group(function () {
                 'trabajadores', 'hallazgos', 'cierre', 'calidad_datos', 'destacados', 'actividad_reciente',
             ])
             ->name('api.eventos.estadisticas.seccion');
-    });
 
-    // Rutas para Administradores y Supervisores
-    Route::middleware('role:Administrador,Supervisor')->group(function () {
         Route::get('/dashboard', [EventoController::class, 'indexGrafico'])->name('dashboard');
 
         Route::get('/proyectos', function () {

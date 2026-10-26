@@ -90,30 +90,51 @@ class EventoController extends Controller
             });
         }
 
+        if ($request->filled('id_evento') || $request->filled('id')) {
+            $id = trim((string) ($request->id_evento ?? $request->id));
+            $cleanId = preg_replace('/\D/', '', $id);
+            if ($cleanId !== '') {
+                $query->where('id_evento', (int) $cleanId);
+            }
+        }
+
         if ($request->filled('id_proyecto')) {
             $query->where('id_proyecto', $request->id_proyecto);
         }
 
-        if ($request->filled('condicion')) {
-            $query->where('condicion', $request->condicion);
+        $filtroEstado = strtolower(trim((string) ($request->input('estado') ?? $request->input('condicion'))));
+        if ($filtroEstado !== '') {
+            if (in_array($filtroEstado, ['abierto', 'abierta'])) {
+                $query->whereIn('estado', ['abierto', 'abierta', 'en_revision', 'proceso']);
+            } elseif (in_array($filtroEstado, ['cerrado', 'cerrada'])) {
+                $query->whereIn('estado', ['cerrado', 'cerrada']);
+            } elseif (is_numeric($filtroEstado)) {
+                $query->where('condicion', (int) $filtroEstado);
+            } else {
+                $query->where('estado', $filtroEstado);
+            }
         }
 
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
+        $fechaInicio = $request->input('fecha_inicio') ?? $request->input('desde');
+        if ($fechaInicio) {
+            $query->whereDate('fecha_creacion', '>=', $fechaInicio);
         }
 
-        if ($request->filled('fecha_inicio')) {
-            $query->whereDate('fecha_creacion', '>=', $request->fecha_inicio);
-        }
-
-        if ($request->filled('fecha_fin')) {
-            $query->whereDate('fecha_creacion', '<=', $request->fecha_fin);
+        $fechaFin = $request->input('fecha_fin') ?? $request->input('hasta');
+        if ($fechaFin) {
+            $query->whereDate('fecha_creacion', '<=', $fechaFin);
         }
 
         return Inertia::render('Eventos/Index', [
             'eventos' => $query->orderByDesc('fecha_creacion')->get(),
             'proyectos' => Proyecto::all(),
-            'filtros' => $request->only(['id_proyecto', 'condicion', 'estado', 'fecha_inicio', 'fecha_fin']),
+            'filtros' => [
+                'id_evento' => $request->input('id_evento') ?? $request->input('id') ?? '',
+                'id_proyecto' => $request->input('id_proyecto') ?? '',
+                'estado' => $request->input('estado') ?? $request->input('condicion') ?? '',
+                'fecha_inicio' => $fechaInicio ?? '',
+                'fecha_fin' => $fechaFin ?? '',
+            ],
         ]);
     }
 
@@ -126,16 +147,29 @@ class EventoController extends Controller
         $query = Evento::with(['tipoEvento', 'proyecto'])
             ->where('id_trabajador', $trabajador->id_trabajador);
 
+        if ($request->filled('id_evento') || $request->filled('id')) {
+            $id = trim((string) ($request->id_evento ?? $request->id));
+            $cleanId = preg_replace('/\D/', '', $id);
+            if ($cleanId !== '') {
+                $query->where('id_evento', (int) $cleanId);
+            }
+        }
+
         if ($request->filled('id_proyecto')) {
             $query->where('id_proyecto', $request->id_proyecto);
         }
 
-        if ($request->filled('condicion')) {
-            $query->where('condicion', $request->condicion);
-        }
-
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
+        $filtroEstado = strtolower(trim((string) ($request->input('estado') ?? $request->input('condicion'))));
+        if ($filtroEstado !== '') {
+            if (in_array($filtroEstado, ['abierto', 'abierta'])) {
+                $query->whereIn('estado', ['abierto', 'abierta', 'en_revision', 'proceso']);
+            } elseif (in_array($filtroEstado, ['cerrado', 'cerrada'])) {
+                $query->whereIn('estado', ['cerrado', 'cerrada']);
+            } elseif (is_numeric($filtroEstado)) {
+                $query->where('condicion', (int) $filtroEstado);
+            } else {
+                $query->where('estado', $filtroEstado);
+            }
         }
 
         if ($request->filled('fecha_inicio')) {
@@ -150,6 +184,7 @@ class EventoController extends Controller
             'eventos' => $query->orderByDesc('fecha_creacion')->get(),
             'proyectos' => Proyecto::all(),
             'filtros' => $request->only([
+                'id_evento',
                 'id_proyecto',
                 'condicion',
                 'estado',
