@@ -44,7 +44,12 @@ return [
     /*
      * OpenAPI version of the resulting document.
      */
-    'openapi_version' => \Dedoc\Scramble\OpenApiVersion::V3_1,
+    // Keep artisan usable when dependencies are not installed yet (for example,
+    // during a fresh checkout before `composer install`). Scramble will use the
+    // configured OpenAPI version as soon as its package is available.
+    'openapi_version' => class_exists(\Dedoc\Scramble\OpenApiVersion::class)
+        ? \Dedoc\Scramble\OpenApiVersion::V3_1
+        : null,
 
     'info' => [
         /*

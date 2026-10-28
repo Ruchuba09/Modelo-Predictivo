@@ -11,7 +11,8 @@ class UsuarioResource extends JsonResource
     {
         return [
             'id_user' => $this->id_user,
-            'rut' => $this->rut,
+            'id_trabajador' => $this->id_trabajador,
+            'rut' => $this->trabajador?->persona?->rut,
             'email' => $this->email,
             'roles' => $this->roles->map(fn ($rol) => [
                 'id_rol' => $rol->id_rol,

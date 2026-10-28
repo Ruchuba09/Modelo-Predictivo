@@ -60,7 +60,7 @@ export default function Create() {
         referencia: '',
         id_proyecto: '' as number | '',
         id_trabajador: (usuarioTrabajador?.id_trabajador || '') as number | '',
-        es_para_mi: true,
+        es_para_mi: true as boolean,
         evidencia: [] as File[],
     });
 

@@ -22,7 +22,7 @@ class UsuarioController extends Controller
         $query = User::query()->with('roles')
             ->when($request->string('buscar')->toString(), function ($query, $buscar) {
                 $query->where(fn ($user) => $user
-                    ->where('rut', 'ilike', "%{$buscar}%")
+                    ->whereHas('trabajador.persona', fn ($persona) => $persona->where('rut', 'ilike', "%{$buscar}%"))
                     ->orWhere('email', 'ilike', "%{$buscar}%"));
             })
             ->orderBy('id_user');
@@ -37,7 +37,7 @@ class UsuarioController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'rut' => ['required', 'string', 'max:20', 'unique:usuarios.users,rut'],
+            'rut' => ['required', 'string', 'max:20', 'exists:personas,rut'],
             'email' => ['required', 'email', 'max:255', 'unique:usuarios.users,email'],
             'password' => ['required', 'confirmed', 'min:8'],
             'roles' => ['required', 'array', 'min:1'],
@@ -59,7 +59,7 @@ class UsuarioController extends Controller
         $validated = $request->validate([
             'rut' => [
                 'required', 'string', 'max:20',
-                Rule::unique('usuarios.users', 'rut')->ignore($usuario->id_user, 'id_user'),
+                'exists:personas,rut',
             ],
             'email' => [
                 'required', 'email', 'max:255',

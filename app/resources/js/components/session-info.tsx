@@ -8,6 +8,7 @@ interface AuthUser {
 }
 
 interface PageProps {
+    [key: string]: unknown;
     auth?: {
         user?: AuthUser | null;
     };

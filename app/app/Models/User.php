@@ -19,7 +19,6 @@ class User extends Authenticatable
     const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
-        "rut",
         "id_trabajador",
         "email",
         "password",

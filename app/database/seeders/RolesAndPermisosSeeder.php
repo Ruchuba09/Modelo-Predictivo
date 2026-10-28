@@ -24,15 +24,15 @@ class RolesAndPermisosSeeder extends Seeder
         }
 
         // Roles base
-        $admin = Rol::firstOrCreate(['nombre' => 'admin']);
-        $usuario = Rol::firstOrCreate(['nombre' => 'usuario']);
+        $admin = Rol::updateOrCreate(['nombre' => 'admin'], ['estado' => 'activo']);
+        $usuario = Rol::updateOrCreate(['nombre' => 'usuario'], ['estado' => 'activo']);
 
         // El admin tiene todos los permisos
-        $admin->permisos()->sync(Permiso::pluck('permission_id'));
+        $admin->permisos()->sync(Permiso::pluck('id_permiso'));
 
         // El usuario normal solo puede ver
         $usuario->permisos()->sync(
-            Permiso::where('nombre', 'usuarios.ver')->pluck('permission_id')
+            Permiso::where('nombre', 'usuarios.ver')->pluck('id_permiso')
         );
     }
 }

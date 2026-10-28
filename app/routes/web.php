@@ -24,29 +24,29 @@ Route::get('/test-auth', function () {
 })->middleware('auth');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
-    Route::get('/usuarios/crear', [UserController::class, 'create'])->name('usuarios.crear');
-    Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
-    Route::get('/usuarios/{usuario}', [UserController::class, 'show'])->name('usuarios.show');
-    Route::get('/usuarios/{usuario}/editar', [UserController::class, 'edit'])->name('usuarios.editar');
-    Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
-    Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
+    Route::get('/usuarios', [UserController::class, 'index'])->middleware('permission:usuarios.ver')->name('usuarios.index');
+    Route::get('/usuarios/crear', [UserController::class, 'create'])->middleware('permission:usuarios.crear')->name('usuarios.crear');
+    Route::post('/usuarios', [UserController::class, 'store'])->middleware('permission:usuarios.crear')->name('usuarios.store');
+    Route::get('/usuarios/{usuario}', [UserController::class, 'show'])->middleware('permission:usuarios.ver')->name('usuarios.show');
+    Route::get('/usuarios/{usuario}/editar', [UserController::class, 'edit'])->middleware('permission:usuarios.editar')->name('usuarios.editar');
+    Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->middleware('permission:usuarios.editar')->name('usuarios.update');
+    Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->middleware('permission:usuarios.eliminar')->name('usuarios.destroy');
 
-    Route::get('/roles', [RolController::class, 'index'])->name('roles.index');
-    Route::get('/roles/crear', [RolController::class, 'create'])->name('roles.crear');
-    Route::post('/roles', [RolController::class, 'store'])->name('roles.store');
-    Route::get('/roles/{rol}', [RolController::class, 'show'])->name('roles.show');
-    Route::get('/roles/{rol}/editar', [RolController::class, 'edit'])->name('roles.editar');
-    Route::put('/roles/{rol}', [RolController::class, 'update'])->name('roles.update');
-    Route::delete('/roles/{rol}', [RolController::class, 'destroy'])->name('roles.destroy');
+    Route::get('/roles', [RolController::class, 'index'])->middleware('permission:roles.gestionar')->name('roles.index');
+    Route::get('/roles/crear', [RolController::class, 'create'])->middleware('permission:roles.gestionar')->name('roles.crear');
+    Route::post('/roles', [RolController::class, 'store'])->middleware('permission:roles.gestionar')->name('roles.store');
+    Route::get('/roles/{rol}', [RolController::class, 'show'])->middleware('permission:roles.gestionar')->name('roles.show');
+    Route::get('/roles/{rol}/editar', [RolController::class, 'edit'])->middleware('permission:roles.gestionar')->name('roles.editar');
+    Route::put('/roles/{rol}', [RolController::class, 'update'])->middleware('permission:roles.gestionar')->name('roles.update');
+    Route::delete('/roles/{rol}', [RolController::class, 'destroy'])->middleware('permission:roles.gestionar')->name('roles.destroy');
 
-    Route::get('/permisos', [PermisoController::class, 'index'])->name('permisos.index');
-    Route::get('/permisos/crear', [PermisoController::class, 'create'])->name('permisos.crear');
-    Route::post('/permisos', [PermisoController::class, 'store'])->name('permisos.store');
-    Route::get('/permisos/{permiso}', [PermisoController::class, 'show'])->name('permisos.show');
-    Route::get('/permisos/{permiso}/editar', [PermisoController::class, 'edit'])->name('permisos.editar');
-    Route::put('/permisos/{permiso}', [PermisoController::class, 'update'])->name('permisos.update');
-    Route::delete('/permisos/{permiso}', [PermisoController::class, 'destroy'])->name('permisos.destroy');
+    Route::get('/permisos', [PermisoController::class, 'index'])->middleware('permission:roles.gestionar')->name('permisos.index');
+    Route::get('/permisos/crear', [PermisoController::class, 'create'])->middleware('permission:roles.gestionar')->name('permisos.crear');
+    Route::post('/permisos', [PermisoController::class, 'store'])->middleware('permission:roles.gestionar')->name('permisos.store');
+    Route::get('/permisos/{permiso}', [PermisoController::class, 'show'])->middleware('permission:roles.gestionar')->name('permisos.show');
+    Route::get('/permisos/{permiso}/editar', [PermisoController::class, 'edit'])->middleware('permission:roles.gestionar')->name('permisos.editar');
+    Route::put('/permisos/{permiso}', [PermisoController::class, 'update'])->middleware('permission:roles.gestionar')->name('permisos.update');
+    Route::delete('/permisos/{permiso}', [PermisoController::class, 'destroy'])->middleware('permission:roles.gestionar')->name('permisos.destroy');
 
     Route::get('/dashboard', [EventoController::class, 'indexGrafico'])->name('dashboard');
 

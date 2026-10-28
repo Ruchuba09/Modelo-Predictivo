@@ -97,7 +97,7 @@ export default function GraficoPredictivo({ datosReales }: { datosReales?: Array
                                     {datos.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={CONDICIONES_COLORS[entry.id] || '#A0F700'} />
                                     ))}
-                                    <LabelList dataKey="hallazgos" position="top" fill="#2D3238" fontSize={12} fontWeight="bold" formatter={(val: number) => val > 0 ? val : ''} />
+                                    <LabelList dataKey="hallazgos" position="top" fill="#2D3238" fontSize={12} fontWeight="bold" formatter={(val: React.ReactNode) => typeof val === 'number' && val > 0 ? val : ''} />
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>

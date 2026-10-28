@@ -6,7 +6,7 @@ import { format, validate } from 'rut.js';
 import InputError from '@/components/input-error';
 import { Checkbox } from '@/components/ui/checkbox';
 
-interface LoginForm {
+interface LoginForm extends Record<string, string | boolean> {
     rut: string;
     password: string;
     remember: boolean;

@@ -231,8 +231,8 @@ export default function Index() {
                                                 {evento.proyecto?.nombre ?? '—'}
                                             </td>
                                             <td className="px-6 py-4 text-gris-1 font-bold text-center whitespace-nowrap">
-                                                {evento.condicion != null && evento.condicion !== ''
-                                                    ? parseInt(String(evento.condicion), 10)
+                                                {evento.condicion != null
+                                                    ? Number(evento.condicion)
                                                     : '—'}
                                             </td>
                                             <td className="px-6 py-4 text-gris-1 text-center whitespace-nowrap">
