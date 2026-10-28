@@ -57,9 +57,10 @@ class CuadrillaService
         $cuadrilla->delete();
     }
 
-    public function supervisores(): Collection
+    public function supervisores(): \Illuminate\Support\Collection
     {
         return Supervisor::with('trabajador.persona')
+            ->whereHas('trabajador', fn ($query) => $query->where('estado', 'activo'))
             ->get()
             ->map(fn (Supervisor $supervisor) => [
                 'id_trabajador' => $supervisor->id_trabajador,

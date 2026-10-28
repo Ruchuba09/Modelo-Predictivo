@@ -1,6 +1,6 @@
 // resources/js/pages/Cuadrillas/Index.tsx
 import { Head } from '@inertiajs/react';
-import { useCallback, useEffect, useState, FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import { cuadrillasApi, ApiError } from '@/services/cuadrillas';
 import type { Cuadrilla, SupervisorOpcion } from '@/types/cuadrilla';
@@ -159,12 +159,14 @@ export default function CuadrillasIndex() {
                     <div className="flex items-center gap-4">
                         <div className="bg-verde-2 border border-verde-3 rounded-xl px-5 py-3">
                             <p className="text-[10px] uppercase tracking-wider text-gris-1 font-bold">Total</p>
-                            <p className="text-2xl font-bold text-verde-6">{cuadrillas.length}</p>
+                            <p className="text-2xl font-bold text-verde-6">{cargando ? '—' : cuadrillas.length}</p>
                         </div>
 
                         <button
                             onClick={abrirCrear}
-                            className="bg-verde-5 hover:bg-verde-6 text-gris-2 rounded-lg font-bold px-5 py-3 text-sm transition-colors shadow-lg shadow-verde-5/20"
+                            disabled={cargando || supervisores.length === 0}
+                            title={supervisores.length === 0 ? 'No hay supervisores disponibles' : undefined}
+                            className="bg-verde-5 hover:bg-verde-6 text-gris-2 rounded-lg font-bold px-5 py-3 text-sm transition-colors shadow-lg shadow-verde-5/20 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             + Nueva cuadrilla
                         </button>
@@ -180,9 +182,19 @@ export default function CuadrillasIndex() {
                 {errorGlobal && (
                     <div className="mb-4 px-4 py-3 rounded-lg border border-rojo-1/40 bg-rojo-1/10 text-rojo-1 text-sm font-bold flex items-center justify-between">
                         <span>{errorGlobal}</span>
-                        <button onClick={() => setErrorGlobal(null)} className="text-xs uppercase">
-                            Cerrar
-                        </button>
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => void cargar()} className="text-xs uppercase underline">
+                                Reintentar
+                            </button>
+                            <button onClick={() => setErrorGlobal(null)} className="text-xs uppercase">
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                )}
+                {!cargando && !errorGlobal && supervisores.length === 0 && (
+                    <div className="mb-4 px-4 py-3 rounded-lg border border-amarillo-1/40 bg-amarillo-1/10 text-gris-2 text-sm">
+                        No hay supervisores activos disponibles. Activa o registra un supervisor antes de crear una cuadrilla.
                     </div>
                 )}
 
