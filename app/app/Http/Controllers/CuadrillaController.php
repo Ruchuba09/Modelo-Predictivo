@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\DTOs\CuadrillaDTO;
+use App\DataTransferObjects\CuadrillaDTO;
 use App\Http\Requests\StoreCuadrillaRequest;
 use App\Http\Requests\UpdateCuadrillaRequest;
 use App\Models\Cuadrilla;

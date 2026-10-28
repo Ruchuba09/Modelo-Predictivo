@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\DTOs\AsignacionDTO;
+use App\DataTransferObjects\AsignacionDTO;
 use App\Http\Requests\StoreAsignacionRequest;
 use App\Http\Requests\UpdateAsignacionRequest;
 use App\Models\Asignacion;

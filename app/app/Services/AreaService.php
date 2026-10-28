@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\DTOs\AreaDTO;
+use App\DataTransferObjects\AreaDTO;
 use App\Models\Area;
 use App\Models\Evento;
 use App\Models\Faena;

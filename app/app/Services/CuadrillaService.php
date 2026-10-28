@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\DTOs\CuadrillaDTO;
+use App\DataTransferObjects\CuadrillaDTO;
 use App\Models\Cuadrilla;
 use App\Models\Supervisor;
 use Illuminate\Database\Eloquent\Collection;
