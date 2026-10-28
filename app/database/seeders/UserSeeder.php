@@ -7,11 +7,31 @@ use App\Models\Trabajador;
 use App\Models\Rol;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        // Las bases legacy pueden tener IDs insertados manualmente sin avanzar
+        // la secuencia SERIAL/IDENTITY de PostgreSQL.
+        DB::statement(<<<'SQL'
+            WITH current_ids AS (
+                SELECT MAX(id_user) AS max_id FROM users
+            ), sequence_info AS (
+                SELECT pg_get_serial_sequence('users', 'id_user')::regclass AS sequence_name
+            )
+            SELECT setval(
+                sequence_name,
+                GREATEST(
+                    COALESCE(max_id, 1),
+                    COALESCE(pg_sequence_last_value(sequence_name), 1)
+                ),
+                max_id IS NOT NULL OR pg_sequence_last_value(sequence_name) IS NOT NULL
+            )
+            FROM current_ids CROSS JOIN sequence_info
+            SQL);
+
         $usuario = Rol::where('nombre', 'usuario')->firstOrFail();
         $supervisorRol = Rol::where('nombre', 'supervisor')->firstOrFail();
         $admin = Rol::where('nombre', 'admin')->firstOrFail();

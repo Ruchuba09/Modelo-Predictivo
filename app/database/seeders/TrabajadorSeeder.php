@@ -7,14 +7,29 @@ use App\Models\Obrero;
 use App\Models\Supervisor;
 use App\Models\Trabajador;
 use App\Models\Persona;
+use App\Models\tipo_obrero;
 use Illuminate\Database\Seeder;
 
 class TrabajadorSeeder extends Seeder
 {
     public function run(): void
     {
+        $tipoObrero = tipo_obrero::query()
+            ->where('estado', 'activo')
+            ->orderBy('id_tipo_obrero')
+            ->first()
+            ?? tipo_obrero::query()->orderBy('id_tipo_obrero')->first()
+            ?? tipo_obrero::create([
+                'nombre' => 'General',
+                'descripcion' => 'Tipo de obrero para cuentas de prueba.',
+                'estado' => 'activo',
+            ]);
+
         $obrero = $this->trabajador('11111111-1', ['nombre_1' => 'Pedro', 'nombre_2' => 'José', 'apellido_1' => 'González', 'apellido_2' => 'Muñoz'], 'Trabajador');
-        Obrero::firstOrCreate(['id_trabajador' => $obrero->id_trabajador]);
+        Obrero::updateOrCreate(
+            ['id_trabajador' => $obrero->id_trabajador],
+            ['id_tipo_obrero' => $tipoObrero->id_tipo_obrero]
+        );
 
         $supervisor = $this->trabajador('22222222-2', ['nombre_1' => 'Juan', 'nombre_2' => 'Andrés', 'apellido_1' => 'Pérez', 'apellido_2' => 'Soto'], 'Supervisor');
         Supervisor::firstOrCreate(['id_trabajador' => $supervisor->id_trabajador]);
