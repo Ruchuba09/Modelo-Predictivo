@@ -1,0 +1,40 @@
+name: Quality checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_pgsql, pdo_sqlite, tokenizer, xml, zip
+          coverage: none
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Validate Composer manifests
+        run: composer validate --strict
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Run database independent unit tests
+        run: composer run test:unit
+      - name: Check web and API route contracts
+        run: composer run test:routes
+      - name: Check TypeScript
+        run: npm run typecheck
+      - name: Build frontend
+        run: npm run build

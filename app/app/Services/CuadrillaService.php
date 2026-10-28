@@ -48,6 +48,12 @@ class CuadrillaService
 
     public function destroy(Cuadrilla $cuadrilla): void
     {
+        if ($cuadrilla->trabajadores()->exists()) {
+            throw ValidationException::withMessages([
+                'cuadrilla' => 'No se puede eliminar: la cuadrilla tiene trabajadores asignados o historial de membresías.',
+            ]);
+        }
+
         if ($cuadrilla->asignaciones()->exists()) {
             throw ValidationException::withMessages([
                 'cuadrilla' => 'No se puede eliminar: la cuadrilla tiene asignaciones registradas.',

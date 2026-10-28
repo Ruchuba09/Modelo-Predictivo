@@ -31,27 +31,24 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/user', fn (Request $request) => new UsuarioResource($request->user()->load('roles')))->name('user');
 
         // Las rutas fijas deben declararse antes que los recursos con {evento}.
-        Route::get('eventos/sin-administrador', [ApiEventoController::class, 'sinAdministrador'])->name('eventos.sin-administrador');
-        Route::get('eventos/mis-reportes', [ApiEventoController::class, 'misReportes'])->name('eventos.mis-reportes');
-        Route::get('eventos/opciones', [ApiEventoController::class, 'opciones'])->name('eventos.opciones');
+        Route::get('eventos/sin-administrador', [ApiEventoController::class, 'sinAdministrador'])->middleware('permission:eventos.ver')->name('eventos.sin-administrador');
+        Route::get('eventos/mis-reportes', [ApiEventoController::class, 'misReportes'])->middleware('permission:eventos.mis-reportes')->name('eventos.mis-reportes');
+        Route::get('eventos/opciones', [ApiEventoController::class, 'opciones'])->middleware('permission:eventos.crear')->name('eventos.opciones');
         Route::get('eventos/{evento}/evidencias', [ApiEventoController::class, 'evidencias'])
-            ->whereNumber('evento')->name('eventos.evidencias');
-        Route::get('eventos/estadisticas', [EventoEstadisticaController::class, 'index'])->name('eventos.estadisticas');
+            ->whereNumber('evento')->middleware('permission:eventos.ver')->name('eventos.evidencias');
+        Route::get('eventos/estadisticas', [EventoEstadisticaController::class, 'index'])->middleware('permission:eventos.estadisticas')->name('eventos.estadisticas');
         Route::get('eventos/estadisticas/{seccion}', [EventoEstadisticaController::class, 'seccion'])
             ->whereIn('seccion', [
                 'resumen', 'distribuciones', 'cruces', 'tendencias', 'tiempos', 'aging',
                 'trabajadores', 'hallazgos', 'cierre', 'calidad_datos', 'destacados', 'actividad_reciente',
-            ])->name('eventos.estadisticas.seccion');
+            ])->middleware('permission:eventos.estadisticas')->name('eventos.estadisticas.seccion');
         Route::patch('eventos/{evento}/tomar', [ApiEventoController::class, 'tomar'])
-            ->whereNumber('evento')->name('eventos.tomar');
+            ->whereNumber('evento')->middleware('permission:eventos.tomar')->name('eventos.tomar');
         Route::patch('eventos/{evento}/cerrar', [ApiEventoController::class, 'cerrar'])
-            ->whereNumber('evento')->name('eventos.cerrar');
-        Route::get('cuadrillas/supervisores', [CuadrillaController::class, 'supervisores'])->name('cuadrillas.supervisores');
+            ->whereNumber('evento')->middleware('permission:eventos.cerrar')->name('eventos.cerrar');
+        Route::get('cuadrillas/supervisores', [CuadrillaController::class, 'supervisores'])->middleware('permission:cuadrillas.ver')->name('cuadrillas.supervisores');
 
         Route::apiResources([
-            'proyectos' => ProyectoController::class,
-            'cuadrillas' => CuadrillaController::class,
-            'eventos' => ApiEventoController::class,
             'personas' => PersonaController::class,
             'faenas' => FaenaController::class,
             'clientes' => ClienteController::class,
@@ -59,11 +56,30 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             'departamentos' => DepartamentoController::class,
         ]);
 
+        Route::apiResource('proyectos', ProyectoController::class)
+            ->middlewareFor(['index', 'show'], 'permission:proyectos.ver')
+            ->middlewareFor('store', 'permission:proyectos.crear')
+            ->middlewareFor('update', 'permission:proyectos.editar')
+            ->middlewareFor('destroy', 'permission:proyectos.eliminar');
+        Route::apiResource('cuadrillas', CuadrillaController::class)
+            ->middlewareFor(['index', 'show'], 'permission:cuadrillas.ver')
+            ->middlewareFor('store', 'permission:cuadrillas.crear')
+            ->middlewareFor('update', 'permission:cuadrillas.editar')
+            ->middlewareFor('destroy', 'permission:cuadrillas.eliminar');
+        Route::apiResource('eventos', ApiEventoController::class)
+            ->middlewareFor(['index', 'show'], 'permission:eventos.ver')
+            ->middlewareFor('store', 'permission:eventos.crear')
+            ->middlewareFor('update', 'permission:eventos.editar')
+            ->middlewareFor('destroy', 'permission:eventos.eliminar');
+        Route::apiResource('trabajadores', ApiTrabajadorController::class)
+            ->parameters(['trabajadores' => 'trabajador'])
+            ->middlewareFor(['index', 'show'], 'permission:trabajadores.ver')
+            ->middlewareFor('store', 'permission:trabajadores.crear')
+            ->middlewareFor('update', 'permission:trabajadores.editar')
+            ->middlewareFor('destroy', 'permission:trabajadores.eliminar');
+
         Route::apiResource('asignaciones', AsignacionController::class)
             ->parameters(['asignaciones' => 'asignacion']);
-        Route::apiResource('trabajadores', ApiTrabajadorController::class)
-            ->parameters(['trabajadores' => 'trabajador']);
-
         Route::apiResource('tipos-obrero', TipoObreroController::class)
             ->parameters(['tipos-obrero' => 'tipoObrero']);
 

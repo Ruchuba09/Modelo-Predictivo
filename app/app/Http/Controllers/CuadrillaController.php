@@ -58,7 +58,8 @@ class CuadrillaController extends Controller
             return response()->json(null, 204);
         } catch (ValidationException $e) {
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => collect($e->errors())->flatten()->first() ?? 'No se pudo eliminar la cuadrilla.',
+                'errors' => $e->errors(),
             ], 409);
         }
     }

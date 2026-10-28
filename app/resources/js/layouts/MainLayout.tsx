@@ -6,41 +6,41 @@ import ThemeToggle from '@/components/ThemeToggle';
 interface NavSubItem {
     href: string;
     label: string;
-    roles?: string[];
+    permisos?: string[];
 }
 
 interface NavItem {
     href?: string;
     label: string;
-    roles?: string[];
+    permisos?: string[];
     subItems?: NavSubItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
     { href: '/portal', label: 'Inicio' },
-    { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'supervisor'] },
-    { href: '/usuarios', label: 'Sistema', roles: ['Administrador'] },
+    { href: '/dashboard', label: 'Dashboard', permisos: ['eventos.estadisticas'] },
+    { href: '/usuarios', label: 'Sistema', permisos: ['usuarios.ver'] },
     {
         label: 'Reportes',
         subItems: [
-            { href: '/eventos', label: 'Listado de reportes' },
-            { href: '/eventos/mis-reportes', label: 'Mis reportes' },
-            { href: '/eventos/estadisticas', label: 'Estadísticas' },
+            { href: '/eventos', label: 'Listado de reportes', permisos: ['eventos.ver'] },
+            { href: '/eventos/mis-reportes', label: 'Mis reportes', permisos: ['eventos.mis-reportes'] },
+            { href: '/eventos/estadisticas', label: 'Estadísticas', permisos: ['eventos.estadisticas'] },
         ],
     },
     {
         label: 'Operaciones',
         subItems: [
-            { href: '/proyectos', label: 'Proyectos' },
-            { href: '/cuadrillas', label: 'Cuadrillas', roles: ['Administrador', 'supervisor'] },
-            { href: '/trabajadores', label: 'Trabajadores', roles: ['Administrador', 'rrhh'] },
+            { href: '/proyectos', label: 'Proyectos', permisos: ['proyectos.ver'] },
+            { href: '/cuadrillas', label: 'Cuadrillas', permisos: ['cuadrillas.ver'] },
+            { href: '/trabajadores', label: 'Trabajadores', permisos: ['trabajadores.ver'] },
         ],
     },
 ];
 
-function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {
-    if (!rolesRequeridos || rolesRequeridos.length === 0) return true;
-    return rolesRequeridos.some((rol) => rolesUsuario.includes(rol));
+function tieneAcceso(permisosUsuario: string[], permisosRequeridos?: string[]) {
+    if (!permisosRequeridos || permisosRequeridos.length === 0) return true;
+    return permisosRequeridos.some((permiso) => permisosUsuario.includes(permiso));
 }
 
 function isRutaActiva(href: string, rutaActual: string): boolean {
@@ -66,12 +66,13 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
     const { url, props } = usePage();
     const usuario = useAuth();
     const notificaciones = (props.notificaciones as any[]) || [];
+    const permisosUsuario = usuario?.permisos ?? [];
     const rolesUsuario = usuario?.roles ?? [];
 
     const itemsVisibles = NAV_ITEMS.filter((item) => {
-        if (!tieneAcceso(rolesUsuario, item.roles)) return false;
+        if (!tieneAcceso(permisosUsuario, item.permisos)) return false;
         if (item.subItems) {
-            const subVisibles = item.subItems.filter((sub) => tieneAcceso(rolesUsuario, sub.roles));
+            const subVisibles = item.subItems.filter((sub) => tieneAcceso(permisosUsuario, sub.permisos));
             return subVisibles.length > 0;
         }
         return true;
@@ -190,7 +191,7 @@ export default function MainLayout({ children, bgClass = 'bg-verde-1' }: MainLay
                 <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto custom-scrollbar">
                     {itemsVisibles.map((item) => {
                         if (item.subItems) {
-                            const subItemsVisibles = item.subItems.filter((sub) => tieneAcceso(rolesUsuario, sub.roles));
+                            const subItemsVisibles = item.subItems.filter((sub) => tieneAcceso(permisosUsuario, sub.permisos));
                             const subActivoEncontrado = subItemsVisibles.some((sub) => isRutaActiva(sub.href, rutaActual));
                             const abierto = Boolean(gruposAbiertos[item.label]);
 
