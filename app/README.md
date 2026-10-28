@@ -79,3 +79,7 @@ php artisan migrate
 La documentación visual y el catálogo de assets viven en:
 
 - [Normas gráficas y assets](./docs/normas-graficas.md)
+
+## API REST
+
+La API v1, su autenticación y sus recursos están descritos en [docs/api.md](./docs/api.md). La documentación OpenAPI interactiva se sirve en `/docs/api`.

@@ -1,4 +1,6 @@
-const API_URL = "/api/cuadrillas";
+import { api } from "../lib/api";
+
+const API_URL = "/cuadrillas";
 
 export interface Persona {
     nombre_1: string;
@@ -42,93 +44,35 @@ export interface OpcionSupervisor {
 }
 
 export async function obtenerCuadrillas(): Promise<Cuadrilla[]> {
-    const response = await fetch(API_URL, {
-        headers: { Accept: "application/json" },
-    });
-
-    if (!response.ok) {
-        throw new Error("No se pudieron obtener las cuadrillas");
-    }
-
-    return response.json();
+    const response = await api.get<Cuadrilla[]>(API_URL);
+    return response.data;
 }
 
 export async function obtenerCuadrilla(id: number): Promise<Cuadrilla> {
-    const response = await fetch(`${API_URL}/${id}`, {
-        headers: { Accept: "application/json" },
-    });
-
-    if (!response.ok) {
-        throw new Error("No se pudo obtener la cuadrilla");
-    }
-
-    return response.json();
+    const response = await api.get<Cuadrilla>(`${API_URL}/${id}`);
+    return response.data;
 }
 
 export async function obtenerSupervisores(): Promise<OpcionSupervisor[]> {
-    const response = await fetch(`${API_URL}/supervisores`, {
-        headers: { Accept: "application/json" },
-    });
-
-    if (!response.ok) {
-        throw new Error("No se pudieron obtener los supervisores");
-    }
-
-    return response.json();
+    const response = await api.get<OpcionSupervisor[]>(`${API_URL}/supervisores`);
+    return response.data;
 }
 
 export async function crearCuadrilla(
     cuadrilla: CrearCuadrilla
 ): Promise<Cuadrilla> {
-    const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-        },
-        body: JSON.stringify(cuadrilla),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw data;
-    }
-
-    return data;
+    const response = await api.post<Cuadrilla>(API_URL, cuadrilla);
+    return response.data;
 }
 
 export async function actualizarCuadrilla(
     id: number,
     cuadrilla: Partial<CrearCuadrilla>
 ): Promise<Cuadrilla> {
-    const response = await fetch(`${API_URL}/${id}`, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-        },
-        body: JSON.stringify(cuadrilla),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw data;
-    }
-
-    return data;
+    const response = await api.put<Cuadrilla>(`${API_URL}/${id}`, cuadrilla);
+    return response.data;
 }
 
 export async function eliminarCuadrilla(id: number): Promise<void> {
-    const response = await fetch(`${API_URL}/${id}`, {
-        method: "DELETE",
-        headers: { Accept: "application/json" },
-    });
-
-    if (!response.ok) {
-        // El backend responde 409 con un mensaje si hay asignaciones asociadas
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.message ?? "No se pudo eliminar la cuadrilla");
-    }
+    await api.delete(`${API_URL}/${id}`);
 }
