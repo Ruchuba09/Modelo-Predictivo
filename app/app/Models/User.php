@@ -69,6 +69,13 @@ class User extends Authenticatable
     {
         return $this->rolesActivos()
             ->pluck('roles.nombre')
+            ->map(fn (string $nombre) => match (strtolower(trim($nombre))) {
+                'admin', 'administrador' => 'Administrador',
+                'supervisor' => 'Supervisor',
+                'usuario' => 'Usuario',
+                'rrhh' => 'RRHH',
+                default => $nombre,
+            })
             ->all();
     }
 

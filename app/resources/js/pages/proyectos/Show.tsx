@@ -90,7 +90,7 @@ export default function Show() {
                     <div className="bg-white border border-verde-3 rounded-2xl p-5 shadow-md">
                         <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">Cliente</p>
                         <p className="text-base font-bold text-gris-2 mt-1.5">
-                            {proyecto.cliente?.nombre ?? 'Sin cliente'}
+                            {proyecto.cliente?.razon_social ?? proyecto.cliente?.nombre ?? 'Sin cliente'}
                         </p>
                     </div>
 
@@ -146,6 +146,22 @@ export default function Show() {
                             <p className="text-sm font-bold text-gris-2 mt-1">
                                 {proyecto.fecha_termino ?? 'No definida'}
                             </p>
+                        </div>
+                        <div className="bg-verde-1 border border-verde-3 rounded-xl p-4">
+                            <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">ID proyecto INTRAVA</p>
+                            <p className="text-sm font-bold text-gris-2 mt-1">{proyecto.id_proyecto_intrava ?? 'No vinculado'}</p>
+                        </div>
+                        <div className="bg-verde-1 border border-verde-3 rounded-xl p-4">
+                            <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">Centro de costo</p>
+                            <p className="text-sm font-bold text-gris-2 mt-1">{proyecto.centro_costo ?? 'No definido'}</p>
+                        </div>
+                        <div className="bg-verde-1 border border-verde-3 rounded-xl p-4">
+                            <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">Alias INTRAVA</p>
+                            <p className="text-sm font-bold text-gris-2 mt-1">{proyecto.alias ?? 'No definido'}</p>
+                        </div>
+                        <div className="bg-verde-1 border border-verde-3 rounded-xl p-4">
+                            <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">Número de contrato</p>
+                            <p className="text-sm font-bold text-gris-2 mt-1">{proyecto.num_contrato ?? 'No definido'}</p>
                         </div>
                     </div>
                 </div>

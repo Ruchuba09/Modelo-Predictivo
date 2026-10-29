@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AreaController;
+use App\Http\Controllers\Api\V1\ActividadController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ClienteController;
 use App\Http\Controllers\Api\V1\DepartamentoController;
 use App\Http\Controllers\Api\V1\EventoController as ApiEventoController;
 use App\Http\Controllers\Api\V1\FaenaController;
+use App\Http\Controllers\Api\V1\IntravaReportController;
 use App\Http\Controllers\Api\V1\PermisoController as ApiPermisoController;
 use App\Http\Controllers\Api\V1\PersonaController;
 use App\Http\Controllers\Api\V1\RolController as ApiRolController;
@@ -32,6 +34,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         // Las rutas fijas deben declararse antes que los recursos con {evento}.
         Route::get('eventos/sin-administrador', [ApiEventoController::class, 'sinAdministrador'])->middleware('permission:eventos.ver')->name('eventos.sin-administrador');
+        Route::get('intrava/reportes-previene', [IntravaReportController::class, 'previene'])->middleware('permission:eventos.estadisticas')->name('intrava.previene');
+        Route::get('intrava/reportes-flash', [IntravaReportController::class, 'flash'])->middleware('permission:eventos.estadisticas')->name('intrava.flash');
+        Route::get('intrava/informes-investigacion', [IntravaReportController::class, 'investigaciones'])->middleware('permission:eventos.estadisticas')->name('intrava.investigaciones');
+        Route::get('intrava/hallazgos', [IntravaReportController::class, 'hallazgos'])->middleware('permission:eventos.estadisticas')->name('intrava.hallazgos');
         Route::get('eventos/mis-reportes', [ApiEventoController::class, 'misReportes'])->middleware('permission:eventos.mis-reportes')->name('eventos.mis-reportes');
         Route::get('eventos/opciones', [ApiEventoController::class, 'opciones'])->middleware('permission:eventos.crear')->name('eventos.opciones');
         Route::get('eventos/{evento}/evidencias', [ApiEventoController::class, 'evidencias'])
@@ -61,6 +67,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             ->middlewareFor('store', 'permission:proyectos.crear')
             ->middlewareFor('update', 'permission:proyectos.editar')
             ->middlewareFor('destroy', 'permission:proyectos.eliminar');
+        Route::apiResource('actividades', ActividadController::class)
+            ->parameters(['actividades' => 'actividad'])
+            ->middlewareFor(['index', 'show'], 'permission:proyectos.ver')
+            ->middlewareFor(['store', 'update', 'destroy'], 'permission:proyectos.editar');
         Route::apiResource('cuadrillas', CuadrillaController::class)
             ->middlewareFor(['index', 'show'], 'permission:cuadrillas.ver')
             ->middlewareFor('store', 'permission:cuadrillas.crear')

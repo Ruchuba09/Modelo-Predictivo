@@ -63,6 +63,7 @@ class EventoService
         $query = Evento::with(['tipoEvento', 'proyecto']);
 
         $this->aplicarFiltros($query, $filtros);
+        $this->restringirASupervisor($query);
 
         return $query->orderByDesc('fecha_creacion')->get();
     }
@@ -203,7 +204,8 @@ class EventoService
                     'referencia' => $datos->referencia,
                     'id_proyecto' => $datos->idProyecto,
                     'id_trabajador' => $idTrabajador,
-                    'estado' => 'abierta',
+                    'id_supervisor' => $this->supervisorDelTrabajador($idTrabajador),
+                    'estado' => 'abierto',
                     'evidencia' => $rutasArchivos,
                 ];
 
@@ -213,6 +215,9 @@ class EventoService
                 }
 
                 $evento = Evento::create($campos);
+                if ($idTrabajador) {
+                    $evento->trabajadores()->sync([$idTrabajador]);
+                }
 
                 Log::alert(
                     "ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE registrada. " .
@@ -235,8 +240,10 @@ class EventoService
             'tipoEvento',
             'proyecto',
             'area',
-            'administrador',
-            'trabajador',
+            'administrador.trabajador.persona',
+            'trabajador.persona',
+            'supervisor.trabajador.persona',
+            'trabajador.obrero.cuadrilla.supervisor.trabajador.persona',
         ]);
     }
 
@@ -289,6 +296,8 @@ class EventoService
             );
         }
 
+        $this->restringirASupervisor($query);
+
         $conteos = $query
             ->select('condicion', DB::raw('COUNT(*) as total'))
             ->groupBy('condicion')
@@ -331,15 +340,23 @@ class EventoService
         );
 
         abort_if(
-            $evento->estado !== 'abierta',
+            ! in_array($evento->estado, ['abierto', 'abierta'], true),
             422,
             'El evento ya fue tomado o cerrado.'
         );
 
         $evento->update([
             'id_supervisor' => $supervisor->id_trabajador,
-            'estado' => 'proceso',
+            'estado' => 'en_revision',
         ]);
+    }
+
+    public function supervisorPuedeVer(Evento $evento, int $idSupervisor): bool
+    {
+        $cuadrilla = $evento->trabajador?->cuadrillaActual();
+
+        return (bool) ($cuadrilla
+            && (int) $cuadrilla->id_supervisor === $idSupervisor);
     }
 
     public function cerrar(
@@ -349,7 +366,7 @@ class EventoService
         $administrativo = $this->administrativoAutenticado();
 
         abort_if(
-            ! in_array($evento->estado, ['abierta', 'proceso'], true),
+            ! in_array($evento->estado, ['abierto', 'abierta', 'en_revision', 'proceso'], true),
             422,
             'El evento debe estar abierto o en proceso antes de cerrarse.'
         );
@@ -370,7 +387,7 @@ class EventoService
 
                 $evento->update([
                     'id_administrador' => $administrativo->id_trabajador,
-                    'estado' => 'cerrada',
+                    'estado' => 'cerrado',
                     'justificacion' => $datos->justificacion,
                     'evidencia_cierre' => $rutasArchivos,
                     'fecha_cierre' => now(),
@@ -553,6 +570,10 @@ class EventoService
 
     private function aplicarFiltros($query, array $filtros): void
     {
+        if (! empty($filtros['id_evento'])) {
+            $query->where('id_evento', (int) $filtros['id_evento']);
+        }
+
         if (! empty($filtros['id_proyecto'])) {
             $query->where(
                 'id_proyecto',
@@ -560,15 +581,19 @@ class EventoService
             );
         }
 
-        if (! empty($filtros['condicion'])) {
-            $query->where(
-                'condicion',
-                $filtros['condicion']
-            );
-        }
-
-        if (! empty($filtros['estado'])) {
-            $query->where('estado', $filtros['estado']);
+        $estado = strtolower(trim((string) ($filtros['estado'] ?? '')));
+        if ($estado !== '') {
+            if (in_array($estado, ['abierto', 'abierta'], true)) {
+                $query->whereIn('estado', ['abierto', 'abierta', 'en_revision', 'proceso']);
+            } elseif (in_array($estado, ['cerrado', 'cerrada'], true)) {
+                $query->whereIn('estado', ['cerrado', 'cerrada']);
+            } elseif (is_numeric($estado)) {
+                $query->where('condicion', (int) $estado);
+            } else {
+                $query->where('estado', $estado);
+            }
+        } elseif (! empty($filtros['condicion'])) {
+            $query->where('condicion', $filtros['condicion']);
         }
 
         if (! empty($filtros['fecha_inicio'])) {
@@ -586,6 +611,33 @@ class EventoService
                 $filtros['fecha_fin']
             );
         }
+    }
+
+    private function restringirASupervisor($query): void
+    {
+        $usuario = Auth::user();
+        $trabajador = $usuario?->trabajador;
+
+        if (! $usuario?->tieneRol('Supervisor')
+            || $usuario->tieneRol('Administrador')
+            || ! $trabajador) {
+            return;
+        }
+
+        $idTrabajador = $trabajador->id_trabajador;
+        $cuadrillaIds = Cuadrilla::where('id_supervisor', $idTrabajador)
+            ->pluck('id_cuadrilla');
+        $obreroIds = Obrero::whereIn('id_cuadrilla', $cuadrillaIds)
+            ->pluck('id_trabajador');
+
+        $query->where(function ($subquery) use ($idTrabajador, $cuadrillaIds, $obreroIds) {
+            if ($obreroIds->isNotEmpty()) {
+                $subquery->whereIn('id_trabajador', $obreroIds);
+            }
+
+            $subquery->orWhere('id_supervisor', $idTrabajador)
+                ->orWhere('id_trabajador', $idTrabajador);
+        });
     }
 
     private function guardarArchivos(
@@ -636,5 +688,23 @@ class EventoService
         );
 
         return $administrativo;
+    }
+
+    private function supervisorDelTrabajador(?int $idTrabajador): ?int
+    {
+        if (! $idTrabajador) {
+            return null;
+        }
+
+        $trabajador = Trabajador::with(['obrero', 'supervisor'])->find($idTrabajador);
+        if (! $trabajador) {
+            return null;
+        }
+
+        if ($cuadrilla = $trabajador->cuadrillaActual()) {
+            return $cuadrilla->id_supervisor;
+        }
+
+        return $trabajador->supervisor ? $idTrabajador : null;
     }
 }

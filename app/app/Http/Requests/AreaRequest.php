@@ -19,7 +19,7 @@ class AreaRequest extends FormRequest
 
         return [
             'id_faena'    => [$required, 'integer', Rule::exists(Faena::class, 'id_faena')],
-            'codigo_area' => [$required, 'string', 'max:20'],
+            'codigo_area' => [$required, 'string', 'max:50'],
             'descripcion' => ['nullable', 'string', 'max:255'],
         ];
     }

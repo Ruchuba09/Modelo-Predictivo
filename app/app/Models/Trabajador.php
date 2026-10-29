@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Facades\DB;
 
 class Trabajador extends Model
 {
@@ -65,33 +64,8 @@ class Trabajador extends Model
         return $this->belongsToMany(Evento::class, 'evento_trabajador', 'id_trabajador', 'id_evento');
     }
 
-    public function cuadrillas(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            Cuadrilla::class,
-            'trabajadores_cuadrillas',
-            'id_trabajador',
-            'id_cuadrilla',
-            'id_trabajador',
-            'id_cuadrilla'
-        )->withPivot(['fecha_inicio', 'fecha_fin', 'fecha_creacion']);
-    }
-
     public function cuadrillaActual(): ?Cuadrilla
     {
-        $hoy = now()->toDateString();
-
-        $idCuadrilla = DB::table('trabajadores_cuadrillas')
-            ->where('id_trabajador', $this->id_trabajador)
-            ->whereDate('fecha_inicio', '<=', $hoy)
-            ->where(fn ($query) => $query
-                ->whereNull('fecha_fin')
-                ->orWhereDate('fecha_fin', '>=', $hoy))
-            ->orderByDesc('fecha_inicio')
-            ->value('id_cuadrilla');
-
-        return $idCuadrilla
-            ? $this->cuadrillas()->where('cuadrillas.id_cuadrilla', $idCuadrilla)->first()
-            : null;
+        return $this->obrero?->cuadrilla;
     }
 }

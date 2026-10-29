@@ -1,11 +1,11 @@
 export interface Cliente {
     id_cliente: number;
-    nombre: string;
+    nombre: string | null;
     rut?: string;
-    razon_social?: string;
-    email?: string;
-    telefono?: string;
-    direccion?: string;
+    razon_social: string;
+    email?: string | null;
+    telefono?: string | null;
+    direccion?: string | null;
     estado?: string;
 }
 
@@ -22,6 +22,10 @@ export interface Proyecto {
     nombre: string;
     descripcion?: string | null;
     ubicacion?: string | null;
+    id_proyecto_intrava?: number | null;
+    centro_costo?: string | null;
+    alias?: string | null;
+    num_contrato?: string | null;
     fecha_inicio?: string | null;
     fecha_termino?: string | null;
     estado: string;

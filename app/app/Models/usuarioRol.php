@@ -8,7 +8,7 @@ class usuarioRol extends Pivot
 {
     //protected $connection = "usuarios";
 
-    protected $table = "usuario_rols";
+    protected $table = "usuario_rol";
 
     public $incrementing = false;
 

@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Departamento extends Model
 {
+    use HasFactory;
+
     protected $table = 'departamentos';
     protected $primaryKey = 'id_departamento';
     public $timestamps = false;

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Proyecto extends Model
 {
@@ -19,12 +21,17 @@ class Proyecto extends Model
         'nombre',
         'descripcion',
         'ubicacion',
+        'id_proyecto_intrava',
+        'centro_costo',
+        'alias',
+        'num_contrato',
         'fecha_inicio',
         'fecha_termino',
         'estado',
     ];
 
     protected $casts = [
+        'id_proyecto_intrava' => 'integer',
         'fecha_inicio' => 'date',
         'fecha_termino' => 'date',
     ];
@@ -37,5 +44,47 @@ class Proyecto extends Model
     public function cliente()
     {
         return $this->belongsTo(Cliente::class, 'id_cliente', 'id_cliente');
+    }
+
+    public function asignaciones(): HasMany
+    {
+        return $this->hasMany(Asignacion::class, 'id_proyecto', 'id_proyecto');
+    }
+
+    public function eventos(): HasMany
+    {
+        return $this->hasMany(Evento::class, 'id_proyecto', 'id_proyecto');
+    }
+
+    public function actividades(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Actividad::class,
+            Asignacion::class,
+            'id_proyecto',
+            'id_asignacion',
+            'id_proyecto',
+            'id_asignacion'
+        );
+    }
+
+    public function reportesPrevieneIntrava(): HasMany
+    {
+        return $this->hasMany(ReportePrevieneIntrava::class, 'id_proyecto', 'id_proyecto');
+    }
+
+    public function reportesFlashIntrava(): HasMany
+    {
+        return $this->hasMany(ReporteFlashIntrava::class, 'id_proyecto', 'id_proyecto');
+    }
+
+    public function informesInvestigacionIntrava(): HasMany
+    {
+        return $this->hasMany(InformeInvestigacionIntrava::class, 'id_proyecto', 'id_proyecto');
+    }
+
+    public function hallazgosIntrava(): HasMany
+    {
+        return $this->hasMany(HallazgoIntrava::class, 'id_proyecto', 'id_proyecto');
     }
 }

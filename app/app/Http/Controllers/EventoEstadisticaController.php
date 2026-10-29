@@ -276,12 +276,12 @@ class EventoEstadisticaController extends Controller
 
         return [
             'total'        => $total,
-            'abiertos'     => $ev->where('estado', 'abierto')->count(),
-            'en_revision'  => $ev->where('estado', 'en_revision')->count(),
+            'abiertos'     => $ev->filter(fn ($e) => in_array($e->estado, ['abierto', 'abierta'], true))->count(),
+            'en_revision'  => $ev->filter(fn ($e) => in_array($e->estado, ['en_revision', 'proceso'], true))->count(),
             'cerrados'     => $cerrados->count(),
             'pendientes'   => $pend->count(),
-            'pct_abiertos'    => $this->pct($ev->where('estado', 'abierto')->count(), $total),
-            'pct_en_revision' => $this->pct($ev->where('estado', 'en_revision')->count(), $total),
+            'pct_abiertos'    => $this->pct($ev->filter(fn ($e) => in_array($e->estado, ['abierto', 'abierta'], true))->count(), $total),
+            'pct_en_revision' => $this->pct($ev->filter(fn ($e) => in_array($e->estado, ['en_revision', 'proceso'], true))->count(), $total),
             'tasa_cierre'     => $this->pct($cerrados->count(), $total),
 
             'con_evidencia'            => $ev->where('tiene_evidencia', true)->count(),
@@ -827,8 +827,8 @@ class EventoEstadisticaController extends Controller
                 return [
                     'clave'          => (string) $k,
                     'total'          => $g->count(),
-                    'abiertos'       => $g->where('estado', 'abierto')->count(),
-                    'en_revision'    => $g->where('estado', 'en_revision')->count(),
+                    'abiertos'       => $g->filter(fn ($e) => in_array($e->estado, ['abierto', 'abierta'], true))->count(),
+                    'en_revision'    => $g->filter(fn ($e) => in_array($e->estado, ['en_revision', 'proceso'], true))->count(),
                     'cerrados'       => $cerr,
                     'pendientes'     => $g->count() - $cerr,
                     'pct_del_total'  => $this->pct($g->count(), $total),

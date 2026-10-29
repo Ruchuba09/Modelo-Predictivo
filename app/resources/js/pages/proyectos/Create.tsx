@@ -12,6 +12,10 @@ interface ProyectoForm {
     nombre: string;
     descripcion: string;
     ubicacion: string;
+    id_proyecto_intrava: string;
+    centro_costo: string;
+    alias: string;
+    num_contrato: string;
     fecha_inicio: string;
     fecha_termino: string;
     estado: string;
@@ -27,6 +31,10 @@ export default function Create() {
         nombre: '',
         descripcion: '',
         ubicacion: '',
+        id_proyecto_intrava: '',
+        centro_costo: '',
+        alias: '',
+        num_contrato: '',
         fecha_inicio: '',
         fecha_termino: '',
         estado: 'activo',
@@ -84,6 +92,10 @@ export default function Create() {
                 nombre: form.nombre,
                 descripcion: form.descripcion || null,
                 ubicacion: form.ubicacion || null,
+                id_proyecto_intrava: form.id_proyecto_intrava ? Number(form.id_proyecto_intrava) : null,
+                centro_costo: form.centro_costo || null,
+                alias: form.alias || null,
+                num_contrato: form.num_contrato || null,
                 fecha_inicio: form.fecha_inicio || null,
                 fecha_termino: form.fecha_termino || null,
                 estado: form.estado,
@@ -169,7 +181,7 @@ export default function Create() {
                                 <option value="">Seleccionar cliente</option>
                                 {clientes.map((cliente) => (
                                     <option key={cliente.id_cliente} value={cliente.id_cliente}>
-                                        {cliente.nombre}
+                                        {cliente.razon_social || cliente.nombre || cliente.rut || `Cliente #${cliente.id_cliente}`}
                                     </option>
                                 ))}
                             </select>
@@ -206,6 +218,33 @@ export default function Create() {
                                 className={inputClass}
                                 placeholder="Ej: Sector Norte, Planta 2..."
                             />
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>ID de proyecto INTRAVA</label>
+                            <input
+                                type="number"
+                                min="1"
+                                name="id_proyecto_intrava"
+                                value={form.id_proyecto_intrava}
+                                onChange={handleChange}
+                                className={inputClass}
+                            />
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>Centro de costo</label>
+                            <input name="centro_costo" value={form.centro_costo} onChange={handleChange} className={inputClass} maxLength={50} />
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>Alias INTRAVA</label>
+                            <input name="alias" value={form.alias} onChange={handleChange} className={inputClass} maxLength={255} />
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>Número de contrato</label>
+                            <input name="num_contrato" value={form.num_contrato} onChange={handleChange} className={inputClass} maxLength={100} />
                         </div>
 
                         {/* Estado */}

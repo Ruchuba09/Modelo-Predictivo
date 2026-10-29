@@ -9,7 +9,13 @@ export interface Faena {
 
 export interface Cliente {
     id_cliente: number;
-    nombre: string;
+    rut?: string;
+    razon_social: string;
+    nombre: string | null;
+    email?: string | null;
+    telefono?: string | null;
+    direccion?: string | null;
+    estado?: string;
 }
 
 export interface Proyecto {
@@ -19,6 +25,10 @@ export interface Proyecto {
     nombre: string;
     descripcion: string | null;
     ubicacion: string | null;
+    id_proyecto_intrava: number | null;
+    centro_costo: string | null;
+    alias: string | null;
+    num_contrato: string | null;
     fecha_inicio: string | null;
     fecha_termino: string | null;
     estado: string;
@@ -32,6 +42,10 @@ export interface CrearProyecto {
     nombre: string;
     descripcion?: string;
     ubicacion?: string;
+    id_proyecto_intrava?: number | null;
+    centro_costo?: string | null;
+    alias?: string | null;
+    num_contrato?: string | null;
     fecha_inicio?: string;
     fecha_termino?: string;
     estado: string;

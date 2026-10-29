@@ -19,14 +19,14 @@ class ClienteRequest extends FormRequest
         $required = $this->isMethod('POST') ? 'required' : 'sometimes';
 
         return [
-            'rut'          => [$required, 'string', 'max:12',
+            'rut'          => [$required, 'string', 'max:20',
                                Rule::unique(Cliente::class, 'rut')->ignore($cliente?->id_cliente, 'id_cliente')],
             'razon_social' => [$required, 'string', 'max:255'],
             'nombre'       => ['nullable', 'string', 'max:255'],
             'email'        => ['nullable', 'email', 'max:255'],
-            'telefono'     => ['nullable', 'string', 'max:30'],
+            'telefono'     => ['nullable', 'string', 'max:50'],
             'direccion'    => ['nullable', 'string', 'max:255'],
-            'estado'       => ['nullable', 'string', 'max:20'], // ajusta si estado es boolean
+            'estado'       => ['nullable', 'string', 'max:30'],
         ];
     }
 }

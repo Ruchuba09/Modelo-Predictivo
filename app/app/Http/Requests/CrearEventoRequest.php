@@ -60,7 +60,7 @@ class CrearEventoRequest extends FormRequest
             'severidad' => [
                 'nullable',
                 'string',
-                'max:50',
+                'max:100',
             ],
             'evidencia' => [
                 'nullable',

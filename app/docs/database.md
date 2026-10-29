@@ -2,19 +2,19 @@
 
 La aplicación se conecta a PostgreSQL con dos conexiones (`usuarios` y `laravel`) y usa tablas que ya existían en la base del proyecto. El repositorio no incluye un dump SQL ni migraciones completas para esas tablas. Las migraciones presentes solo cubren cambios parciales, por lo que `php artisan migrate:fresh` no puede reconstruir una instalación completa.
 
-## Tablas que consumen los modelos y servicios
+## Tablas del esquema actual
 
 Entre otras, el código actual depende de:
 
 - Identidad y acceso: `personas`, `trabajadores`, `obreros`, `supervisores`, `administrativos`, `users`, `roles`, `permisos`, `usuario_rol`, `rol_permiso`.
-- Operación: `proyectos`, `cuadrillas`, `trabajadores_cuadrillas`, `asignaciones`, `eventos`, `tipos_evento`, `tipos_obrero`, `areas`, `departamentos`, `faenas`, `clientes`.
-- Evidencia y seguimiento: `evidencias`, `situacion_criticas` y las relaciones de eventos configuradas en los modelos.
+- Operación: `proyectos`, `cuadrillas`, `obreros`, `asignaciones`, `actividades`, `eventos`, `tipo_eventos`, `tipo_obreros`, `areas`, `departamentos`, `faenas`, `clientes`.
+- Evidencia y seguimiento: `evidencias`, `evento_trabajador`, `situacion_criticas` y las tablas de reportes e INTRAVA.
 
-Los nombres de tablas, claves primarias, esquemas y columnas deben coincidir con los modelos de `app/Models`, servicios y seeders. En particular, la membresía de trabajadores con cuadrillas vive en `trabajadores_cuadrillas`, con `id_trabajador`, `id_cuadrilla`, `fecha_inicio`, `fecha_fin` y `fecha_creacion`; no es una columna `id_cuadrilla` en `obreros`.
+Los nombres de tablas, claves primarias, esquemas y columnas deben coincidir con los modelos de `app/Models`, servicios y seeders. En el esquema actual, la cuadrilla de un obrero se guarda directamente en `obreros.id_cuadrilla`; no existe una tabla de membresías históricas `trabajadores_cuadrillas`.
 
 ## Preparar una base desde cero
 
-Se requiere obtener del mantenedor de la base la definición SQL versionada que se usa en el entorno compartido. No se debe reconstruir el esquema faltante a partir de suposiciones del código ni correr `migrate:fresh` sobre datos existentes. Antes de habilitar una base vacía, el DDL completo debe incorporarse como migraciones revisadas y probarse en PostgreSQL.
+El esquema completo de referencia es el SQL PostgreSQL compartido por el equipo. Ese script debe ejecutarse solo sobre una base vacía. No correr `migrate:fresh` sobre datos existentes. Las migraciones Laravel agregan servicios de aplicación que no aparecen en el DDL, como `personal_access_tokens` y `situacion_criticas`.
 
 ## Pruebas
 

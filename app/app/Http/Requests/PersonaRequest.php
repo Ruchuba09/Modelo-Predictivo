@@ -19,7 +19,7 @@ class PersonaRequest extends FormRequest
 
         return [
             // Rule::unique(Persona::class) toma tabla y conexión desde el modelo
-            'rut'       => ['required', 'string', 'max:12',
+            'rut'       => ['required', 'string', 'max:20',
                             Rule::unique(Persona::class, 'rut')->ignore($persona?->id_persona, 'id_persona')],
             'nombre_1'   => ['required', 'string', 'max:100'],
             'nombre_2'   => ['nullable', 'string', 'max:100'],

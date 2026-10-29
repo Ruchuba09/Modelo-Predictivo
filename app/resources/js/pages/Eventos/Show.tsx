@@ -24,10 +24,12 @@ const CONDICIONES_PARE: { [key: number]: string } = {
 };
 
 const ESTADO_STYLES: { [key: string]: string } = {
+    abierto: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
     abierta: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
     en_revision: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
     proceso: 'bg-amarillo-1/10 text-amarillo-1 border-amarillo-1/40',
     cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
+    cerrado: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
 };
 
 interface Persona {
@@ -126,7 +128,7 @@ export default function Show() {
     const { evento } = usePage().props as unknown as { evento: Evento };
     const estadoStyle = ESTADO_STYLES[evento.estado] ?? ESTADO_STYLES['abierta'];
     
-    const estaCerrada = evento.estado === 'cerrada' || evento.estado === 'cerrada';
+    const estaCerrada = ['cerrado', 'cerrada'].includes(evento.estado);
 
     // ESTADO PARA CARGA DE EVIDENCIA BAJO DEMANDA (MÓDULO A)
     const [cargandoEvidencia, setCargandoEvidencia] = useState(false);

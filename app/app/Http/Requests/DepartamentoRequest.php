@@ -18,7 +18,7 @@ class DepartamentoRequest extends FormRequest
         return [
             'nombre'      => [$required, 'string', 'max:150'],
             'descripcion' => ['nullable', 'string', 'max:500'],
-            'estado'      => ['nullable', 'string', 'max:20'],
+            'estado'      => ['nullable', 'string', 'max:30'],
         ];
     }
 }

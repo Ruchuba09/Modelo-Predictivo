@@ -22,7 +22,7 @@ export const proyectosColumns: Column<Proyecto>[] = [
         key: "cliente",
         header: "Cliente",
         className: "text-gris-1 font-medium",
-        render: (p) => p.cliente?.nombre ?? "Sin cliente",
+        render: (p) => p.cliente?.razon_social ?? p.cliente?.nombre ?? "Sin cliente",
     },
     {
         key: "faena",
