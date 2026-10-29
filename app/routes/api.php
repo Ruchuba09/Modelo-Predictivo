@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProyectoController;
 use App\Http\Controllers\AsignacionController;
 use App\Http\Controllers\CuadrillaController;
+use App\Http\Controllers\TrabajadorController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\Api\V1 as V1;
 Route::prefix('v1')->group(function () {
