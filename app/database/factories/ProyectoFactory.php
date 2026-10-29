@@ -18,7 +18,7 @@ class ProyectoFactory extends Factory
             'nombre' => $this->faker->catchPhrase(),
             'descripcion' => $this->faker->optional()->paragraph(),
             'ubicacion' => $this->faker->optional()->city(),
-            'id_proyecto_intrava' => $this->faker->optional(0.25)->unique()->numberBetween(100000, 999999999),
+            'id_proyecto_intrava' => $this->faker->optional(0.25)->numberBetween(100000, 999999999),
             'centro_costo' => $this->faker->optional()->bothify('CC-####'),
             'alias' => $this->faker->optional()->words(2, true),
             'num_contrato' => $this->faker->optional()->bothify('CT-########'),

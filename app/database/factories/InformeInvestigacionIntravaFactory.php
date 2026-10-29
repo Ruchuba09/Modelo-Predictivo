@@ -11,7 +11,7 @@ class InformeInvestigacionIntravaFactory extends Factory
     {
         return [
             'id_intrava' => $this->faker->unique()->numberBetween(100000, 999999999),
-            'uuid_intrava' => $this->faker->optional()->unique()->uuid(),
+            'uuid_intrava' => $this->faker->optional()->uuid(),
             'id_reporte_flash_intrava' => null,
             'id_proyecto' => Proyecto::factory(),
             'id_proyecto_intrava' => null,

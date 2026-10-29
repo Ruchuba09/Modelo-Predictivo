@@ -13,6 +13,7 @@ class Cuadrilla extends Model
 
     protected $table = 'cuadrillas';
     protected $primaryKey = 'id_cuadrilla';
+    public $timestamps = false;
 
     public function supervisor()
     {
