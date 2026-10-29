@@ -2,38 +2,40 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Cuadrilla extends Model
 {
-    use HasFactory;
-
     protected $table = 'cuadrillas';
     protected $primaryKey = 'id_cuadrilla';
-    public $timestamps = false;
 
     public function supervisor()
     {
         return $this->belongsTo(Supervisor::class, 'id_supervisor', 'id_trabajador');
     }
 
-    public function trabajadores(): HasManyThrough
+    public function trabajadores(): BelongsToMany
     {
-        return $this->hasManyThrough(
+        return $this->belongsToMany(
             Trabajador::class,
-            Obrero::class,
+            'trabajadores_cuadrillas',
             'id_cuadrilla',
             'id_trabajador',
             'id_cuadrilla',
             'id_trabajador'
-        );
+        )->withPivot(['fecha_inicio', 'fecha_fin', 'fecha_creacion']);
     }
 
-    public function obreros(): HasMany
+    public function obreros(): BelongsToMany
     {
-        return $this->hasMany(Obrero::class, 'id_cuadrilla', 'id_cuadrilla');
+        return $this->belongsToMany(
+            Obrero::class,
+            'trabajadores_cuadrillas',
+            'id_cuadrilla',
+            'id_trabajador',
+            'id_cuadrilla',
+            'id_trabajador'
+        )->withPivot(['fecha_inicio', 'fecha_fin', 'fecha_creacion']);
     }
 }
