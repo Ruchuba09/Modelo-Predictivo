@@ -11,6 +11,7 @@ use App\Http\Controllers\EventoController;
 use App\Http\Controllers\EventoEstadisticaController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -94,6 +95,25 @@ Route::middleware('auth')->group(function () {
             ->name('api.eventos.estadisticas.seccion');
 
         Route::get('/dashboard', [EventoController::class, 'indexGrafico'])->name('dashboard');
+
+        Route::get('/modelo-predictivo', function () {
+            return Inertia::render('ModeloPredictivo/Index', [
+                'proyectos' => \App\Models\Proyecto::select('id_proyecto', 'nombre')->get(),
+            ]);
+        })->name('modelo-predictivo.index');
+
+        Route::get('/modelo-predictivo/proyectos/{proyecto}/evento-estimado', function (Request $request, \App\Models\Proyecto $proyecto) {
+            $filtros = $request->validate([
+                'tipo_objetivo' => ['sometimes', 'string', 'max:100'],
+                'horizonte' => ['sometimes', 'integer', 'between:1,52'],
+            ]);
+
+            return Inertia::render('ModeloPredictivo/DetalleEventoEstimado', [
+                'proyecto' => $proyecto->only(['id_proyecto', 'nombre']),
+                'tipoObjetivo' => $filtros['tipo_objetivo'] ?? 'todos',
+                'horizonte' => (int) ($filtros['horizonte'] ?? 4),
+            ]);
+        })->name('modelo-predictivo.evento-estimado');
 
         Route::get('/proyectos', function () {
             return Inertia::render('proyectos/Index');

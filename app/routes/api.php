@@ -6,6 +6,7 @@ use App\Http\Controllers\ProyectoController;
 use App\Http\Controllers\AsignacionController;
 use App\Http\Controllers\CuadrillaController;
 use App\Http\Controllers\EventoController;
+use App\Http\Controllers\ModeloPredictivoController;
 use App\Http\Controllers\Api\V1 as V1;
 
 Route::prefix('v1')->group(function () {
@@ -15,6 +16,9 @@ Route::prefix('v1')->group(function () {
         // Rutas fijas antes de las dinámicas
         Route::get('eventos/sin-administrador', [EventoController::class, 'sinAdministrador']);
         Route::get('eventos/estadisticas', [EventoController::class, 'estadisticas']);
+        Route::get('modelo-predictivo/tipos', [ModeloPredictivoController::class, 'tipos']);
+        Route::get('modelo-predictivo/predicciones', [ModeloPredictivoController::class, 'index']);
+        Route::get('proyectos/{proyecto}/predicciones', [ModeloPredictivoController::class, 'show']);
 
         Route::apiResources([
             'proyectos'    => ProyectoController::class,

@@ -1,6 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import MainLayout from '../../layouts/MainLayout';
 import { useProyectos } from '../../hooks/useProyectos';
+import PrediccionProyecto from '../../components/PrediccionProyecto';
 
 interface PageProps {
     id: number;
@@ -119,6 +120,8 @@ export default function Show() {
                         </p>
                     </div>
                 </div>
+
+                <PrediccionProyecto idProyecto={proyecto.id_proyecto} />
 
                 {/* Detalle completo */}
                 <div className="bg-white border border-verde-3 rounded-2xl p-6 lg:p-8 shadow-2xl space-y-6">

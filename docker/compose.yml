@@ -32,6 +32,31 @@ services:
   laravel-app:
     <<: *laravel-base
     image: laravel-app:local
+    environment:
+      PREDICTIVE_MODEL_URL: http://predictive-model:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      predictive-model:
+        condition: service_healthy
+
+  predictive-model:
+    build:
+      context: ../python
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${PREDICTIVE_DATABASE_URL:-postgresql+psycopg2://${PG_USERNAME:-postgres}:${PG_PASSWORD:-postgres}@postgres:5432/${PG_DATABASE:-postgres}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   worker-schedule:
     <<: *laravel-worker

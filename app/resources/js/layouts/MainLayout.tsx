@@ -32,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
         roles: ['Administrador', 'Supervisor'],
         subItems: [
             { href: '/proyectos', label: 'Proyectos', roles: ['Administrador', 'Supervisor'] },
+            { href: '/modelo-predictivo', label: 'Modelo predictivo', roles: ['Administrador', 'Supervisor'] },
             { href: '/cuadrillas', label: 'Cuadrillas', roles: ['Administrador', 'Supervisor'] },
             { href: '/trabajadores', label: 'Trabajadores', roles: ['Administrador'] },
         ],
@@ -56,6 +57,7 @@ const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
     '/eventos/estadisticas': { title: 'Estadísticas', subtitle: 'Métricas predictivas y análisis de seguridad' },
     '/eventos/create': { title: 'Ingreso de Reporte', subtitle: 'Registra un evento detallando la condición y descripción' },
     '/proyectos': { title: 'Proyectos', subtitle: 'Gestión y control de proyectos' },
+    '/modelo-predictivo': { title: 'Modelo Predictivo', subtitle: 'Predicciones de eventos para los proyectos vigentes' },
     '/cuadrillas': { title: 'Cuadrillas', subtitle: 'Gestión de equipos de trabajo' },
     '/trabajadores': { title: 'Trabajadores', subtitle: 'Personal y asignaciones' },
     '/usuarios': { title: 'Usuarios del Sistema', subtitle: 'Administración de cuentas y accesos' },
