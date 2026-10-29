@@ -2,6 +2,7 @@
 import { usePage } from '@inertiajs/react';
 
 interface AuthProps {
+    [key: string]: unknown;
     auth: {
         user: {
             id: number;

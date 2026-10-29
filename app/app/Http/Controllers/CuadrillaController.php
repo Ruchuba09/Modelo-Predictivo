@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\DTOs\CuadrillaDTO;
+use App\DataTransferObjects\CuadrillaDTO;
 use App\Http\Requests\StoreCuadrillaRequest;
 use App\Http\Requests\UpdateCuadrillaRequest;
 use App\Models\Cuadrilla;
@@ -58,7 +58,8 @@ class CuadrillaController extends Controller
             return response()->json(null, 204);
         } catch (ValidationException $e) {
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => collect($e->errors())->flatten()->first() ?? 'No se pudo eliminar la cuadrilla.',
+                'errors' => $e->errors(),
             ], 409);
         }
     }

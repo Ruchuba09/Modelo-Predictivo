@@ -94,7 +94,7 @@ export default function AsignacionCuadrillas({ idProyecto }: Props) {
                             <option value="">Selecciona una cuadrilla...</option>
                             {disponibles.map((c) => (
                                 <option key={c.id_cuadrilla} value={c.id_cuadrilla}>
-                                    {c.nombre}
+                                    {c.numero_cuadrilla}
                                 </option>
                             ))}
                         </select>
@@ -153,7 +153,7 @@ export default function AsignacionCuadrillas({ idProyecto }: Props) {
                             }`}
                         >
                             <span className="font-semibold text-gris-2">
-                                {a.cuadrilla?.nombre ?? `Cuadrilla #${a.id_cuadrilla}`}
+                                {a.cuadrilla?.numero_cuadrilla ?? `Cuadrilla #${a.id_cuadrilla}`}
                             </span>
                             <span className="text-xs text-gris-1 font-medium bg-verde-2 px-2.5 py-1 rounded-md border border-verde-3">
                                 {a.fecha_inicio} → {a.fecha_termino ?? "En curso"}

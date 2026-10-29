@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const api = axios.create({
-    baseURL: '/api',
+    baseURL: '/api/v1',
     withCredentials: true,   // envía la cookie de sesión
     withXSRFToken: true,     // envía X-XSRF-TOKEN en cada petición
     headers: {

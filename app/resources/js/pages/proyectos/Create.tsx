@@ -1,16 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
+import axios from 'axios';
 import MainLayout from '../../layouts/MainLayout';
-
-interface Faena {
-    id_faena: number;
-    nombre: string;
-}
-
-interface Cliente {
-    id_cliente: number;
-    nombre: string;
-}
+import { api } from '../../lib/api';
+import type { Cliente, Faena } from '../../api/proyectosApi';
 
 interface ProyectoForm {
     id_faena: string;
@@ -48,32 +42,16 @@ export default function Create() {
 
     const cargarDatos = async () => {
         try {
-            const [faenasResponse, clientesResponse] =
-                await Promise.all([
-                    fetch('/api/faenas', {
-                        headers: {
-                            Accept: 'application/json',
-                        },
-                    }),
-                    fetch('/api/clientes', {
-                        headers: {
-                            Accept: 'application/json',
-                        },
-                    }),
-                ]);
+            const [faenasResponse, clientesResponse] = await Promise.all([
+                api.get<{ data: Faena[] } | Faena[]>('/faenas', { params: { todos: 1 } }),
+                api.get<{ data: Cliente[] } | Cliente[]>('/clientes', { params: { todos: 1 } }),
+            ]);
 
-            if (!faenasResponse.ok || !clientesResponse.ok) {
-                throw new Error();
-            }
-
-            const faenasData = await faenasResponse.json();
-            const clientesData = await clientesResponse.json();
-
-            setFaenas(faenasData);
-            setClientes(clientesData);
-        } catch {
+            setFaenas(Array.isArray(faenasResponse.data) ? faenasResponse.data : faenasResponse.data.data);
+            setClientes(Array.isArray(clientesResponse.data) ? clientesResponse.data : clientesResponse.data.data);
+        } catch (err) {
             setError(
-                'No fue posible cargar las faenas y clientes.'
+                err instanceof Error ? err.message : 'No fue posible cargar las faenas y clientes.'
             );
         } finally {
             setCargando(false);
@@ -100,50 +78,25 @@ export default function Create() {
         setError('');
 
         try {
-            const response = await fetch('/api/proyectos', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                },
-                body: JSON.stringify({
-                    id_faena: Number(form.id_faena),
-                    id_cliente: Number(form.id_cliente),
-                    nombre: form.nombre,
-                    descripcion: form.descripcion || null,
-                    ubicacion: form.ubicacion || null,
-                    fecha_inicio: form.fecha_inicio || null,
-                    fecha_termino: form.fecha_termino || null,
-                    estado: form.estado,
-                }),
+            const response = await api.post<{ data: { id_proyecto: number } }>('/proyectos', {
+                id_faena: Number(form.id_faena),
+                id_cliente: Number(form.id_cliente),
+                nombre: form.nombre,
+                descripcion: form.descripcion || null,
+                ubicacion: form.ubicacion || null,
+                fecha_inicio: form.fecha_inicio || null,
+                fecha_termino: form.fecha_termino || null,
+                estado: form.estado,
             });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                if (data.errors) {
-                    const mensajes = Object.values(data.errors)
-                        .flat()
-                        .join(' ');
-
-                    throw new Error(mensajes);
-                }
-
-                throw new Error(
-                    data.message ||
-                        'No fue posible crear el proyecto.'
-                );
-            }
-
-            router.visit(
-                `/proyectos/${data.data.id_proyecto}`
-            );
+            router.visit(`/proyectos/${response.data.data.id_proyecto}`);
         } catch (err) {
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : 'Ocurrió un error.'
-            );
+            const errorResponse = axios.isAxiosError<{ message?: string; errors?: Record<string, string[]> }>(err)
+                ? err.response?.data
+                : undefined;
+            const validationMessage = errorResponse?.errors
+                ? Object.values(errorResponse.errors).flat().join(' ')
+                : undefined;
+            setError(validationMessage ?? errorResponse?.message ?? (err instanceof Error ? err.message : 'Ocurrió un error.'));
         } finally {
             setGuardando(false);
         }

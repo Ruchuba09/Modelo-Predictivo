@@ -1,4 +1,6 @@
-const API_URL = "/api/proyectos";
+import { api } from "../lib/api";
+
+const API_URL = "/proyectos";
 
 export interface Faena {
     id_faena: number;
@@ -36,81 +38,34 @@ export interface CrearProyecto {
 }
 
 export async function obtenerProyectos(): Promise<Proyecto[]> {
-    const response = await fetch(API_URL);
-
-    if (!response.ok) {
-        throw new Error("No se pudieron obtener los proyectos");
-    }
-
-    return response.json();
+    const response = await api.get<Proyecto[]>(API_URL);
+    return response.data;
 }
 
 export async function obtenerProyecto(
     id: number
 ): Promise<Proyecto> {
-    const response = await fetch(`${API_URL}/${id}`);
-
-    if (!response.ok) {
-        throw new Error("No se pudo obtener el proyecto");
-    }
-
-    return response.json();
+    const response = await api.get<Proyecto>(`${API_URL}/${id}`);
+    return response.data;
 }
 
 export async function crearProyecto(
     proyecto: CrearProyecto
 ): Promise<Proyecto> {
-    const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-        },
-        body: JSON.stringify(proyecto),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw data;
-    }
-
-    return data;
+    const response = await api.post<{ data: Proyecto }>(API_URL, proyecto);
+    return response.data.data;
 }
 
 export async function actualizarProyecto(
     id: number,
     proyecto: Partial<CrearProyecto>
 ): Promise<Proyecto> {
-    const response = await fetch(`${API_URL}/${id}`, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-        },
-        body: JSON.stringify(proyecto),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw data;
-    }
-
-    return data;
+    const response = await api.put<{ data: Proyecto }>(`${API_URL}/${id}`, proyecto);
+    return response.data.data;
 }
 
 export async function eliminarProyecto(
     id: number
 ): Promise<void> {
-    const response = await fetch(`${API_URL}/${id}`, {
-        method: "DELETE",
-        headers: {
-            Accept: "application/json",
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error("No se pudo eliminar el proyecto");
-    }
+    await api.delete(`${API_URL}/${id}`);
 }

@@ -24,34 +24,38 @@ Route::get('/test-auth', function () {
 })->middleware('auth');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
-    Route::get('/usuarios/crear', [UserController::class, 'create'])->name('usuarios.crear');
-    Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
-    Route::get('/usuarios/{usuario}', [UserController::class, 'show'])->name('usuarios.show');
-    Route::get('/usuarios/{usuario}/editar', [UserController::class, 'edit'])->name('usuarios.editar');
-    Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
-    Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
+    Route::get('/usuarios', [UserController::class, 'index'])->middleware('permission:usuarios.ver')->name('usuarios.index');
+    Route::get('/usuarios/crear', [UserController::class, 'create'])->middleware('permission:usuarios.crear')->name('usuarios.crear');
+    Route::post('/usuarios', [UserController::class, 'store'])->middleware('permission:usuarios.crear')->name('usuarios.store');
+    Route::get('/usuarios/{usuario}', [UserController::class, 'show'])->middleware('permission:usuarios.ver')->name('usuarios.show');
+    Route::get('/usuarios/{usuario}/editar', [UserController::class, 'edit'])->middleware('permission:usuarios.editar')->name('usuarios.editar');
+    Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->middleware('permission:usuarios.editar')->name('usuarios.update');
+    Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->middleware('permission:usuarios.eliminar')->name('usuarios.destroy');
 
-    Route::get('/roles', [RolController::class, 'index'])->name('roles.index');
-    Route::get('/roles/crear', [RolController::class, 'create'])->name('roles.crear');
-    Route::post('/roles', [RolController::class, 'store'])->name('roles.store');
-    Route::get('/roles/{rol}', [RolController::class, 'show'])->name('roles.show');
-    Route::get('/roles/{rol}/editar', [RolController::class, 'edit'])->name('roles.editar');
-    Route::put('/roles/{rol}', [RolController::class, 'update'])->name('roles.update');
-    Route::delete('/roles/{rol}', [RolController::class, 'destroy'])->name('roles.destroy');
+    Route::get('/roles', [RolController::class, 'index'])->middleware('permission:roles.gestionar')->name('roles.index');
+    Route::get('/roles/crear', [RolController::class, 'create'])->middleware('permission:roles.gestionar')->name('roles.crear');
+    Route::post('/roles', [RolController::class, 'store'])->middleware('permission:roles.gestionar')->name('roles.store');
+    Route::get('/roles/{rol}', [RolController::class, 'show'])->middleware('permission:roles.gestionar')->name('roles.show');
+    Route::get('/roles/{rol}/editar', [RolController::class, 'edit'])->middleware('permission:roles.gestionar')->name('roles.editar');
+    Route::put('/roles/{rol}', [RolController::class, 'update'])->middleware('permission:roles.gestionar')->name('roles.update');
+    Route::delete('/roles/{rol}', [RolController::class, 'destroy'])->middleware('permission:roles.gestionar')->name('roles.destroy');
 
-    Route::get('/permisos', [PermisoController::class, 'index'])->name('permisos.index');
-    Route::get('/permisos/crear', [PermisoController::class, 'create'])->name('permisos.crear');
-    Route::post('/permisos', [PermisoController::class, 'store'])->name('permisos.store');
-    Route::get('/permisos/{permiso}', [PermisoController::class, 'show'])->name('permisos.show');
-    Route::get('/permisos/{permiso}/editar', [PermisoController::class, 'edit'])->name('permisos.editar');
-    Route::put('/permisos/{permiso}', [PermisoController::class, 'update'])->name('permisos.update');
-    Route::delete('/permisos/{permiso}', [PermisoController::class, 'destroy'])->name('permisos.destroy');
+    Route::get('/permisos', [PermisoController::class, 'index'])->middleware('permission:roles.gestionar')->name('permisos.index');
+    Route::get('/permisos/crear', [PermisoController::class, 'create'])->middleware('permission:roles.gestionar')->name('permisos.crear');
+    Route::post('/permisos', [PermisoController::class, 'store'])->middleware('permission:roles.gestionar')->name('permisos.store');
+    Route::get('/permisos/{permiso}', [PermisoController::class, 'show'])->middleware('permission:roles.gestionar')->name('permisos.show');
+    Route::get('/permisos/{permiso}/editar', [PermisoController::class, 'edit'])->middleware('permission:roles.gestionar')->name('permisos.editar');
+    Route::put('/permisos/{permiso}', [PermisoController::class, 'update'])->middleware('permission:roles.gestionar')->name('permisos.update');
+    Route::delete('/permisos/{permiso}', [PermisoController::class, 'destroy'])->middleware('permission:roles.gestionar')->name('permisos.destroy');
 
-    Route::get('/dashboard', [EventoController::class, 'indexGrafico'])->name('dashboard');
+    Route::get('/dashboard', [EventoController::class, 'indexGrafico'])->middleware('permission:eventos.estadisticas')->name('dashboard');
 
     Route::resource('/trabajadores', TrabajadorController::class)
-        ->parameters(['trabajadores' => 'trabajador']);
+        ->parameters(['trabajadores' => 'trabajador'])
+        ->middlewareFor(['index', 'show'], 'permission:trabajadores.ver')
+        ->middlewareFor(['create', 'store'], 'permission:trabajadores.crear')
+        ->middlewareFor(['edit', 'update'], 'permission:trabajadores.editar')
+        ->middlewareFor('destroy', 'permission:trabajadores.eliminar');
 
     /*
     |--------------------------------------------------------------------------
@@ -63,10 +67,12 @@ Route::middleware('auth')->group(function () {
 
     // Estadísticas: pantalla (Inertia)
     Route::get('/eventos/estadisticas', fn () => Inertia::render('Eventos/EventosEstadisticas'))
+        ->middleware('permission:eventos.estadisticas')
         ->name('eventos.estadisticas');
 
     // Estadísticas: datos (JSON)
     Route::get('/api/eventos/estadisticas', [EventoEstadisticaController::class, 'index'])
+        ->middleware('permission:eventos.estadisticas')
         ->name('api.eventos.estadisticas');
 
     Route::get('/api/eventos/estadisticas/{seccion}', [EventoEstadisticaController::class, 'seccion'])
@@ -74,41 +80,51 @@ Route::middleware('auth')->group(function () {
             'resumen', 'distribuciones', 'cruces', 'tendencias', 'tiempos', 'aging',
             'trabajadores', 'hallazgos', 'cierre', 'calidad_datos', 'destacados', 'actividad_reciente',
         ])
+        ->middleware('permission:eventos.estadisticas')
         ->name('api.eventos.estadisticas.seccion');
 
     Route::get('/eventos/mis-reportes', [EventoController::class, 'MisReportes'])
+        ->middleware('permission:eventos.mis-reportes')
         ->name('eventos.mis-reportes');
 
     Route::resource('eventos', EventoController::class)
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
-        ->whereNumber('evento');
+        ->whereNumber('evento')
+        ->middlewareFor(['index', 'show'], 'permission:eventos.ver')
+        ->middlewareFor(['create', 'store'], 'permission:eventos.crear')
+        ->middlewareFor(['edit', 'update'], 'permission:eventos.editar')
+        ->middlewareFor('destroy', 'permission:eventos.eliminar');
 
     Route::get('/eventos/archivo/{archivo}', [EventoController::class, 'verArchivo'])
+        ->middleware('permission:eventos.ver')
         ->name('eventos.archivo');
     Route::get('/eventos/{evento}/evidencias', [EventoController::class, 'obtenerEvidencias'])
         ->whereNumber('evento')
+        ->middleware('permission:eventos.ver')
         ->name('eventos.evidencias');
 
     Route::patch('/eventos/{evento}/tomar', [EventoController::class, 'tomarReporte'])
         ->whereNumber('evento')
+        ->middleware('permission:eventos.tomar')
         ->name('eventos.tomar');
     Route::patch('/eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])
         ->whereNumber('evento')
+        ->middleware('permission:eventos.cerrar')
         ->name('eventos.cerrar');
 
     Route::get('/proyectos', function () {
         return Inertia::render('proyectos/Index');
-    })->name('proyectos.index');
+    })->middleware('permission:proyectos.ver')->name('proyectos.index');
 
     Route::get('/proyectos/create', function () {
         return Inertia::render('proyectos/Create');
-    })->name('proyectos.create');
+    })->middleware('permission:proyectos.crear')->name('proyectos.create');
 
     Route::get('/proyectos/{id}', function ($id) {
         return Inertia::render('proyectos/Show', [
             'id' => $id,
         ]);
-    })->name('proyectos.show');
+    })->middleware('permission:proyectos.ver')->name('proyectos.show');
 
     Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
     Route::get('/situacion-criticas/crear', [SituacionCriticaController::class, 'create'])->name('situacion-criticas.crear');
@@ -119,14 +135,20 @@ Route::middleware('auth')->group(function () {
     Route::delete('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'destroy'])->name('situacion-criticas.destroy');
 
     Route::get('/cuadrillas', fn () => Inertia::render('Cuadrillas/Index'))
+        ->middleware('permission:cuadrillas.ver')
         ->name('cuadrillas.index');
 
-    Route::get('/api/cuadrillas/supervisores', [CuadrillaController::class, 'supervisores']);
+    Route::get('/api/cuadrillas/supervisores', [CuadrillaController::class, 'supervisores'])
+        ->middleware('permission:cuadrillas.ver');
 
     Route::apiResource('/api/cuadrillas', CuadrillaController::class)
         ->parameters(['cuadrillas' => 'cuadrilla'])
         ->whereNumber('cuadrilla')
-        ->names('api.cuadrillas');
+        ->names('api.cuadrillas')
+        ->middlewareFor(['index', 'show'], 'permission:cuadrillas.ver')
+        ->middlewareFor('store', 'permission:cuadrillas.crear')
+        ->middlewareFor('update', 'permission:cuadrillas.editar')
+        ->middlewareFor('destroy', 'permission:cuadrillas.eliminar');
 });
 
 Route::get('/portal', function () {

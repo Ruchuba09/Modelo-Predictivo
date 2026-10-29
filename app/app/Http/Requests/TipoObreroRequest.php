@@ -25,13 +25,4 @@ class TipoObreroRequest extends FormRequest
     {
         return TipoObreroData::fromArray($this->validated());
     }
-    public function toArray(Request $request): array
-    {
-        return [
-            'id_tipo_obrero' => $this->getKey(), // funciona sea cual sea el nombre real de la PK
-            'nombre'         => $this->nombre,
-            'descripcion'    => $this->descripcion,
-            'estado'         => $this->estado,
-        ];
-    }
 }

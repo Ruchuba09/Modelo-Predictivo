@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\DTOs\CuadrillaDTO;
+use App\DataTransferObjects\CuadrillaDTO;
 use App\Models\Cuadrilla;
 use App\Models\Supervisor;
 use Illuminate\Database\Eloquent\Collection;
@@ -48,6 +48,12 @@ class CuadrillaService
 
     public function destroy(Cuadrilla $cuadrilla): void
     {
+        if ($cuadrilla->trabajadores()->exists()) {
+            throw ValidationException::withMessages([
+                'cuadrilla' => 'No se puede eliminar: la cuadrilla tiene trabajadores asignados o historial de membresías.',
+            ]);
+        }
+
         if ($cuadrilla->asignaciones()->exists()) {
             throw ValidationException::withMessages([
                 'cuadrilla' => 'No se puede eliminar: la cuadrilla tiene asignaciones registradas.',
@@ -57,9 +63,10 @@ class CuadrillaService
         $cuadrilla->delete();
     }
 
-    public function supervisores(): Collection
+    public function supervisores(): \Illuminate\Support\Collection
     {
         return Supervisor::with('trabajador.persona')
+            ->whereHas('trabajador', fn ($query) => $query->where('estado', 'activo'))
             ->get()
             ->map(fn (Supervisor $supervisor) => [
                 'id_trabajador' => $supervisor->id_trabajador,

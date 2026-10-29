@@ -39,6 +39,24 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
+        $notificaciones = collect();
+
+        if ($user) {
+            $eventos = \App\Models\Evento::query()->orderByDesc('fecha_creacion');
+
+            if (! $user->tienePermiso('eventos.ver')) {
+                $eventos->where('id_trabajador', $user->id_trabajador);
+            }
+
+            $notificaciones = $eventos->take(5)->get()->map(function ($evento) {
+                return [
+                    'id' => $evento->id_evento,
+                    'titulo' => 'NUEVO REPORTE',
+                    'mensaje' => 'Se abrió un reporte #' . $evento->id_evento . ' con fecha ' . $evento->fecha_creacion->format('d-m-Y'),
+                    'fecha' => $evento->fecha_creacion->diffForHumans(),
+                ];
+            });
+        }
 
         return [
             ...parent::share($request),
@@ -52,17 +70,7 @@ class HandleInertiaRequests extends Middleware
                     'permisos' => $user->permisosArray(),
                 ] : null,
             ],
-            'notificaciones' => $user ? \App\Models\Evento::orderByDesc('fecha_creacion')
-                ->take(5)
-                ->get()
-                ->map(function($e) {
-                    return [
-                        'id' => $e->id_evento,
-                        'titulo' => 'NUEVO REPORTE',
-                        'mensaje' => 'Se abrió un reporte #' . $e->id_evento . ' con fecha ' . $e->fecha_creacion->format('d-m-Y'),
-                        'fecha' => $e->fecha_creacion->diffForHumans(),
-                    ];
-                }) : [],
+            'notificaciones' => $notificaciones,
         ];
     }
 }

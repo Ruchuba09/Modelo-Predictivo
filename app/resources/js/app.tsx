@@ -1,5 +1,5 @@
 import '../css/app.css';
-import './lib/api'; // configura axios para /api (cookies + CSRF)
+import './lib/api'; // configura Axios para la API v1 (sesión y CSRF)
 
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';

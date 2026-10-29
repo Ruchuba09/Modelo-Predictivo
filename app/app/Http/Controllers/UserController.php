@@ -33,7 +33,7 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'rut' => ['required', 'string', 'unique:usuarios.users,rut'],
+            'rut' => ['required', 'string', 'exists:personas,rut'],
             'email' => ['required', 'email', 'unique:usuarios.users,email'],
             'password' => ['required', 'confirmed', 'min:8'],
             'roles' => ['required', 'array', 'min:1'],
@@ -64,7 +64,7 @@ class UserController extends Controller
     public function update(Request $request, User $usuario)
     {
         $validated = $request->validate([
-            'rut' => ['required', 'string', 'unique:usuarios.users,rut,' . $usuario->id_user . ',id_user'],
+            'rut' => ['required', 'string', 'exists:personas,rut'],
             'email' => ['required', 'email', 'unique:usuarios.users,email,' . $usuario->id_user . ',id_user'],
             'password' => ['nullable', 'confirmed', 'min:8'],
             'roles' => ['required', 'array', 'min:1'],

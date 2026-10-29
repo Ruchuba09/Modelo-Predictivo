@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\DTOs\AsignacionDTO;
+use App\DataTransferObjects\AsignacionDTO;
 use App\Models\Asignacion;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;

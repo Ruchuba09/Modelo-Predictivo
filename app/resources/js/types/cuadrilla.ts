@@ -14,6 +14,10 @@ export interface Cuadrilla {
             persona?: Persona;
         };
     };
+    obreros?: Array<{
+        id_trabajador: number;
+        trabajador?: { persona?: Persona };
+    }>;
 }
 
 export interface CrearCuadrilla {

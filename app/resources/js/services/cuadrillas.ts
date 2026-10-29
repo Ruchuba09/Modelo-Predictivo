@@ -1,7 +1,8 @@
-// resources/js/services/cuadrillas.ts
+import axios from 'axios';
+import { api } from '@/lib/api';
 import type { Cuadrilla, CrearCuadrilla, SupervisorOpcion } from '@/types/cuadrilla';
 
-const BASE = '/api/cuadrillas';
+const BASE = '/cuadrillas';
 
 export class ApiError extends Error {
     status: number;
@@ -9,59 +10,38 @@ export class ApiError extends Error {
 
     constructor(message: string, status: number, errors?: Record<string, string[]>) {
         super(message);
+        this.name = 'ApiError';
         this.status = status;
         this.errors = errors;
     }
 }
 
-function xsrfToken(): string {
-    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : '';
-}
-
-async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
-    const res = await fetch(url, {
-        credentials: 'same-origin',
-        ...options,
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-XSRF-TOKEN': xsrfToken(),
-            ...(options.headers ?? {}),
-        },
-    });
-
-    if (res.status === 204) return null as T;
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-        throw new ApiError(
-            data?.message ?? 'Error inesperado',
-            res.status,
-            data?.errors
-        );
+async function request<T>(path: string, options: { method?: 'POST' | 'PUT' | 'DELETE'; data?: unknown } = {}): Promise<T> {
+    try {
+        const response = await api.request<T>({
+            url: path,
+            method: options.method ?? 'GET',
+            data: options.data,
+        });
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError<{ message?: string; errors?: Record<string, string[]> }>(error)) {
+            throw new ApiError(
+                error.response?.data?.message ?? error.message ?? 'Error inesperado',
+                error.response?.status ?? 0,
+                error.response?.data?.errors,
+            );
+        }
+        throw error;
     }
-
-    return data as T;
 }
 
 export const cuadrillasApi = {
     listar: () => request<Cuadrilla[]>(BASE),
-
     obtener: (id: number) => request<Cuadrilla>(`${BASE}/${id}`),
-
-    crear: (datos: CrearCuadrilla) =>
-        request<Cuadrilla>(BASE, { method: 'POST', body: JSON.stringify(datos) }),
-
+    crear: (datos: CrearCuadrilla) => request<Cuadrilla>(BASE, { method: 'POST', data: datos }),
     actualizar: (id: number, datos: Partial<CrearCuadrilla>) =>
-        request<Cuadrilla>(`${BASE}/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(datos),
-        }),
-
-    eliminar: (id: number) => request<null>(`${BASE}/${id}`, { method: 'DELETE' }),
-
+        request<Cuadrilla>(`${BASE}/${id}`, { method: 'PUT', data: datos }),
+    eliminar: (id: number) => request<void>(`${BASE}/${id}`, { method: 'DELETE' }),
     supervisores: () => request<SupervisorOpcion[]>(`${BASE}/supervisores`),
 };

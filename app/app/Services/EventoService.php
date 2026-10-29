@@ -315,7 +315,7 @@ class EventoService
     public function tomarReporte(Evento $evento): void
     {
         $supervisor = $this->supervisorAutenticado();
-        $cuadrilla = $evento->trabajador?->obrero?->cuadrilla;
+        $cuadrilla = $evento->trabajador?->cuadrillaActual();
 
         abort_if(
             ! $cuadrilla,
@@ -507,8 +507,8 @@ class EventoService
             }
         }
 
-        if ($trabajador->obrero && $trabajador->obrero->id_cuadrilla) {
-            $idCuadrilla = $trabajador->obrero->id_cuadrilla;
+        if ($cuadrilla = $trabajador->cuadrillaActual()) {
+            $idCuadrilla = $cuadrilla->id_cuadrilla;
 
             $ids = Asignacion::where(
                 'id_cuadrilla',
