@@ -85,11 +85,15 @@ class User extends Authenticatable
             ->all();
     }
 
-    public function tieneRol(string $nombreRol): bool
+    public function tieneRol(string ...$nombresRoles): bool
     {
-        return $this->rolesActivos()
-            ->where('roles.nombre', $nombreRol)
-            ->exists();
+        $userRoles = array_map('strtolower', $this->rolesArray());
+        foreach ($nombresRoles as $rol) {
+            if (in_array(strtolower($rol), $userRoles, true)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function tienePermiso(string $permiso): bool

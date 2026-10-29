@@ -143,8 +143,12 @@ class EventoEstadisticaController extends Controller
     private function preparar(Request $r): void
     {
         $r->validate([
+            'id_evento'        => 'nullable|string',
+            'id'               => 'nullable|string',
             'desde'            => 'nullable|date',
             'hasta'            => 'nullable|date',
+            'fecha_inicio'     => 'nullable|date',
+            'fecha_fin'        => 'nullable|date',
             'id_area'          => 'nullable|integer',
             'id_proyecto'      => 'nullable|integer',
             'id_tipo_evento'   => 'nullable|integer',
@@ -152,6 +156,7 @@ class EventoEstadisticaController extends Controller
             'id_administrador' => 'nullable|integer',
             'id_trabajador'    => 'nullable|integer',
             'estado'           => 'nullable|string',
+            'condicion'        => 'nullable|string',
             'severidad'        => 'nullable|string',
             'sla_dias'         => 'nullable|integer|min:1',
             'secciones'        => 'nullable|string',
@@ -162,13 +167,37 @@ class EventoEstadisticaController extends Controller
 
         $q = DB::table('eventos');
 
-        if ($r->filled('desde')) {
-            $q->where('fecha_creacion', '>=', Carbon::parse($r->input('desde'))->startOfDay());
+        if ($r->filled('id_evento') || $r->filled('id')) {
+            $id = trim((string) ($r->input('id_evento') ?? $r->input('id')));
+            $cleanId = preg_replace('/\D/', '', $id);
+            if ($cleanId !== '') {
+                $q->where('id_evento', (int) $cleanId);
+            }
         }
-        if ($r->filled('hasta')) {
-            $q->where('fecha_creacion', '<=', Carbon::parse($r->input('hasta'))->endOfDay());
+
+        $desde = $r->input('desde') ?? $r->input('fecha_inicio');
+        if ($desde) {
+            $q->where('fecha_creacion', '>=', Carbon::parse($desde)->startOfDay());
         }
-        foreach (['id_tipo_evento', 'id_area', 'id_proyecto', 'id_supervisor', 'id_administrador', 'estado', 'severidad'] as $col) {
+        $hasta = $r->input('hasta') ?? $r->input('fecha_fin');
+        if ($hasta) {
+            $q->where('fecha_creacion', '<=', Carbon::parse($hasta)->endOfDay());
+        }
+
+        $filtroEstado = strtolower(trim((string) ($r->input('estado') ?? $r->input('condicion'))));
+        if ($filtroEstado !== '') {
+            if (in_array($filtroEstado, ['abierto', 'abierta'])) {
+                $q->whereIn('estado', ['abierto', 'abierta', 'en_revision', 'proceso']);
+            } elseif (in_array($filtroEstado, ['cerrado', 'cerrada'])) {
+                $q->whereIn('estado', ['cerrado', 'cerrada']);
+            } elseif (is_numeric($filtroEstado)) {
+                $q->where('condicion', (int) $filtroEstado);
+            } else {
+                $q->where('estado', $filtroEstado);
+            }
+        }
+
+        foreach (['id_tipo_evento', 'id_area', 'id_proyecto', 'id_supervisor', 'id_administrador', 'severidad'] as $col) {
             if ($r->filled($col)) {
                 $q->where($col, $r->input($col));
             }
@@ -183,7 +212,7 @@ class EventoEstadisticaController extends Controller
             $e->creado      = Carbon::parse($e->fecha_creacion);
             $e->actualizado = Carbon::parse($e->fecha_actualizacion);
             $e->cierre_real = $e->fecha_cierre ? Carbon::parse($e->fecha_cierre) : null;
-            $e->cerrado     = $e->estado === 'cerrado';
+            $e->cerrado     = in_array(strtolower((string) $e->estado), ['cerrado', 'cerrada']);
 
             // Fecha de cierre "efectiva": si está cerrado pero no tiene fecha_cierre, usa la última actualización.
             $e->cierre = $e->cerrado ? ($e->cierre_real ?? $e->actualizado) : null;

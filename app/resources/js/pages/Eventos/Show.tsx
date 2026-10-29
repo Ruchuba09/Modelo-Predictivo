@@ -1,6 +1,7 @@
 import { Head, Link, usePage, useForm } from '@inertiajs/react';
 import { FormEvent, useRef, useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
+import { useAuth } from '@/hooks/use-auth';
 
 interface ArchivoEvidencia {
     nombre: string;
@@ -29,12 +30,24 @@ const ESTADO_STYLES: { [key: string]: string } = {
     cerrada: 'bg-gris-1/10 text-gris-1 border-gris-1/40',
 };
 
-interface Administrador {
+interface Persona {
+    rut?: string;
+    nombre_1?: string;
+    nombre_2?: string;
+    apellido_1?: string;
+    apellido_2?: string;
+    nombre?: string;
+    apellido?: string;
+}
+
+interface PersonaRel {
     id_trabajador: number;
     cargo?: string;
-    persona?: {
-        nombre?: string;
-        apellido?: string;
+    persona?: Persona;
+    trabajador?: {
+        id_trabajador: number;
+        cargo?: string;
+        persona?: Persona;
     };
 }
 
@@ -48,13 +61,47 @@ interface Evento {
     estado: string;
     fecha_creacion?: string;
     fecha_actualizacion?: string;
+    fecha_cierre?: string;
+    justificacion?: string;
+    evidencia_cierre?: string[] | null;
     tipoEvento?: { id_tipo_evento: number; nombre: string };
     proyecto?: { id_proyecto: number; nombre: string };
     area?: { id_area: number; nombre: string } | null;
-    administrador?: Administrador | null;
-    administrativo?: Administrador | null;
-    trabajador?: any;
-    supervisor?: any;
+    administrador?: PersonaRel | null;
+    administrativo?: PersonaRel | null;
+    trabajador?: PersonaRel | null;
+    supervisor?: PersonaRel | null;
+}
+
+function formatNombrePersona(p?: Persona | null): string {
+    if (!p) return '';
+    const n1 = p.nombre_1 ?? p.nombre ?? '';
+    const a1 = p.apellido_1 ?? p.apellido ?? '';
+    const a2 = p.apellido_2 ?? '';
+    return `${n1} ${a1} ${a2}`.trim();
+}
+
+function getNombreTrabajador(t: any): string {
+    if (!t) return '—';
+    const persona = t.persona ?? t.trabajador?.persona;
+    const nombre = formatNombrePersona(persona);
+    return nombre ? `${nombre}${t.cargo ? ` • ${t.cargo}` : ''}` : `Trabajador #${t.id_trabajador}`;
+}
+
+function getNombreSupervisor(s: any): string {
+    if (!s) return 'Sin asignar';
+    const persona = s.trabajador?.persona ?? s.persona;
+    const cargo = s.trabajador?.cargo ?? s.cargo;
+    const nombre = formatNombrePersona(persona);
+    return nombre ? `${nombre}${cargo ? ` • ${cargo}` : ''}` : `Supervisor #${s.id_trabajador}`;
+}
+
+function getNombreCerrador(adm: any): string {
+    if (!adm) return 'Sin cerrar';
+    const persona = adm.trabajador?.persona ?? adm.persona;
+    const cargo = adm.trabajador?.cargo ?? adm.cargo;
+    const nombre = formatNombrePersona(persona);
+    return nombre ? `${nombre}${cargo ? ` • ${cargo}` : ''}` : `Administrativo #${adm.id_trabajador}`;
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -69,6 +116,13 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default function Show() {
+    const usuario = useAuth();
+    const roles = usuario?.roles ?? [];
+    const esAdmin = roles.some((r) => r.toLowerCase() === 'administrador');
+    const esSupervisor = roles.some((r) => r.toLowerCase() === 'supervisor');
+    const esTrabajadorPuro = !esAdmin && !esSupervisor;
+    const rutaListado = esTrabajadorPuro ? route('eventos.mis-reportes') : route('eventos.index');
+
     const { evento } = usePage().props as unknown as { evento: Evento };
     const estadoStyle = ESTADO_STYLES[evento.estado] ?? ESTADO_STYLES['abierta'];
     
@@ -162,20 +216,15 @@ export default function Show() {
     const archivosSubidos = data.evidencia_cierre || [];
 
     return (
-        <MainLayout>
+        <MainLayout title={`Reporte #${evento.id_evento}`} subtitle="Detalle del reporte registrado">
             <Head title={`Reporte #${evento.id_evento} | AVA`} />
 
             <div className="max-w-[1100px] mx-auto p-6 lg:p-8">
-                {/* Header */}
-                <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gris-2 mb-1">Reporte #{evento.id_evento}</h1>
-                        <p className="text-gris-1 text-sm">Detalle del reporte registrado.</p>
-                    </div>
-
+                {/* Barra de Acciones */}
+                <div className="mb-6 flex items-center justify-start">
                     <Link
-                        href={route('eventos.index')}
-                        className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white text-verde-6 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-sm whitespace-nowrap self-start sm:self-auto"
+                        href={rutaListado}
+                        className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white dark:bg-[#1E242B] text-verde-6 dark:text-verde-5 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-sm whitespace-nowrap cursor-pointer"
                     >
                         ← Volver al listado
                     </Link>
@@ -358,15 +407,88 @@ export default function Show() {
                             )}
                         </div>
 
-                        {/* FORMULARIO PARA CERRAR EL REPORTE (Solo visible si no está cerrada) */}
-                        {!estaCerrada && (
-                            <div className="pt-8 border-t border-verde-3">
-                                <h3 className="text-lg font-bold text-gris-2 mb-4">Cerrar Reporte</h3>
-                                <p className="text-gris-1 text-sm mb-6">Proporciona los detalles y la evidencia de la resolución para dar por cerrado este reporte.</p>
+                        {/* RESOLUCIÓN O FORMULARIO DE CIERRE */}
+                        {estaCerrada ? (
+                            <div className="pt-8 border-t border-verde-3 dark:border-[#2A333E]">
+                                <div className="bg-verde-5/10 dark:bg-verde-5/5 border border-verde-5/30 rounded-2xl p-6 transition-colors">
+                                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-verde-3/60 dark:border-[#2A333E]">
+                                        <div className="flex items-center gap-2.5">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-verde-6 animate-pulse"></span>
+                                            <h3 className="text-base font-bold text-gris-2 dark:text-white">
+                                                Resolución y Cierre del Reporte
+                                            </h3>
+                                        </div>
+                                        <span className="text-xs uppercase tracking-wider font-bold bg-verde-5/20 text-verde-6 px-3 py-1 rounded-full border border-verde-5/40">
+                                            Evento Cerrado
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pb-4 border-b border-verde-3/60 dark:border-[#2A333E]">
+                                        <div>
+                                            <span className="text-[11px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold block mb-1">
+                                                Responsable del Cierre
+                                            </span>
+                                            <span className="text-sm font-bold text-gris-2 dark:text-gray-100">
+                                                {getNombreCerrador(evento.administrador ?? evento.administrativo)}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[11px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold block mb-1">
+                                                Fecha y Hora de Cierre
+                                            </span>
+                                            <span className="text-sm text-gris-2 dark:text-gray-100 font-medium">
+                                                {evento.fecha_cierre ? new Date(evento.fecha_cierre).toLocaleString('es-CL') : '—'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {evento.justificacion && (
+                                        <div className="mb-4">
+                                            <span className="text-[11px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold block mb-1.5">
+                                                Acción correctiva / Justificación registrada
+                                            </span>
+                                            <div className="p-3.5 rounded-xl bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] text-sm text-gris-2 dark:text-gray-100 whitespace-pre-wrap">
+                                                {evento.justificacion}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {evento.evidencia_cierre && evento.evidencia_cierre.length > 0 && (
+                                        <div>
+                                            <span className="text-[11px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold block mb-2">
+                                                Evidencias de cierre adjuntas ({evento.evidencia_cierre.length})
+                                            </span>
+                                            <div className="flex flex-wrap gap-2.5">
+                                                {evento.evidencia_cierre.map((ruta, idx) => {
+                                                    const nombre = ruta.split('/').pop() || `Archivo ${idx + 1}`;
+                                                    const url = `/eventos/archivo/${nombre}`;
+                                                    return (
+                                                        <a
+                                                            key={idx}
+                                                            href={url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-2 bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] px-3 py-1.5 rounded-lg text-xs font-semibold text-gris-2 dark:text-gray-100 hover:border-verde-5 transition-colors shadow-sm"
+                                                        >
+                                                            <span>📎</span>
+                                                            <span className="truncate max-w-[200px]">{nombre}</span>
+                                                            <span className="text-verde-6 text-[10px]">↗</span>
+                                                        </a>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : esAdmin ? (
+                            <div className="pt-8 border-t border-verde-3 dark:border-[#2A333E]">
+                                <h3 className="text-lg font-bold text-gris-2 dark:text-white mb-4">Cerrar Reporte</h3>
+                                <p className="text-gris-1 dark:text-gray-400 text-sm mb-6">Proporciona los detalles y la evidencia de la resolución para dar por cerrado este reporte.</p>
                                 
                                 <form onSubmit={handleCerrar} className="space-y-6">
                                     <div>
-                                        <label className="block text-[14px] uppercase tracking-wider text-gris-1 mb-2">
+                                        <label className="block text-[14px] uppercase tracking-wider text-gris-1 dark:text-gray-400 mb-2">
                                             Acción correctiva / Justificación
                                         </label>
                                         <textarea
@@ -376,18 +498,18 @@ export default function Show() {
                                             value={data.justificacion}
                                             onChange={e => setData('justificacion', e.target.value)}
                                             placeholder="Detalla qué acciones se tomaron para solucionar el problema..."
-                                            className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-3.5 text-sm text-gris-2 focus:outline-none focus:border-verde-5 resize-none transition-colors"
+                                            className="w-full bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-4 py-3.5 text-sm text-gris-2 dark:text-white focus:outline-none focus:border-verde-5 resize-none transition-colors"
                                         ></textarea>
                                         <div className="flex justify-between mt-1">
                                             <div>{(errors as any).justificacion && <p className="text-red-400 text-xs">{(errors as any).justificacion}</p>}</div>
-                                            <span className={`text-[11px] font-bold ${data.justificacion.length >= 500 ? 'text-rojo-1' : 'text-gris-1'}`}>
+                                            <span className={`text-[11px] font-bold ${data.justificacion.length >= 500 ? 'text-rojo-1' : 'text-gris-1 dark:text-gray-400'}`}>
                                                 {data.justificacion.length} / 500
                                             </span>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-[14px] uppercase tracking-wider text-gris-1 mb-2">
+                                        <label className="block text-[14px] uppercase tracking-wider text-gris-1 dark:text-gray-400 mb-2">
                                             Evidencia de Cierre (Máx 3. archivos)
                                         </label>
                                         
@@ -399,7 +521,7 @@ export default function Show() {
                                                     ref={fileInputRef}
                                                     accept="image/*,.pdf,.doc,.docx"
                                                     onChange={handleFileChange}
-                                                    className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-sm text-gris-2 focus:outline-none focus:border-verde-5 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-verde-5/10 file:text-verde-6 hover:file:bg-verde-5/20 cursor-pointer transition-colors"
+                                                    className="w-full bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-4 py-2.5 text-sm text-gris-2 dark:text-white focus:outline-none focus:border-verde-5 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-verde-5/10 file:text-verde-6 hover:file:bg-verde-5/20 cursor-pointer transition-colors"
                                                 />
                                             </>
                                         )}
@@ -407,7 +529,7 @@ export default function Show() {
                                         {archivosSubidos.length > 0 && (
                                             <div className="flex flex-col gap-2 mt-3">
                                                 {archivosSubidos.map((file, index) => (
-                                                    <div key={index} className="flex items-center justify-between gap-3 bg-verde-1 border border-verde-5/50 p-2 pr-4 rounded-lg w-full">
+                                                    <div key={index} className="flex items-center justify-between gap-3 bg-verde-1 dark:bg-[#151A1F] border border-verde-5/50 p-2 pr-4 rounded-lg w-full">
                                                         <div className="flex items-center gap-3 overflow-hidden">
                                                             <span className="text-xl shrink-0">📎</span>
                                                             <span className="text-sm text-verde-6 font-medium truncate">
@@ -417,7 +539,7 @@ export default function Show() {
                                                         <button 
                                                             type="button" 
                                                             onClick={() => removerArchivo(index)}
-                                                            className="text-rojo-1 text-lg font-black px-2 hover:scale-110 transition-transform shrink-0"
+                                                            className="text-rojo-1 text-lg font-black px-2 hover:scale-110 transition-transform shrink-0 cursor-pointer"
                                                             title="Quitar archivo"
                                                         >
                                                             ✕
@@ -433,57 +555,95 @@ export default function Show() {
                                         <button
                                             type="submit"
                                             disabled={processing}
-                                            className="px-6 py-3 rounded-lg text-sm font-bold bg-verde-5 hover:bg-verde-6 text-black transition-colors shadow-lg shadow-verde-5/20 disabled:opacity-50"
+                                            className="px-6 py-3 rounded-lg text-sm font-bold bg-verde-5 hover:bg-verde-6 text-black transition-colors shadow-lg shadow-verde-5/20 disabled:opacity-50 cursor-pointer"
                                         >
                                             {processing ? 'Cerrando...' : 'Cerrar reporte'}
                                         </button>
                                     </div>
                                 </form>
                             </div>
+                        ) : (
+                            <div className="pt-8 border-t border-verde-3 dark:border-[#2A333E]">
+                                <div className="bg-amarillo-1/10 border border-amarillo-1/30 rounded-2xl p-5 flex items-start gap-4">
+                                    <span className="text-2xl">⏳</span>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gris-2 dark:text-white mb-1">
+                                            Reporte en seguimiento
+                                        </h4>
+                                        <p className="text-xs text-gris-1 dark:text-gray-400">
+                                            Este reporte se encuentra en estado <span className="font-bold uppercase text-amarillo-1">{evento.estado.replace('_', ' ')}</span> y está pendiente de resolución final por el equipo administrativo.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         )}
                     </div>
 
-                    {/* Columna lateral: personas involucradas */}
-                    <div className="bg-white border border-verde-3 rounded-2xl p-6 shadow-xl h-fit">
-                        <h3 className="text-sm font-bold text-gris-2 uppercase tracking-wider mb-5">
-                            Personas involucradas
+                    {/* Columna lateral: personas involucradas y trazabilidad */}
+                    <div className="bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-2xl p-6 shadow-xl h-fit transition-colors">
+                        <h3 className="text-sm font-bold text-gris-2 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2">
+                            Información del reporte
                         </h3>
 
                         <div className="flex flex-col gap-4">
-                            <div className="p-3 rounded-lg border border-verde-3/50 bg-verde-1">
-                                <div className="text-[12px] uppercase tracking-wider text-gris-1 mb-1">
-                                    Reportado por
+                            {/* 1. Reportado por */}
+                            <div className="p-3.5 rounded-xl border border-verde-3/60 dark:border-[#2A333E] bg-verde-1/50 dark:bg-[#151A1F] transition-colors">
+                                <div className="text-[11px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold mb-1 flex items-center justify-between">
+                                    <span>Reportado por</span>
+                                    <span className="text-[10px] text-verde-6 font-bold bg-verde-5/10 px-2 py-0.5 rounded">Trabajador</span>
                                 </div>
-                                <div className="text-sm text-gris-2">
-                                    {evento.trabajador
-                                        ? `${evento.trabajador.nombre_1 ?? evento.trabajador.persona?.nombre ?? ''} ${evento.trabajador.apellido_1 ?? evento.trabajador.persona?.apellido ?? ''}`.trim() ||
-                                          `Trabajador #${evento.trabajador.id_trabajador}`
-                                        : '—'}
+                                <div className="text-sm font-bold text-gris-2 dark:text-gray-100">
+                                    {getNombreTrabajador(evento.trabajador)}
                                 </div>
+                                {evento.trabajador?.persona?.rut && (
+                                    <div className="text-[11px] text-gris-1 dark:text-gray-400 mt-0.5">
+                                        RUT: {evento.trabajador.persona.rut}
+                                    </div>
+                                )}
+                                {evento.fecha_creacion && (
+                                    <div className="text-[11px] text-gris-1 dark:text-gray-400 mt-1">
+                                        Fecha: {new Date(evento.fecha_creacion).toLocaleString('es-CL')}
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="p-3 rounded-lg border border-verde-3/50 bg-verde-1">
-                                <div className="text-[12px] uppercase tracking-wider text-gris-1 mb-1">
-                                    Supervisor asignado
+                            {/* 2. Supervisor asignado */}
+                            <div className="p-3.5 rounded-xl border border-verde-3/60 dark:border-[#2A333E] bg-verde-1/50 dark:bg-[#151A1F] transition-colors">
+                                <div className="text-[11px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold mb-1 flex items-center justify-between">
+                                    <span>Supervisor asignado</span>
+                                    <span className="text-[10px] text-amarillo-1 font-bold bg-amarillo-1/10 px-2 py-0.5 rounded">Supervisión</span>
                                 </div>
-                                <div className="text-sm text-gris-2">
-                                    {evento.supervisor
-                                        ? `${evento.supervisor.persona?.nombre ?? ''} ${evento.supervisor.persona?.apellido ?? ''}`.trim() ||
-                                          `Supervisor #${evento.supervisor.id_trabajador}`
-                                        : 'Sin asignar'}
+                                <div className="text-sm font-bold text-gris-2 dark:text-gray-100">
+                                    {getNombreSupervisor(evento.supervisor)}
                                 </div>
+                                {(evento.supervisor?.trabajador?.persona?.rut || evento.supervisor?.persona?.rut) && (
+                                    <div className="text-[11px] text-gris-1 dark:text-gray-400 mt-0.5">
+                                        RUT: {evento.supervisor?.trabajador?.persona?.rut ?? evento.supervisor?.persona?.rut}
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="p-3 rounded-lg border border-verde-3/50 bg-verde-1">
-                                <div className="text-[12px] uppercase tracking-wider text-gris-1 mb-1">
-                                    Cerrada por
+                            {/* 3. Cerrada por */}
+                            <div className="p-3.5 rounded-xl border border-verde-3/60 dark:border-[#2A333E] bg-verde-1/50 dark:bg-[#151A1F] transition-colors">
+                                <div className="text-[11px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold mb-1 flex items-center justify-between">
+                                    <span>Cerrado por</span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${estaCerrada ? 'bg-verde-5/20 text-verde-6' : 'bg-gris-1/10 text-gris-1 dark:text-gray-400'}`}>
+                                        {estaCerrada ? 'Cierre SGI' : 'Pendiente'}
+                                    </span>
                                 </div>
-                                <div className="text-sm text-gris-2">
-                                    {evento.administrativo
-                                        ? `${evento.administrativo.persona?.nombre ?? ''} ${evento.administrativo.persona?.apellido ?? ''}`.trim() ||
-                                          `Administrativo #${evento.administrativo.id_trabajador}`
-                                        : 'Sin cerrar'}
+                                <div className="text-sm font-bold text-gris-2 dark:text-gray-100">
+                                    {getNombreCerrador(evento.administrador ?? evento.administrativo)}
                                 </div>
+                                {(evento.administrador?.trabajador?.persona?.rut || evento.administrativo?.trabajador?.persona?.rut) && (
+                                    <div className="text-[11px] text-gris-1 dark:text-gray-400 mt-0.5">
+                                        RUT: {evento.administrador?.trabajador?.persona?.rut ?? evento.administrativo?.trabajador?.persona?.rut}
+                                    </div>
+                                )}
+                                {evento.fecha_cierre && (
+                                    <div className="text-[11px] text-gris-1 dark:text-gray-400 mt-1">
+                                        Cerrado el {new Date(evento.fecha_cierre).toLocaleString('es-CL')}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

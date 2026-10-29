@@ -1,6 +1,5 @@
-// @ts-nocheck
 import { useEffect, useRef, useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import MainLayout from '@/layouts/MainLayout';
 import {
   ResponsiveContainer, BarChart, Bar, ComposedChart, Line, XAxis, YAxis,
@@ -22,11 +21,17 @@ const COLOR = {
   neutro: '#7A7F85',        // gris-1
 };
 
-const PREFIJO = {
+const PREFIJO: Record<string, string> = {
   area: 'Área', tipo: 'Tipo', proyecto: 'Proyecto', supervisor: 'Supervisor',
   administrador: 'Admin', trabajador: 'Trabajador', condicion: 'Condición',
 };
-const etiqueta = (dim, clave) => (PREFIJO[dim] ? `${PREFIJO[dim]} ${clave}` : clave);
+const proyectosMap: Record<string, string> = {};
+const etiqueta = (dim: string, clave: any) => {
+  if (dim === 'proyecto' && proyectosMap[String(clave)]) {
+    return proyectosMap[String(clave)];
+  }
+  return PREFIJO[dim] ? `${PREFIJO[dim]} ${clave}` : clave;
+};
 
 const nf = (n) => (n == null ? '—' : n);
 const pct = (n) => (n == null ? '—' : `${n}%`);
@@ -34,26 +39,31 @@ const dias = (n) => (n == null ? '—' : `${n} d`);
 
 /* ------------------------------ hook de datos ------------------------------ */
 
-function useStats(filtros) {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+function useStats(filtros: Record<string, any>) {
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    const ctrl = new AbortController();
-    const qs = new URLSearchParams(
-      Object.entries(filtros).filter(([, v]) => v !== '' && v != null),
-    );
-    setCargando(true);
-    fetch(`${API}?${qs}`, { signal: ctrl.signal, headers: HEADERS, credentials: 'same-origin' })
-      .then((r) => {
-        if (!r.ok) throw new Error(`El servidor respondió ${r.status}`);
-        return r.json();
-      })
-      .then((d) => { setData(d); setError(null); })
-      .catch((e) => { if (e.name !== 'AbortError') setError(e.message); })
-      .finally(() => { if (!ctrl.signal.aborted) setCargando(false); });
-    return () => ctrl.abort();
+    const timer = setTimeout(() => {
+      const ctrl = new AbortController();
+      const qs = new URLSearchParams(
+        Object.entries(filtros).filter(([, v]) => v !== '' && v != null) as [string, string][],
+      );
+      setCargando(true);
+      fetch(`${API}?${qs}`, { signal: ctrl.signal, headers: HEADERS, credentials: 'same-origin' })
+        .then((r) => {
+          if (!r.ok) throw new Error(`El servidor respondió ${r.status}`);
+          return r.json();
+        })
+        .then((d) => { setData(d); setError(null); })
+        .catch((e) => { if (e.name !== 'AbortError') setError(e.message); })
+        .finally(() => { if (!ctrl.signal.aborted) setCargando(false); });
+
+      return () => ctrl.abort();
+    }, 250);
+
+    return () => clearTimeout(timer);
   }, [JSON.stringify(filtros)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { data, error, cargando };
@@ -64,19 +74,19 @@ function useStats(filtros) {
 function Kpi({ valor, label, color, nota }) {
   return (
     <div
-      className="bg-white border border-verde-3 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden"
+      className="bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all relative overflow-hidden"
       style={color ? { borderLeft: `5px solid ${color}` } : { borderLeft: '5px solid #2D3238' }}
     >
       <div>
-        <span className="text-2xl sm:text-3xl font-black text-gris-2 tracking-tight block">
+        <span className="text-2xl sm:text-3xl font-black text-gris-2 dark:text-white tracking-tight block">
           {valor}
         </span>
-        <span className="text-[11px] uppercase tracking-wider text-gris-1 font-bold mt-1 block">
+        <span className="text-[11px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold mt-1 block">
           {label}
         </span>
       </div>
       {nota && (
-        <span className="text-[11px] text-gris-1 font-medium mt-2 pt-1.5 border-t border-verde-3/40 block">
+        <span className="text-[11px] text-gris-1 dark:text-gray-400 font-medium mt-2 pt-1.5 border-t border-verde-3/40 dark:border-[#2A333E]/60 block">
           {nota}
         </span>
       )}
@@ -86,9 +96,9 @@ function Kpi({ valor, label, color, nota }) {
 
 function Panel({ titulo, children, ancho }) {
   return (
-    <section className={`bg-white border border-verde-3 rounded-2xl p-5 sm:p-6 shadow-sm mb-6 ${ancho === 'completo' ? 'w-full' : ''}`}>
+    <section className={`bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-2xl p-5 sm:p-6 shadow-sm mb-6 transition-colors ${ancho === 'completo' ? 'w-full' : ''}`}>
       {titulo && (
-        <h3 className="text-base sm:text-lg font-bold text-gris-2 mb-4 pb-2 border-b border-verde-3/40 flex items-center justify-between">
+        <h3 className="text-base sm:text-lg font-bold text-gris-2 dark:text-white mb-4 pb-2 border-b border-verde-3/40 dark:border-[#2A333E]/60 flex items-center justify-between">
           <span>{titulo}</span>
         </h3>
       )}
@@ -645,100 +655,198 @@ const TABS = [
 
 /* ------------------------------ página principal ------------------------------ */
 
-export default function EventosEstadisticas() {
+export default function EventosEstadisticas({
+  proyectos = [],
+  filtrosIniciales = {},
+}: {
+  proyectos?: Array<{ id_proyecto: number; nombre: string }>;
+  filtrosIniciales?: Record<string, any>;
+}) {
+  const pageProps = (usePage()?.props as any) || {};
+  const listaProyectos: Array<{ id_proyecto: number; nombre: string }> =
+    proyectos && proyectos.length > 0 ? proyectos : (pageProps.proyectos || []);
+  const initial = { ...(pageProps.filtrosIniciales || {}), ...(filtrosIniciales || {}) };
+
+  // Mapear nombres de proyectos para las gráficas y tablas
+  if (listaProyectos && listaProyectos.length > 0) {
+    listaProyectos.forEach((p) => {
+      proyectosMap[String(p.id_proyecto)] = p.nombre;
+    });
+  }
+
+  const getParam = (key: string, altKey?: string) => {
+    if (initial[key] != null && initial[key] !== '') return String(initial[key]);
+    if (altKey && initial[altKey] != null && initial[altKey] !== '') return String(initial[altKey]);
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const val = sp.get(key) ?? (altKey ? sp.get(altKey) : null);
+      if (val != null && val !== '') return val;
+    }
+    return '';
+  };
+
   const [tab, setTab] = useState('resumen');
-  const [filtros, setFiltros] = useState({ desde: '', hasta: '', id_area: '', id_proyecto: '', id_tipo_evento: '' });
+  const [filtros, setFiltros] = useState(() => ({
+    id_evento: getParam('id_evento', 'id'),
+    id_proyecto: getParam('id_proyecto'),
+    estado: getParam('estado', 'condicion'),
+    desde: getParam('desde', 'fecha_inicio'),
+    hasta: getParam('hasta', 'fecha_fin'),
+    id_area: getParam('id_area'),
+    id_tipo_evento: getParam('id_tipo_evento'),
+  }));
   const { data, error, cargando } = useStats(filtros);
 
   // Opciones de los filtros obtenidas en la primera carga
-  const opciones = useRef(null);
+  const opciones = useRef<any>(null);
   if (data && !opciones.current) {
     opciones.current = {
-      areas: (data.distribuciones?.area || []).map((x) => x.clave).sort((a, b) => a - b),
-      proyectos: (data.distribuciones?.proyecto || []).map((x) => x.clave).sort((a, b) => a - b),
-      tipos: (data.distribuciones?.tipo || []).map((x) => x.clave).sort((a, b) => a - b),
+      areas: (data.distribuciones?.area || []).map((x: any) => x.clave).sort((a: any, b: any) => a - b),
+      proyectos: (data.distribuciones?.proyecto || []).map((x: any) => x.clave).sort((a: any, b: any) => a - b),
+      tipos: (data.distribuciones?.tipo || []).map((x: any) => x.clave).sort((a: any, b: any) => a - b),
     };
   }
 
-  const set = (k) => (e) => setFiltros((f) => ({ ...f, [k]: e.target.value }));
-  const Activa = TABS.find(([k]) => k === tab)[2];
+  const set = (k: string) => (e: any) => setFiltros((f) => ({ ...f, [k]: e.target.value }));
+  const limpiarFiltros = () => {
+    setFiltros({
+      id_evento: '',
+      id_proyecto: '',
+      estado: '',
+      desde: '',
+      hasta: '',
+      id_area: '',
+      id_tipo_evento: '',
+    });
+  };
+
+  const Activa = TABS.find(([k]) => k === tab)?.[2] || Resumen;
   const op = opciones.current;
   const tieneFiltros = Object.values(filtros).some((v) => v !== '');
 
+  const listadoUrl = () => {
+    const params = new URLSearchParams();
+    if (filtros.id_evento) params.set('id_evento', filtros.id_evento);
+    if (filtros.id_proyecto) params.set('id_proyecto', filtros.id_proyecto);
+    if (filtros.estado) params.set('estado', filtros.estado);
+    if (filtros.desde) params.set('fecha_inicio', filtros.desde);
+    if (filtros.hasta) params.set('fecha_fin', filtros.hasta);
+    const qs = params.toString();
+    return qs ? `/eventos?${qs}` : '/eventos';
+  };
+
   return (
-    <MainLayout>
+    <MainLayout
+      title="Estadísticas"
+      subtitle={data ? `${data.meta.total_eventos} reportes analizados • Métricas predictivas` : 'Métricas predictivas y análisis de seguridad'}
+    >
       <Head title="Estadísticas de Reportes | AVA" />
 
       <div className="max-w-[1700px] mx-auto p-6 lg:p-8 flex flex-col h-full min-h-[calc(100vh-80px)]">
-        {/* Cabecera y Filtros */}
-        <div className="mb-6 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 shrink-0">
-          <div>
-            <h1 className="text-3xl font-bold text-gris-2 mb-1">Estadísticas de Reportes</h1>
-            <p className="text-gris-1 text-sm">
-              {data ? `${data.meta.total_eventos} reportes analizados` : 'Cargando estadísticas...'}
-            </p>
-          </div>
-
-          {/* Barra de Filtros */}
+        {/* Barra de Filtros Espaciosa */}
+        <div className="mb-6 bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-xl p-3.5 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 transition-colors">
           <form
-            className="w-full 2xl:w-auto bg-white border border-verde-3 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-wrap items-end gap-3"
+            className="flex flex-wrap items-end gap-3 flex-1"
             onSubmit={(e) => e.preventDefault()}
           >
+            {/* 1. N° Reporte / ID */}
             <div className="flex flex-col">
-              <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-1">Desde</label>
+              <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">
+                N° Reporte (ID)
+              </label>
+              <input
+                type="text"
+                value={filtros.id_evento}
+                onChange={set('id_evento')}
+                placeholder="Ej: 15"
+                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 min-w-[100px] w-28 transition-colors"
+              />
+            </div>
+
+            {/* 2. Proyecto */}
+            <div className="flex flex-col">
+              <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">
+                Proyecto
+              </label>
+              <select
+                value={filtros.id_proyecto}
+                onChange={set('id_proyecto')}
+                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[140px] transition-colors"
+              >
+                <option value="">Todos</option>
+                {listaProyectos && listaProyectos.length > 0 ? (
+                  listaProyectos.map((p) => (
+                    <option key={p.id_proyecto} value={p.id_proyecto}>
+                      {p.nombre}
+                    </option>
+                  ))
+                ) : op?.proyectos ? (
+                  op.proyectos.map((a: any) => <option key={a} value={a}>Proyecto {a}</option>)
+                ) : null}
+              </select>
+            </div>
+
+            {/* 3. Condición */}
+            <div className="flex flex-col">
+              <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">
+                Condición
+              </label>
+              <select
+                value={filtros.estado}
+                onChange={set('estado')}
+                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[110px] transition-colors"
+              >
+                <option value="">Todas</option>
+                <option value="abierto">Abierto</option>
+                <option value="cerrado">Cerrado</option>
+              </select>
+            </div>
+
+            {/* 4. Desde */}
+            <div className="flex flex-col">
+              <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Desde</label>
               <input
                 type="date"
                 value={filtros.desde}
                 onChange={set('desde')}
-                className="bg-verde-1 border border-verde-3 rounded-lg px-2.5 py-1.5 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer"
+                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer transition-colors"
               />
             </div>
 
+            {/* 5. Hasta */}
             <div className="flex flex-col">
-              <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-1">Hasta</label>
+              <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Hasta</label>
               <input
                 type="date"
                 value={filtros.hasta}
                 onChange={set('hasta')}
-                className="bg-verde-1 border border-verde-3 rounded-lg px-2.5 py-1.5 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer"
+                className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer transition-colors"
               />
             </div>
 
             {op && (
               <>
                 <div className="flex flex-col">
-                  <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-1">Área</label>
+                  <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Área</label>
                   <select
                     value={filtros.id_area}
                     onChange={set('id_area')}
-                    className="bg-verde-1 border border-verde-3 rounded-lg px-2.5 py-1.5 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[110px]"
+                    className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[110px] transition-colors"
                   >
                     <option value="">Todas</option>
-                    {op.areas.map((a) => <option key={a} value={a}>Área {a}</option>)}
+                    {op.areas.map((a: any) => <option key={a} value={a}>Área {a}</option>)}
                   </select>
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-1">Proyecto</label>
-                  <select
-                    value={filtros.id_proyecto}
-                    onChange={set('id_proyecto')}
-                    className="bg-verde-1 border border-verde-3 rounded-lg px-2.5 py-1.5 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[120px]"
-                  >
-                    <option value="">Todos</option>
-                    {op.proyectos.map((a) => <option key={a} value={a}>Proyecto {a}</option>)}
-                  </select>
-                </div>
-
-                <div className="flex flex-col">
-                  <label className="text-[10px] uppercase text-gris-1 font-bold tracking-wider mb-1">Tipo</label>
+                  <label className="text-[10px] uppercase text-gris-1 dark:text-gray-400 font-bold tracking-wider mb-1">Tipo</label>
                   <select
                     value={filtros.id_tipo_evento}
                     onChange={set('id_tipo_evento')}
-                    className="bg-verde-1 border border-verde-3 rounded-lg px-2.5 py-1.5 text-xs text-gris-2 font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[110px]"
+                    className="bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-2.5 py-1.5 text-xs text-gris-2 dark:text-white font-medium focus:outline-none focus:border-verde-5 cursor-pointer min-w-[110px] transition-colors"
                   >
                     <option value="">Todos</option>
-                    {op.tipos.map((a) => <option key={a} value={a}>Tipo {a}</option>)}
+                    {op.tipos.map((a: any) => <option key={a} value={a}>Tipo {a}</option>)}
                   </select>
                 </div>
               </>
@@ -747,7 +855,7 @@ export default function EventosEstadisticas() {
             {tieneFiltros && (
               <button
                 type="button"
-                onClick={() => setFiltros({ desde: '', hasta: '', id_area: '', id_proyecto: '', id_tipo_evento: '' })}
+                onClick={limpiarFiltros}
                 className="px-3 py-1.5 text-rojo-1 bg-rojo-1/10 hover:bg-rojo-1 hover:text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 self-end"
                 title="Quitar filtros"
               >
@@ -758,10 +866,29 @@ export default function EventosEstadisticas() {
               </button>
             )}
           </form>
+
+          <div className="flex items-center gap-3 self-start xl:self-center shrink-0">
+            <Link
+              href={listadoUrl()}
+              className="bg-white dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] text-gris-2 dark:text-gray-200 hover:bg-verde-2 dark:hover:bg-[#252E38] transition-all px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm"
+              title="Volver al listado con los filtros actuales"
+            >
+              <svg className="w-4 h-4 text-gris-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              <span>Volver al listado</span>
+            </Link>
+
+            {data && (
+              <div className="bg-verde-2/60 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-xl px-4 py-2 text-xs font-bold text-gris-2 dark:text-gray-200">
+                <span className="text-verde-6 dark:text-verde-5 font-black text-sm">{data.meta.total_eventos}</span> reportes analizados
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Pestañas de Navegación AVA */}
-        <nav className="flex flex-wrap gap-2 mb-6 border-b border-verde-3 pb-3 shrink-0" aria-label="Secciones de Estadísticas">
+        <nav className="flex flex-wrap gap-2 mb-6 border-b border-verde-3 dark:border-[#2A333E] pb-3 shrink-0" aria-label="Secciones de Estadísticas">
           {TABS.map(([k, n]) => {
             const activo = tab === k;
             return (
@@ -772,7 +899,7 @@ export default function EventosEstadisticas() {
                 className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                   activo
                     ? 'bg-verde-5 text-black shadow-sm font-extrabold'
-                    : 'bg-white border border-verde-3 text-gris-1 hover:text-gris-2 hover:bg-verde-2'
+                    : 'bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] text-gris-1 dark:text-gray-300 hover:text-gris-2 hover:bg-verde-2 dark:hover:bg-[#252E38]'
                 }`}
               >
                 {n}

@@ -193,13 +193,6 @@ export default function Create() {
             <Head title="Ingreso de Reporte | AVA" />
 
             <div className="max-w-[1400px] mx-auto p-4 lg:p-6 lg:mt-0">
-                <div className="mb-4">
-                    <h1 className="text-2xl font-bold text-gris-2 mb-1">Ingreso de Reporte</h1>
-                    <p className="text-gris-1 text-sm">
-                        Registra un evento detallando la condición y la descripción.
-                    </p>
-                </div>
-
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 bg-white border border-verde-3 rounded-xl p-6 shadow-2xl h-full flex flex-col justify-between">
                         <form onSubmit={handleSubmit} className="space-y-4">

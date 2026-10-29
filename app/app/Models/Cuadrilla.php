@@ -9,12 +9,6 @@ class Cuadrilla extends Model
 {
     protected $table = 'cuadrillas';
     protected $primaryKey = 'id_cuadrilla';
-    public $timestamps = false;
-
-    protected $fillable = [
-        'id_supervisor',
-        'numero_cuadrilla',
-    ];
 
     public function supervisor()
     {

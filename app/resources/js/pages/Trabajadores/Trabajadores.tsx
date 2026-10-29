@@ -49,28 +49,22 @@ const Trabajadores: React.FC<TrabajadoresProps> = ({ trabajadores = [] }) => {
             <Head title="Trabajadores | AVA" />
 
             <div className="max-w-[1700px] mx-auto p-6 lg:p-8 flex flex-col h-full min-h-[calc(100vh-80px)]">
-                {/* Cabecera */}
-                <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gris-2 mb-1">Trabajadores</h1>
-                        <p className="text-gris-1 text-sm">Listado y administración del personal de la empresa.</p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3">
-                        {/* Tarjeta de métricas */}
-                        <div className="bg-white border border-verde-3 rounded-2xl px-5 py-2.5 shadow-sm flex items-center gap-4">
+                {/* Métricas y Acciones */}
+                <div className="mb-6 flex flex-wrap items-center justify-end gap-3 shrink-0">
+                    {/* Tarjeta de métricas */}
+                    <div className="bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] rounded-2xl px-5 py-2.5 shadow-sm flex items-center gap-4 transition-colors">
                             <div>
-                                <p className="text-[10px] uppercase tracking-wider text-gris-1 font-bold">Total</p>
-                                <p className="text-2xl font-black text-gris-2">{trabajadores.length}</p>
+                                <p className="text-[10px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">Total</p>
+                                <p className="text-2xl font-black text-gris-2 dark:text-white">{trabajadores.length}</p>
                             </div>
-                            <div className="h-8 w-px bg-verde-3/80" />
+                            <div className="h-8 w-px bg-verde-3/80 dark:bg-[#2A333E]" />
                             <div>
-                                <p className="text-[10px] uppercase tracking-wider text-gris-1 font-bold">Obreros</p>
+                                <p className="text-[10px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">Obreros</p>
                                 <p className="text-lg font-bold text-verde-6">{totalObreros}</p>
                             </div>
-                            <div className="h-8 w-px bg-verde-3/80" />
+                            <div className="h-8 w-px bg-verde-3/80 dark:bg-[#2A333E]" />
                             <div>
-                                <p className="text-[10px] uppercase tracking-wider text-gris-1 font-bold">Supervisores</p>
+                                <p className="text-[10px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">Supervisores</p>
                                 <p className="text-lg font-bold text-amarillo-1">{totalSupervisores}</p>
                             </div>
                         </div>
@@ -86,7 +80,6 @@ const Trabajadores: React.FC<TrabajadoresProps> = ({ trabajadores = [] }) => {
                             Nuevo trabajador
                         </Link>
                     </div>
-                </div>
 
                 {/* Barra de búsqueda y filtros */}
                 <div className="mb-5 bg-white border border-verde-3 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
