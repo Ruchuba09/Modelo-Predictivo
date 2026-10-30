@@ -41,6 +41,7 @@ type RespuestaPredicciones = {
         entidades: Record<string, unknown>;
     } | null;
     analisis_global?: { cuadrillas: Array<Record<string, unknown>>; proximo_evento?: EventoEstimado | null };
+    diagnostico?: { base_datos: string; esquema: string; cuadrillas_registradas: number; cuadrillas_predichas: number };
 };
 type PageProps = { proyectos: Proyecto[]; [key: string]: unknown };
 
@@ -380,9 +381,14 @@ export default function Index() {
                 {generada && <section className="bg-white border border-verde-3 rounded-2xl shadow-sm overflow-hidden">
                     <div className="px-6 py-5 border-b border-verde-3">
                         <h2 className="text-lg font-bold text-gris-2">Probabilidad por cuadrilla</h2>
-                        <p className="mt-1 text-xs text-gris-1">{idProyecto === 'todos' ? 'Cuadrillas activas de todos los proyectos' : `Cuadrillas activas del proyecto ${proyectosPorId.get(Number(idProyecto)) ?? `#${idProyecto}`}`} · ranking de mayor a menor riesgo.</p>
+                        <p className="mt-1 text-xs text-gris-1">{idProyecto === 'todos' ? 'Todas las cuadrillas registradas; se indica cuáles no tienen proyecto activo.' : `Cuadrillas asignadas al proyecto ${proyectosPorId.get(Number(idProyecto)) ?? `#${idProyecto}`}`} · ranking de mayor a menor riesgo.</p>
                     </div>
-                    {cuadrillasGlobales.length === 0 ? <p className="p-6 text-sm text-gris-1">No hay cuadrillas activas asignadas a proyectos para mostrar.</p> : <>
+                    {cuadrillasGlobales.length === 0 ? <div className="p-6 text-sm text-gris-1">
+                        {idProyecto === 'todos' ? <>
+                            <p>No se recibieron predicciones de cuadrillas. El servicio Python ve {metadatos?.diagnostico?.cuadrillas_registradas ?? 'un número desconocido'} cuadrillas en <strong>{metadatos?.diagnostico?.base_datos ?? 'una base no identificada'}</strong> (esquema {metadatos?.diagnostico?.esquema ?? 'desconocido'}).</p>
+                            {metadatos?.diagnostico && metadatos.diagnostico.cuadrillas_registradas > 0 && <p className="mt-2">La base sí tiene cuadrillas, pero el servicio predictivo no las incluyó. Reconstruye/recrea el contenedor <code>predictive-model</code> para cargar la consulta actual.</p>}
+                        </> : 'Este proyecto no tiene cuadrillas asignadas activamente.'}
+                    </div> : <>
                         <div className="h-72 px-4 pt-4" aria-label="Gráfico de probabilidades por cuadrilla">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={cuadrillasGlobales.slice(0, 20).map((item) => ({ nombre: `${String(item.proyecto)} · ${String(item.cuadrilla)}`, probabilidad: Number(item.prob_evento ?? 0) }))} margin={{ top: 12, right: 18, left: 0, bottom: 55 }}>
@@ -397,13 +403,45 @@ export default function Index() {
                         <div className="overflow-x-auto px-6 pb-6">
                             <table className="w-full min-w-[720px] text-left text-sm">
                                 <thead className="bg-verde-1 text-[11px] uppercase tracking-wider text-gris-1"><tr>
-                                    <th className="px-3 py-2">Proyecto</th><th className="px-3 py-2">Cuadrilla</th><th className="px-3 py-2">Probabilidad</th><th className="px-3 py-2">Integrantes</th><th className="px-3 py-2">Eventos históricos</th><th className="px-3 py-2">Detalle</th>
+                                    <th className="px-3 py-2">Proyecto</th><th className="px-3 py-2">Cuadrilla</th><th className="px-3 py-2">Estado</th><th className="px-3 py-2">Probabilidad</th><th className="px-3 py-2">Integrantes</th><th className="px-3 py-2">Eventos históricos</th><th className="px-3 py-2">Detalle</th>
                                 </tr></thead>
                                 <tbody className="divide-y divide-verde-3/70">{cuadrillasGlobales.map((item, index) => <tr key={`${item.id_proyecto}-${item.id_cuadrilla}-${index}`}>
                                     <td className="px-3 py-3">{String(item.proyecto)}</td><td className="px-3 py-3 font-semibold">{String(item.cuadrilla)}</td>
+                                    <td className="px-3 py-3">{item.estado_asignacion === 'activa' ? 'Proyecto activo' : 'Sin proyecto activo'}</td>
                                     <td className="px-3 py-3 font-black text-verde-6">{Math.round(Number(item.prob_evento ?? 0) * 100)}%</td>
                                     <td className="px-3 py-3">{String(item.integrantes ?? 0)}</td><td className="px-3 py-3">{String(item.historico_eventos_asociados ?? 0)}</td>
-                                    <td className="px-3 py-3"><details><summary className="cursor-pointer font-semibold text-verde-6">Integrantes y factores</summary><pre className="mt-2 max-w-xl overflow-x-auto whitespace-pre-wrap text-xs">{JSON.stringify(item, null, 2)}</pre></details></td>
+                                    <td className="px-3 py-3">
+                                        <details className="group">
+                                            <summary className="cursor-pointer list-none whitespace-nowrap rounded-lg border border-verde-3 px-3 py-2 text-center text-xs font-bold text-verde-6 hover:bg-verde-1">
+                                                <span className="group-open:hidden">Ver detalle</span><span className="hidden group-open:inline">Ocultar</span>
+                                            </summary>
+                                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={(event) => { if (event.target === event.currentTarget) event.currentTarget.closest('details')?.removeAttribute('open'); }}>
+                                                <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7">
+                                                    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-verde-3 pb-4">
+                                                        <div><p className="text-xs font-bold uppercase tracking-wide text-gris-1">Detalle de riesgo</p><h3 className="mt-1 text-xl font-bold text-gris-2">{String(item.cuadrilla)} · {String(item.proyecto)}</h3><p className="mt-1 text-sm text-gris-1">Cuadrilla #{String(item.id_cuadrilla)}{item.id_proyecto ? ` · Proyecto #${String(item.id_proyecto)}` : ' · Sin proyecto activo'}</p></div>
+                                                        <button type="button" onClick={(event) => event.currentTarget.closest('details')?.removeAttribute('open')} className="rounded-lg border border-verde-3 px-3 py-2 text-xs font-semibold text-gris-1 hover:bg-verde-1">Cerrar</button>
+                                                        <div className="rounded-xl bg-verde-1 px-4 py-3 text-center"><p className="text-xs text-gris-1">Riesgo en {String(item.horizonte_semanas ?? horizonte)} semanas</p><p className="text-2xl font-black text-verde-6">{Math.round(Number(item.prob_evento ?? 0) * 100)}%</p></div>
+                                                    </div>
+                                                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                                        <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gris-1">Tipo de evento</p><p className="mt-1 font-semibold">{String(item.tipo_objetivo ?? tipo)}</p></div>
+                                                        <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gris-1">Integrantes</p><p className="mt-1 font-semibold">{String(item.integrantes ?? 0)}</p></div>
+                                                        <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gris-1">Eventos históricos</p><p className="mt-1 font-semibold">{String(item.historico_eventos_asociados ?? 0)}</p></div>
+                                                        <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gris-1">Nivel de evidencia</p><p className="mt-1 font-semibold capitalize">{String(item.evidencia ?? 'baja')}</p></div>
+                                                    </div>
+                                                    {(() => {
+                                                        const miembros = Array.isArray(item.miembros) ? item.miembros as Array<Record<string, unknown>> : [];
+                                                        const factores = item.factores && typeof item.factores === 'object' ? item.factores as Record<string, unknown> : {};
+                                                        return <>
+                                                            <h4 className="mt-6 font-bold text-gris-2">Riesgo por integrante</h4>
+                                                            {miembros.length ? <div className="mt-2 overflow-x-auto rounded-lg border border-verde-3"><table className="w-full min-w-[620px] text-left text-sm"><thead className="bg-verde-1 text-xs uppercase text-gris-1"><tr><th className="px-3 py-2">Trabajador</th><th className="px-3 py-2">Cargo</th><th className="px-3 py-2">Probabilidad</th><th className="px-3 py-2">Eventos</th><th className="px-3 py-2">Exposición (sem.)</th></tr></thead><tbody className="divide-y divide-verde-3/70">{miembros.map((miembro) => <tr key={String(miembro.id_trabajador)}><td className="px-3 py-3 font-semibold">{String(miembro.nombre ?? `Trabajador ${miembro.id_trabajador}`)}<span className="block text-xs font-normal text-gris-1">ID {String(miembro.id_trabajador)}</span></td><td className="px-3 py-3">{String(miembro.cargo ?? 'Sin cargo registrado')}</td><td className="px-3 py-3 font-bold text-verde-6">{Math.round(Number(miembro.prob_evento ?? 0) * 100)}%</td><td className="px-3 py-3">{String(miembro.historico_eventos ?? 0)}</td><td className="px-3 py-3">{String(miembro.semanas_exposicion_estimadas ?? '—')}</td></tr>)}</tbody></table></div> : <p className="mt-2 rounded-lg bg-gray-50 p-4 text-sm text-gris-1">No hay integrantes asociados a esta cuadrilla.</p>}
+                                                            <h4 className="mt-6 font-bold text-gris-2">Factores del cálculo</h4>
+                                                            <div className="mt-2 rounded-lg bg-gray-50 p-4 text-sm"><p>Probabilidad base del proyecto: <strong>{Math.round(Number(factores.probabilidad_base_proyecto ?? 0) * 100)}%</strong></p><p className="mt-2 text-gris-1">{String(factores.metodo ?? 'Estimación suavizada con el historial disponible de los integrantes.')}</p>{factores.combinacion_independiente_aproximada === true && <p className="mt-2 text-xs text-gris-1">La combinación suma el riesgo de los integrantes bajo una aproximación de independencia; la dependencia real entre sus riesgos puede cambiar el resultado.</p>}</div>
+                                                        </>;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </details>
+                                    </td>
                                 </tr>)}</tbody>
                             </table>
                         </div>

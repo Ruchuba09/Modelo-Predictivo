@@ -56,6 +56,15 @@ def predicciones(
 ):
     try:
         conexion = db()
+        # Diagnóstico incluido en la respuesta: permite distinguir una tabla
+        # vacía de un servicio Python conectado a otra base de datos.
+        from sqlalchemy import text
+        with conexion.connect() as conn:
+            diagnostico_bd = conn.execute(text("""
+                SELECT current_database() AS base_datos,
+                       current_schema() AS esquema,
+                       (SELECT count(*) FROM public.cuadrillas) AS cuadrillas_registradas
+            """)).mappings().one()
         disponibles = tipos_disponibles(conexion)
         if tipo_objetivo != "todos" and tipo_objetivo not in disponibles:
             raise HTTPException(status_code=422, detail="El tipo de evento seleccionado no existe.")
@@ -116,5 +125,11 @@ def predicciones(
         "predicciones": resultados,
         "analisis_entidades": analisis,
         "analisis_global": {"cuadrillas": cuadrillas, "proximo_evento": proximo_evento_global},
+        "diagnostico": {
+            "base_datos": diagnostico_bd["base_datos"],
+            "esquema": diagnostico_bd["esquema"],
+            "cuadrillas_registradas": int(diagnostico_bd["cuadrillas_registradas"]),
+            "cuadrillas_predichas": len(cuadrillas),
+        },
         "advertencia_modelo": advertencia_modelo,
     }

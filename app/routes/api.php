@@ -19,13 +19,16 @@ Route::prefix('v1')->group(function () {
         Route::get('modelo-predictivo/tipos', [ModeloPredictivoController::class, 'tipos']);
         Route::get('modelo-predictivo/predicciones', [ModeloPredictivoController::class, 'index']);
         Route::get('proyectos/{proyecto}/predicciones', [ModeloPredictivoController::class, 'show']);
+        // Debe declararse antes del recurso para que "supervisores" no se
+        // interprete como el identificador de una cuadrilla.
+        Route::get('cuadrillas/supervisores', [CuadrillaController::class, 'supervisores'])
+            ->name('api.cuadrillas.supervisores');
 
         Route::apiResources([
             'proyectos'    => ProyectoController::class,
             'asignaciones' => AsignacionController::class,
             'cuadrillas'   => CuadrillaController::class,
             'eventos'      => EventoController::class,
-            'trabajadores' => TrabajadorController::class,
             'personas'     => \App\Http\Controllers\Api\V1\PersonaController::class,
             'faenas'       => \App\Http\Controllers\Api\V1\FaenaController::class,
             'clientes'     => \App\Http\Controllers\Api\V1\ClienteController::class,
@@ -36,6 +39,13 @@ Route::prefix('v1')->group(function () {
             'personas'      => V1\PersonaController::class,
             'clientes'      => V1\ClienteController::class,
             'departamentos' => V1\DepartamentoController::class,
+        ]);
+        Route::apiResource('trabajadores', V1\TrabajadorController::class)->names([
+            'index' => 'api.trabajadores.index',
+            'store' => 'api.trabajadores.store',
+            'show' => 'api.trabajadores.show',
+            'update' => 'api.trabajadores.update',
+            'destroy' => 'api.trabajadores.destroy',
         ]);
         Route::apiResource('faenas', V1\FaenaController::class);
         Route::apiResource('tipos-obrero', V1\TipoObreroController::class)

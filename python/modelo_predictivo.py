@@ -600,20 +600,24 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj="todos",
 
     asignaciones = pd.read_sql(text("""
         SELECT p.id_proyecto, p.nombre AS proyecto,
-               a.id_asignacion, a.id_cuadrilla, a.fecha_inicio AS asignacion_inicio,
+               a.id_asignacion, c.id_cuadrilla, a.fecha_inicio AS asignacion_inicio,
                c.numero_cuadrilla,
                o.id_trabajador, t.cargo,
                trim(concat_ws(' ', pe.nombre_1, pe.nombre_2, pe.apellido_1, pe.apellido_2)) AS trabajador
-        FROM public.asignaciones a
-        JOIN public.proyectos p ON p.id_proyecto = a.id_proyecto
-        JOIN public.cuadrillas c ON c.id_cuadrilla = a.id_cuadrilla
-        LEFT JOIN public.obreros o ON o.id_cuadrilla = a.id_cuadrilla
+        FROM public.cuadrillas c
+        LEFT JOIN (
+            SELECT a.id_asignacion, a.id_cuadrilla, a.id_proyecto, a.fecha_inicio
+            FROM public.asignaciones a
+            JOIN public.proyectos pa ON pa.id_proyecto = a.id_proyecto
+            WHERE a.fecha_inicio <= CURRENT_DATE
+              AND COALESCE(a.fecha_termino, 'infinity'::date) >= CURRENT_DATE
+              AND (pa.fecha_termino IS NULL OR pa.fecha_termino >= CURRENT_DATE)
+        ) a ON a.id_cuadrilla = c.id_cuadrilla
+        LEFT JOIN public.proyectos p ON p.id_proyecto = a.id_proyecto
+        LEFT JOIN public.obreros o ON o.id_cuadrilla = c.id_cuadrilla
         LEFT JOIN public.trabajadores t ON t.id_trabajador = o.id_trabajador
         LEFT JOIN public.personas pe ON pe.id_persona = t.id_persona
-        WHERE a.fecha_inicio <= CURRENT_DATE
-          AND COALESCE(a.fecha_termino, 'infinity'::date) >= CURRENT_DATE
-          AND (p.fecha_termino IS NULL OR p.fecha_termino >= CURRENT_DATE)
-          AND (:id_proyecto IS NULL OR p.id_proyecto = :id_proyecto)
+        WHERE (:id_proyecto IS NULL OR p.id_proyecto = :id_proyecto)
     """), engine, params={"id_proyecto": id_proyecto})
     if asignaciones.empty:
         return []
@@ -644,20 +648,24 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj="todos",
         participantes = participantes[participantes["tipo"] == tipo_obj]
 
     bases = probabilidades_proyecto or {}
+    base_global = float(np.mean(list(bases.values()))) if bases else 0.05
     hoy = pd.Timestamp.today().normalize()
     salida = []
-    for (proyecto_id, cuadrilla_id), grupo in asignaciones.groupby(["id_proyecto", "id_cuadrilla"]):
+    for (proyecto_id, cuadrilla_id), grupo in asignaciones.groupby(["id_proyecto", "id_cuadrilla"], dropna=False):
+        proyecto_id = int(proyecto_id) if pd.notna(proyecto_id) else None
         miembros = grupo.dropna(subset=["id_trabajador"]).drop_duplicates("id_trabajador")
-        base = float(bases.get(int(proyecto_id), 0.05))
+        base = float(bases.get(proyecto_id, base_global)) if proyecto_id is not None else base_global
         hazard_prior = -np.log1p(-min(max(base, 0.0001), 0.9999)) / max(horizonte, 1)
         predicciones_miembros = []
         historico = 0
         for _, miembro in miembros.iterrows():
             wid = int(miembro["id_trabajador"])
-            n = int(((participantes["id_trabajador"] == wid) &
-                     (participantes["id_proyecto"] == proyecto_id)).sum())
+            filtro_trabajador = participantes["id_trabajador"] == wid
+            if proyecto_id is not None:
+                filtro_trabajador &= participantes["id_proyecto"] == proyecto_id
+            n = int(filtro_trabajador.sum())
             inicio = pd.to_datetime(miembro["asignacion_inicio"], errors="coerce")
-            exposicion = max(1.0, (hoy - inicio).days / 7) if pd.notna(inicio) else 1.0
+            exposicion = max(1.0, (hoy - inicio).days / 7) if pd.notna(inicio) else 52.0
             tasa = (n + hazard_prior * 8) / (exposicion + 8)
             prob = float(np.clip(1 - np.exp(-tasa * horizonte), 0, 1))
             historico += n
@@ -672,13 +680,14 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj="todos",
         prob_cuadrilla = 1 - float(np.prod([1 - x["prob_evento"] for x in predicciones_miembros])) \
             if predicciones_miembros else base
         salida.append({
-            "id_proyecto": int(proyecto_id), "proyecto": grupo.iloc[0]["proyecto"],
+            "id_proyecto": proyecto_id, "proyecto": grupo.iloc[0]["proyecto"] or "Sin proyecto activo",
             "id_cuadrilla": int(cuadrilla_id),
             "cuadrilla": grupo.iloc[0]["numero_cuadrilla"] or f"Cuadrilla {int(cuadrilla_id)}",
             "prob_evento": round(float(prob_cuadrilla), 6), "tipo_objetivo": tipo_obj,
             "horizonte_semanas": horizonte, "integrantes": len(predicciones_miembros),
             "historico_eventos_asociados": historico,
             "evidencia": "alta" if historico >= 20 else "media" if historico >= 5 else "baja",
+            "estado_asignacion": "activa" if proyecto_id is not None else "sin_proyecto_activo",
             "miembros": predicciones_miembros,
             "factores": {"probabilidad_base_proyecto": round(base, 6),
                          "combinacion_independiente_aproximada": True,
