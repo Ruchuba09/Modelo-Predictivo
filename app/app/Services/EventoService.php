@@ -85,6 +85,42 @@ class EventoService
         return $query->orderByDesc('fecha_creacion')->get();
     }
 
+    
+public function listarReportesMiCuadrilla(array $filtros = []): Collection
+{
+    $trabajador = Auth::user()?->trabajador;
+
+    abort_if(
+        ! $trabajador,
+        403,
+        'El usuario no está registrado como trabajador.'
+    );
+
+    // Cuadrillas que supervisa el usuario autenticado.
+    $idsCuadrillas = Cuadrilla::query()
+        ->where('id_supervisor', $trabajador->id_trabajador)
+        ->pluck('id_cuadrilla');
+
+    abort_if(
+        $idsCuadrillas->isEmpty(),
+        403,
+        'El usuario no tiene cuadrillas bajo su supervisión.'
+    );
+
+    // Trabajadores pertenecientes a esas cuadrillas.
+    $idsTrabajadores = Obrero::query()
+        ->whereIn('id_cuadrilla', $idsCuadrillas)
+        ->pluck('id_trabajador');
+
+    $query = Evento::with(['tipoEvento', 'proyecto'])
+        ->whereIn('id_trabajador', $idsTrabajadores);
+
+    $this->aplicarFiltros($query, $filtros);
+
+    return $query->orderByDesc('fecha_creacion')->get();
+    }
+
+
     public function listarProyectos(): Collection
     {
         return Proyecto::all();

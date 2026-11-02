@@ -33,6 +33,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // Las rutas fijas deben declararse antes que los recursos con {evento}.
         Route::get('eventos/sin-administrador', [ApiEventoController::class, 'sinAdministrador'])->middleware('permission:eventos.ver')->name('eventos.sin-administrador');
         Route::get('eventos/mis-reportes', [ApiEventoController::class, 'misReportes'])->middleware('permission:eventos.mis-reportes')->name('eventos.mis-reportes');
+        Route::get('eventos/mi-cuadrilla',[ApiEventoController::class, 'reportesMiCuadrilla'])
+            ->middleware('permission:eventos.mi-cuadrilla')
+            ->name('eventos.mi-cuadrilla');
         Route::get('eventos/opciones', [ApiEventoController::class, 'opciones'])->middleware('permission:eventos.crear')->name('eventos.opciones');
         Route::get('eventos/{evento}/evidencias', [ApiEventoController::class, 'evidencias'])
             ->whereNumber('evento')->middleware('permission:eventos.ver')->name('eventos.evidencias');

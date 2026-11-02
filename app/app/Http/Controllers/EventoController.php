@@ -34,16 +34,16 @@ class EventoController extends Controller
         ]);
     }
 
-    public function MisReportes(FiltroEventoRequest $request)
+    
+    public function reportesMiCuadrilla(FiltroEventoRequest $request): JsonResponse
     {
-        return Inertia::render('Eventos/MisReportes', [
-            'eventos' => $this->servicio->listarMisReportes(
+        return response()->json(
+            $this->servicio->listarReportesMiCuadrilla(
                 $request->filtros()
-            ),
-            'proyectos' => $this->servicio->listarProyectos(),
-            'filtros' => $request->filtros(),
-        ]);
+            )
+        );
     }
+
 
     public function indexGrafico(FiltroEventoRequest $request)
     {
@@ -114,15 +114,20 @@ class EventoController extends Controller
         );
     }
 
-    public function tomarReporte(Evento $evento)
-    {
-        $this->servicio->tomarReporte($evento);
+    
+public function tomar(Evento $evento): JsonResponse
+{
+    $this->servicio->tomarReporte($evento);
 
-        return redirect()->route(
-            'eventos.show',
-            $evento->id_evento
-        );
-    }
+    return response()->json($evento->fresh([
+        'tipoEvento',
+        'proyecto',
+        'area',
+        'administrador',
+        'trabajador',
+    ]));
+}
+
 
     public function cerrar(
         CerrarEventoRequest $request,

@@ -59,6 +59,17 @@ class EventoController extends Controller
         return response()->json($this->servicio->listarMisReportes($request->filtros()));
     }
 
+    
+    public function reportesMiCuadrilla(FiltroEventoRequest $request): JsonResponse
+    {
+        return response()->json(
+            $this->servicio->listarReportesMiCuadrilla(
+                $request->filtros()
+            )
+        );
+    }
+
+
     public function opciones(): JsonResponse
     {
         return response()->json($this->servicio->obtenerDatosFormularioCrear());
