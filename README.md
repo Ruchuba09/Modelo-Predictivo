@@ -14,7 +14,7 @@ Aplicación web para la gestión y análisis predictivo de incidentes, tarjetas 
 ## Estructura del proyecto
 
 ```
-Modelo-Predictivo-Nicolas/
+Modelo-Predictivo/
 ├── app/             # Aplicación Laravel + React (el código del proyecto)
 └── docker/          # Configuración de Docker (Nginx, PHP, Redis, PostgreSQL, pgAdmin)
 ```
@@ -43,7 +43,38 @@ Antes de elegir una opción de instalación, revisa qué tienes instalado en tu 
 
 No necesitas instalar PHP, Composer, Node ni PostgreSQL: todo corre dentro de los contenedores.
 
+#### Habilitar la virtualización en la BIOS (solo Windows)
+
+Docker Desktop necesita que la virtualización de hardware esté activada. Si al instalar o abrir Docker Desktop aparece un error como `Virtualization support not detected` o `WSL 2 installation is incomplete`, debes habilitarla manualmente:
+
+1. Reinicia el computador y entra a la **BIOS/UEFI** (normalmente presionando `F2`, `F10`, `F12`, `Del` o `Esc` justo al encender el equipo; la tecla depende de la marca del computador).
+2. Busca una opción llamada **Virtualization Technology**, **Intel VT-x**, **AMD-V** o **SVM Mode** (suele estar en la pestaña `Advanced` o `CPU Configuration`).
+3. Cámbiala a **Enabled**.
+4. Guarda los cambios (`F10` en la mayoría de los equipos) y reinicia.
+
+#### Instalar WSL (Windows Subsystem for Linux)
+
+Docker Desktop en Windows requiere WSL 2 para funcionar. Para instalarlo:
+
+1. Abre **PowerShell como administrador** (click derecho → `Ejecutar como administrador`).
+2. Ejecuta el siguiente comando:
+
+```powershell
+wsl --install
+```
+
+3. Reinicia el computador cuando termine la instalación.
+4. Si WSL ya estaba instalado pero desactualizado, actualízalo con:
+
+```powershell
+wsl --update
+```
+
+5. Abre Docker Desktop y confirma que en `Settings` → `General` esté marcada la opción `Use the WSL 2 based engine`.
+
 ### A.2 Clonar el repositorio
+
+Clona el repositorio oficial desde la rama `main`:
 
 ```bash
 git clone https://github.com/Ruchuba09/Modelo-Predictivo.git
@@ -59,7 +90,7 @@ cd docker
 cp .env.example .env
 ```
 
-Edita `docker/.env` con tus datos:
+#### Obtener tu token de GitHub
 
 ```env
 GITHUB_TOKEN    = # Un Personal Access Token de GitHub, generado en https://github.com/settings/tokens
@@ -169,6 +200,8 @@ Instala lo siguiente si no lo tienes ya:
   ```
 
 ### B.2 Clonar el repositorio
+
+Clona el repositorio oficial desde la rama `main`:
 
 ```bash
 git clone https://github.com/Ruchuba09/Modelo-Predictivo.git
