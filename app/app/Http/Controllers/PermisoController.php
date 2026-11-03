@@ -2,41 +2,42 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PermisoRequest;
 use App\Models\Permiso;
-use Illuminate\Http\Request;
+use App\Services\PermisoService;
 use Inertia\Inertia;
 
 class PermisoController extends Controller
 {
+    public function __construct(
+        private readonly PermisoService $servicio
+    ) {}
+
     public function index()
     {
         return Inertia::render('Permisos/Index', [
-            'permisos' => Permiso::with('roles')->orderBy('id_permiso', 'desc')->get(),
+            'permisos' => $this->servicio->listarConRoles(),
         ]);
     }
-    
+
     public function create()
     {
         return Inertia::render('Permisos/PermisosCrear');
     }
 
-    public function store(Request $request)
+    public function store(PermisoRequest $request)
     {
-        $validated = $request->validate([
-            'nombre' => ['required', 'string', 'unique:usuarios.permisos,nombre'],
-            'nivel' => ['nullable', 'string'],
-        ]);
+        $this->servicio->crear($request->toData());
 
-        Permiso::create($validated);
-
-        return redirect()->route('permisos.index')
+        return redirect()
+            ->route('permisos.index')
             ->with('success', 'Permiso creado correctamente.');
     }
 
     public function show(Permiso $permiso)
     {
         return Inertia::render('Permisos/PermisosMostrar', [
-            'permiso' => $permiso->load('roles'),
+            'permiso' => $this->servicio->obtenerConRoles($permiso),
         ]);
     }
 
@@ -47,25 +48,21 @@ class PermisoController extends Controller
         ]);
     }
 
-    public function update(Request $request, Permiso $permiso)
+    public function update(PermisoRequest $request, Permiso $permiso)
     {
-        $validated = $request->validate([
-            'nombre' => ['required', 'string', 'unique:usuarios.permisos,nombre,' . $permiso->id_permiso . ',id_permiso'],
-            'nivel' => ['nullable', 'string'],
-        ]);
+        $this->servicio->actualizar($permiso, $request->toData());
 
-        $permiso->update($validated);
-
-        return redirect()->route('permisos.index')
+        return redirect()
+            ->route('permisos.index')
             ->with('success', 'Permiso actualizado correctamente.');
     }
 
     public function destroy(Permiso $permiso)
     {
-        $permiso->roles()->detach();
-        $permiso->delete();
+        $this->servicio->eliminar($permiso);
 
-        return redirect()->route('permisos.index')
+        return redirect()
+            ->route('permisos.index')
             ->with('success', 'Permiso eliminado correctamente.');
     }
 }

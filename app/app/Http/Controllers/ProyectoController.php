@@ -2,36 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ProyectoRequest;
 use App\Models\Proyecto;
-use Illuminate\Http\Request;
+use App\Services\ProyectoService;
+use Illuminate\Http\JsonResponse;
 
 class ProyectoController extends Controller
 {
-    public function index()
-    {
-        $proyectos = Proyecto::with(['faena', 'cliente'])
-            ->orderBy('id_proyecto', 'desc')
-            ->get();
+    public function __construct(
+        private readonly ProyectoService $servicio
+    ) {}
 
-        return response()->json($proyectos);
+    public function index(): JsonResponse
+    {
+        return response()->json($this->servicio->listarConRelaciones());
     }
 
-    public function store(Request $request)
+    public function store(ProyectoRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'id_faena' => 'required|integer|exists:faenas,id_faena',
-            'id_cliente' => 'required|integer|exists:clientes,id_cliente',
-            'nombre' => 'required|string|max:255',
-            'descripcion' => 'nullable|string',
-            'ubicacion' => 'nullable|string|max:255',
-            'fecha_inicio' => 'nullable|date',
-            'fecha_termino' => 'nullable|date|after_or_equal:fecha_inicio',
-            'estado' => 'required|string|max:50',
-        ]);
-
-        $proyecto = Proyecto::create($validated);
-
-        $proyecto->load(['faena', 'cliente']);
+        $proyecto = $this->servicio->crear($request->toData());
 
         return response()->json([
             'message' => 'Proyecto creado correctamente.',
@@ -39,44 +28,14 @@ class ProyectoController extends Controller
         ], 201);
     }
 
-    public function show($id)
+    public function show(Proyecto $proyecto): JsonResponse
     {
-        $proyecto = Proyecto::with(['faena', 'cliente'])
-            ->find($id);
-
-        if (!$proyecto) {
-            return response()->json([
-                'message' => 'Proyecto no encontrado.',
-            ], 404);
-        }
-
-        return response()->json($proyecto);
+        return response()->json($this->servicio->obtenerConRelaciones($proyecto));
     }
 
-    public function update(Request $request, $id)
+    public function update(ProyectoRequest $request, Proyecto $proyecto): JsonResponse
     {
-        $proyecto = Proyecto::find($id);
-
-        if (!$proyecto) {
-            return response()->json([
-                'message' => 'Proyecto no encontrado.',
-            ], 404);
-        }
-
-        $validated = $request->validate([
-            'id_faena' => 'sometimes|required|integer|exists:faenas,id_faena',
-            'id_cliente' => 'sometimes|required|integer|exists:clientes,id_cliente',
-            'nombre' => 'sometimes|required|string|max:255',
-            'descripcion' => 'nullable|string',
-            'ubicacion' => 'nullable|string|max:255',
-            'fecha_inicio' => 'nullable|date',
-            'fecha_termino' => 'nullable|date|after_or_equal:fecha_inicio',
-            'estado' => 'sometimes|required|string|max:50',
-        ]);
-
-        $proyecto->update($validated);
-
-        $proyecto->load(['faena', 'cliente']);
+        $proyecto = $this->servicio->actualizar($proyecto, $request->toData());
 
         return response()->json([
             'message' => 'Proyecto actualizado correctamente.',
@@ -84,17 +43,9 @@ class ProyectoController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Proyecto $proyecto): JsonResponse
     {
-        $proyecto = Proyecto::find($id);
-
-        if (!$proyecto) {
-            return response()->json([
-                'message' => 'Proyecto no encontrado.',
-            ], 404);
-        }
-
-        $proyecto->delete();
+        $this->servicio->eliminar($proyecto);
 
         return response()->json([
             'message' => 'Proyecto eliminado correctamente.',

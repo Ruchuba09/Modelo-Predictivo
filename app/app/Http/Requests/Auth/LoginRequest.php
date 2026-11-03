@@ -27,12 +27,21 @@ class LoginRequest extends FormRequest
 
     protected function credentials(): array
     {
-        $login = $this->input('rut');
+        $login = trim((string) $this->input('rut'));
 
-        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'rut';
+        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            return [
+                'email' => $login,
+                'password' => $this->input('password'),
+            ];
+        }
+
+        $rutLimpio = Rut::clean($login);
 
         return [
-            $field => $field === 'rut' ? Rut::clean($login) : $login,
+            fn ($query) => $query->whereHas('trabajador.persona', function ($q) use ($rutLimpio) {
+                $q->where('rut', $rutLimpio);
+            }),
             'password' => $this->input('password'),
         ];
     }

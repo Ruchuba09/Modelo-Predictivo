@@ -2,82 +2,70 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RolRequest;
 use App\Models\Rol;
-use App\Models\Permiso;
-use Illuminate\Http\Request;
+use App\Services\RolService;
 use Inertia\Inertia;
 
 class RolController extends Controller
 {
+    public function __construct(
+        private readonly RolService $servicio
+    ) {}
+
     public function index()
     {
         return Inertia::render('Roles/Index', [
-            'roles' => Rol::with('permisos')->latest('id_rol')->get(),
+            'roles' => $this->servicio->listarConPermisos(),
         ]);
     }
 
     public function create()
     {
         return Inertia::render('Roles/RolesCrear', [
-            'permisos' => Permiso::select('id_permiso', 'nombre')->get(),
+            'permisos' => $this->servicio->listarPermisosDisponibles(),
         ]);
     }
 
-    public function store(Request $request)
+    public function store(RolRequest $request)
     {
-        $validated = $request->validate([
-            'nombre' => ['required', 'string', 'unique:usuarios.roles,nombre'],
-            'permisos' => ['nullable', 'array'],
-            'permisos.*' => ['exists:usuarios.permisos,id_permiso'],
-        ]);
+        $this->servicio->crear($request->toData());
 
-        $rol = Rol::create(['nombre' => $validated['nombre']]);
-
-        $rol->permisos()->sync($validated['permisos'] ?? []);
-
-        return redirect()->route('roles.index')
+        return redirect()
+            ->route('roles.index')
             ->with('success', 'Rol creado correctamente.');
     }
 
     public function show(Rol $rol)
     {
         return Inertia::render('Roles/RolesMostrar', [
-            'rol' => $rol->load('permisos'),
+            'rol' => $this->servicio->obtenerConPermisos($rol),
         ]);
     }
 
     public function edit(Rol $rol)
     {
         return Inertia::render('Roles/RolesEditar', [
-            'rol' => $rol->load('permisos'),
-            'permisos' => Permiso::select('id_permiso', 'nombre')->get(),
+            'rol' => $this->servicio->obtenerConPermisos($rol),
+            'permisos' => $this->servicio->listarPermisosDisponibles(),
         ]);
     }
 
-    public function update(Request $request, Rol $rol)
+    public function update(RolRequest $request, Rol $rol)
     {
-        $validated = $request->validate([
-            'nombre' => ['required', 'string', 'unique:usuarios.roles,nombre,' . $rol->id_rol . ',id_rol'],
-            'permisos' => ['nullable', 'array'],
-            'permisos.*' => ['exists:usuarios.permisos,id_permiso'],
-        ]);
+        $this->servicio->actualizar($rol, $request->toData());
 
-        $rol->nombre = $validated['nombre'];
-        $rol->save();
-
-        $rol->permisos()->sync($validated['permisos'] ?? []);
-
-        return redirect()->route('roles.index')
+        return redirect()
+            ->route('roles.index')
             ->with('success', 'Rol actualizado correctamente.');
     }
 
     public function destroy(Rol $rol)
     {
-        $rol->permisos()->detach();
-        $rol->usuarios()->detach();
-        $rol->delete();
+        $this->servicio->eliminar($rol);
 
-        return redirect()->route('roles.index')
+        return redirect()
+            ->route('roles.index')
             ->with('success', 'Rol eliminado correctamente.');
     }
 }

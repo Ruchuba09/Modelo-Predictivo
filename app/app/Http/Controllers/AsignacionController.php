@@ -2,64 +2,63 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTransferObjects\AsignacionDTO;
+use App\Http\Requests\StoreAsignacionRequest;
+use App\Http\Requests\UpdateAsignacionRequest;
 use App\Models\Asignacion;
+use App\Services\AsignacionService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AsignacionController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct(
+        private readonly AsignacionService $asignacionService
+    ) {}
+
+    public function index(Request $request): JsonResponse
     {
-        //
+        return response()->json(
+            $this->asignacionService->index(
+                $request->only(['id_proyecto', 'id_cuadrilla'])
+            )
+        );
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function store(StoreAsignacionRequest $request): JsonResponse
     {
-        //
+        $dto = AsignacionDTO::fromArray($request->validated());
+
+        $asignacion = $this->asignacionService->store(
+            $dto,
+            (int) $request->user()->id_trabajador
+        );
+
+        return response()->json($asignacion, 201);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function show(Asignacion $asignacion): JsonResponse
     {
-        //
+        return response()->json(
+            $this->asignacionService->show($asignacion)
+        );
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Asignacion $asignacion)
-    {
-        //
+    public function update(
+        UpdateAsignacionRequest $request,
+        Asignacion $asignacion
+    ): JsonResponse {
+        $dto = AsignacionDTO::fromArray($request->validated());
+
+        return response()->json(
+            $this->asignacionService->update($asignacion, $dto)
+        );
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Asignacion $asignacion)
+    public function destroy(Asignacion $asignacion): JsonResponse
     {
-        //
-    }
+        $this->asignacionService->destroy($asignacion);
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Asignacion $asignacion)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Asignacion $asignacion)
-    {
-        //
+        return response()->json(null, 204);
     }
 }

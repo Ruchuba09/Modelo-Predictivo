@@ -2,64 +2,79 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\FaenaRequest;
 use App\Models\Faena;
-use Illuminate\Http\Request;
+use App\Services\FaenaService;
+use Inertia\Inertia;
 
 class FaenaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct(
+        private readonly FaenaService $servicio
+    ) {}
+
     public function index()
     {
-        //
+        return Inertia::render('Faenas/Index', [
+            'faenas' => $this->servicio->listar(),
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return Inertia::render('Faenas/Create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(FaenaRequest $request)
     {
-        //
+        $this->servicio->crear($request->toData());
+
+        return redirect()
+            ->route('faenas.index')
+            ->with('success', 'Faena creada correctamente.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Faena $faena)
     {
-        //
+        return Inertia::render('Faenas/Show', [
+            'faena' => $this->servicio->obtener($faena),
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Faena $faena)
     {
-        //
+        return Inertia::render('Faenas/Edit', [
+            'faena' => $this->servicio->obtenerParaEditar($faena),
+        ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Faena $faena)
-    {
-        //
+    public function update(
+        FaenaRequest $request,
+        Faena $faena
+    ) {
+        $this->servicio->actualizar(
+            $faena,
+            $request->toData()
+        );
+
+        return redirect()
+            ->route('faenas.index')
+            ->with('success', 'Faena actualizada correctamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Faena $faena)
     {
-        //
+        if ($this->servicio->tieneProyectos($faena)) {
+            return back()->with(
+                'error',
+                'No se puede eliminar: la faena tiene proyectos asociados.'
+            );
+        }
+
+        $this->servicio->eliminar($faena);
+
+        return redirect()
+            ->route('faenas.index')
+            ->with('success', 'Faena eliminada correctamente.');
     }
 }

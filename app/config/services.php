@@ -2,6 +2,11 @@
 
 return [
 
+    'predictive_model' => [
+        'url' => env('PREDICTIVE_MODEL_URL', 'http://127.0.0.1:8000'),
+        'timeout' => (int) env('PREDICTIVE_MODEL_TIMEOUT', 180),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

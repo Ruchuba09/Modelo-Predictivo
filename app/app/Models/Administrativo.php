@@ -12,6 +12,7 @@ class Administrativo extends Model
     protected $primaryKey = 'id_trabajador';
     public $incrementing = false;
     protected $keyType = 'int';
+    public $timestamps = false;
 
     protected $fillable = [
         'id_trabajador',

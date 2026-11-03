@@ -77,7 +77,7 @@ wsl --update
 Clona el repositorio oficial desde la rama `main`:
 
 ```bash
-git clone -b main https://github.com/AVA-UCSC/Modelo-Predictivo
+git clone https://github.com/Ruchuba09/Modelo-Predictivo.git
 cd Modelo-Predictivo
 ```
 
@@ -92,29 +92,13 @@ cp .env.example .env
 
 #### Obtener tu token de GitHub
 
-El archivo necesita un **Personal Access Token** de GitHub para poder clonar el repositorio dentro del contenedor. Para generarlo:
-
-1. Entra a [github.com/settings/tokens](https://github.com/settings/tokens).
-2. Click en **Generate new token** → **Generate new token (classic)**.
-3. En `Note`, ponle un nombre que lo identifique, por ejemplo `modelo-predictivo-docker`.
-4. En `Expiration`, elige una duración (por ejemplo `90 days` o `No expiration`).
-5. En la lista de permisos (`Select scopes`), marca la casilla:
-   - ☑ **repo** (esto marca automáticamente todas las sub-casillas: `repo:status`, `repo_deployment`, `public_repo`, `repo:invite`, `security_events`).
-6. Baja hasta el final y click en **Generate token**.
-7. **Copia el token inmediatamente** (empieza con `ghp_...`): GitHub solo lo muestra una vez, si lo pierdes deberás generar uno nuevo.
-
-#### Completar el `.env`
-
-Edita `docker/.env` con tus datos, respetando el formato `CLAVE=valor` (sin espacios alrededor del `=`):
-
 ```env
-GITHUB_TOKEN=ghp_pega_aquí_tu_token
-URL_REPOSITORIO=https://github.com/AVA-UCSC/Modelo-Predictivo
-RAMA=main
-CORREO=tu_correo@ejemplo.com
-NOMBRE=tu_usuario_de_github
+GITHUB_TOKEN    = # Un Personal Access Token de GitHub, generado en https://github.com/settings/tokens
+URL_REPOSITORIO = https://github.com/AVA-UCSC/Modelo-Predictivo-Nicolas
+RAMA            = Nicolas
+CORREO          = # Tu correo asociado a GitHub
+NOMBRE          = # Tu nombre de usuario de GitHub
 ```
-
 ### A.4 Levantar los contenedores
 
 Desde la carpeta `docker/`:
@@ -123,31 +107,14 @@ Desde la carpeta `docker/`:
 docker compose up -d --build
 ```
 
-Esto va a construir y levantar: Laravel, Nginx, Redis, PostgreSQL, workers de colas, pgAdmin y phpMyAdmin. La primera vez puede tardar varios minutos.
+Esto va a construir y levantar: Laravel, Nginx, Redis, PostgreSQL, workers de colas y pgAdmin. La primera vez puede tardar varios minutos.
 
-### A.5 Instalación de bibliotecas
-
-> ⚠️ Estos comandos se ejecutan en la terminal **PowerShell integrada de Visual Studio Code** (`Terminal` → `New Terminal`), **no** en una PowerShell independiente del sistema. Asegúrate de tener la carpeta del proyecto abierta en VS Code y los contenedores ya levantados (paso anterior).
-
-Ejecuta los siguientes comandos uno a la vez:
-
-```bash
-docker compose exec laravel-app npm install recharts
-```
-```bash
-docker compose exec laravel-app npm install html2canvas
-```
-```bash
-docker compose exec laravel-app npm install telescope
-```
-
-### A.6 Acceder a la aplicación
+### A.5 Acceder a la aplicación
 
 - **URL de la app:** `https://localhost/`
-  - El navegador mostrará una advertencia de "La conexión no es privada" porque se usa un certificado local autofirmado. Entra en `Opciones avanzadas` → `Continuar a localhost (no seguro)`.
-  - En el primer arranque es normal ver un error `500`. Continúa con el siguiente paso para completar la configuración inicial de Laravel.
+  - Nginx usa un certificado autofirmado de desarrollo. No uses esta configuración para publicar la aplicación.
 
-### A.7 Configuración inicial de Laravel dentro del contenedor
+### A.6 Configuración inicial de Laravel dentro del contenedor
 
 1. Abre la barra lateral de **Docker** en VS Code.
 2. Busca el contenedor `laravel-app-1`.
@@ -156,14 +123,14 @@ docker compose exec laravel-app npm install telescope
 5. Dentro de esa terminal del contenedor, ejecuta:
 
 ```bash
-cp .env.example .env        # si no existe aún el .env de Laravel
+cp .env.example .env        # desde /var/www/app, si aún no existe
 php artisan key:generate
-php artisan migrate
 ```
 
-6. Recarga `https://localhost/` en el navegador.
+6. Asegúrate de que PostgreSQL contiene el esquema completo del producto (consulta [docs/database.md](app/docs/database.md)); el repositorio no trae el DDL legacy.
+7. Ejecuta `php artisan migrate` para aplicar las migraciones parciales pendientes y recarga `https://localhost/`.
 
-### A.8 Acceder a pgAdmin (administrador de PostgreSQL)
+### A.7 Acceder a pgAdmin (administrador de PostgreSQL)
 
 - **URL:** `http://localhost:5050/`
 - **Usuario:** `pg@ava.cl`
@@ -177,13 +144,12 @@ Para registrar la base de datos dentro de pgAdmin:
    - `Host`: `postgres`
    - `Username`: `postgres`
    - `Password`: `postgres` (marca `Save password`)
+  
+### A.8 Credenciales demo de desarrollo
 
-### A.9 Credenciales para el Login (Copia y pega)
+Las cuentas de demostración solo deben usarse en entornos locales. Cambia las credenciales antes de exponer una instancia y no ejecutes seeders demo en producción.
 
-- Usuario/RUT: admin@empresa.cl
-- Contraseña: 12345678
-
-### A.10 Detener y limpiar el entorno
+### A.9 Detener y limpiar el entorno
 
 Para apagar los contenedores:
 
@@ -195,10 +161,9 @@ Para borrar todo lo generado por el proyecto (contenedores, volúmenes, imágene
 
 ```bash
 docker compose down --volumes --rmi all --remove-orphans
-docker builder prune -af
-docker volume prune -f
-docker network prune -f
 ```
+
+`--volumes` elimina también la base de datos local de este proyecto. No uses `docker volume prune` ni `docker system prune` como parte del flujo normal.
 
 ---
 
@@ -239,7 +204,7 @@ Instala lo siguiente si no lo tienes ya:
 Clona el repositorio oficial desde la rama `main`:
 
 ```bash
-git clone -b main https://github.com/AVA-UCSC/Modelo-Predictivo
+git clone https://github.com/Ruchuba09/Modelo-Predictivo.git
 cd Modelo-Predictivo/app
 ```
 
@@ -261,12 +226,12 @@ php artisan key:generate
 Edita el archivo `.env` y configura la conexión a tu PostgreSQL local:
 
 ```env
-DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_DATABASE=modelo_predictivo
-DB_USERNAME=postgres
-DB_PASSWORD=tu_password
+DB_CONNECTION=usuarios
+PG_HOST=127.0.0.1
+PG_PORT=5432
+PG_DATABASE=modelo_predictivo
+PG_USERNAME=postgres
+PG_PASSWORD=tu_password
 ```
 
 ### B.5 Ejecutar las migraciones
@@ -274,6 +239,8 @@ DB_PASSWORD=tu_password
 ```bash
 php artisan migrate
 ```
+
+**Importante:** `DB_CONNECTION` debe usar una conexión declarada en `config/database.php` (`usuarios` o `laravel`). Las migraciones incluidas no describen todo el esquema que usa la aplicación. Se necesita la base PostgreSQL legacy del proyecto; revisa [el contrato de base de datos](app/docs/database.md) antes de crear o reiniciar una base. No ejecutes `migrate:fresh` sobre una base con datos.
 
 Si el proyecto tiene seeders y quieres datos de prueba:
 
@@ -317,16 +284,18 @@ Por defecto: `http://localhost:8000`
 
 | Comando | Descripción |
 |---|---|
-| `php artisan migrate:fresh --seed` | Reinicia la base de datos desde cero con datos de prueba |
+| `php artisan migrate` | Aplica las migraciones versionadas que sí están incluidas |
 | `php artisan route:list` | Lista todas las rutas disponibles |
 | `php artisan queue:listen` | Procesa trabajos en cola manualmente |
 | `npm run build` | Compila los assets para producción |
 | `php artisan test` | Ejecuta los tests |
+| `composer run test:unit` | Ejecuta tests unitarios independientes de PostgreSQL |
+| `composer run test:routes` | Verifica contratos de rutas sin base de datos |
+| `npm run typecheck` | Comprueba los tipos TypeScript |
 
 ## Solución de problemas
 
-- **`Virtualization support not detected` o Docker Desktop no arranca (Windows):** revisa la sección [Habilitar la virtualización en la BIOS](#habilitar-la-virtualización-en-la-bios-solo-windows) y [Instalar WSL](#instalar-wsl-windows-subsystem-for-linux) en el paso A.1.
-- **Error 500 al primer ingreso (Docker):** es normal, sigue el paso [A.7](#a7-configuración-inicial-de-laravel-dentro-del-contenedor) para generar la key y correr las migraciones.
-- **Error de conexión a la base de datos (local):** revisa que PostgreSQL esté corriendo y que los datos en `.env` (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`) sean correctos.
+- **Error 500 al iniciar:** consulta `storage/logs/laravel.log`, confirma que `APP_KEY` esté configurada y que el esquema PostgreSQL legacy esté instalado.
+- **Error de conexión a la base de datos:** revisa que PostgreSQL esté corriendo y que `PG_HOST`, `PG_PORT`, `PG_DATABASE`, `PG_USERNAME` y `PG_PASSWORD` correspondan a la conexión seleccionada.
 - **`npm install` falla por dependencias nativas:** borra `node_modules` y `package-lock.json`, y vuelve a ejecutar `npm install`.
 - **Cambios en `.env` no se reflejan:** ejecuta `php artisan config:clear`.

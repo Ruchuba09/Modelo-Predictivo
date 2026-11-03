@@ -2,358 +2,193 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Administrativo;
+use App\Http\Requests\ActualizarEventoRequest;
+use App\Http\Requests\CerrarEventoRequest;
+use App\Http\Requests\CrearEventoRequest;
+use App\Http\Requests\FiltroEventoRequest;
 use App\Models\Evento;
-use App\Models\Fatalidad;
-use App\Models\Incidente;
-use App\Models\Obrero;
-use App\Models\Supervisor;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-
+use App\Services\EventoService;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
-use App\Models\Asignacion;
+
 class EventoController extends Controller
 {
+    public function __construct(
+        private readonly EventoService $servicio
+    ) {}
+
     public function dashboard()
     {
-        $tarjetasPare = Evento::select(
-                DB::raw('DATE(created_at) as fecha'),
-                DB::raw("SUM(CASE WHEN condicion = '1' THEN 1 ELSE 0 END) as c1"),
-                DB::raw("SUM(CASE WHEN condicion = '2' THEN 1 ELSE 0 END) as c2"),
-                DB::raw("SUM(CASE WHEN condicion = '3' THEN 1 ELSE 0 END) as c3"),
-                DB::raw("SUM(CASE WHEN condicion = '4' THEN 1 ELSE 0 END) as c4"),
-                DB::raw("SUM(CASE WHEN condicion = '5' THEN 1 ELSE 0 END) as c5"),
-                DB::raw("SUM(CASE WHEN condicion = '6' THEN 1 ELSE 0 END) as c6"),
-                DB::raw("SUM(CASE WHEN condicion = '7' THEN 1 ELSE 0 END) as c7"),
-                DB::raw("SUM(CASE WHEN condicion = '8' THEN 1 ELSE 0 END) as c8"),
-                DB::raw("SUM(CASE WHEN condicion = '9' THEN 1 ELSE 0 END) as c9"),
-                DB::raw("SUM(CASE WHEN condicion = '10' THEN 1 ELSE 0 END) as c10")
-            )
-            ->where('tipo_evento', 4) 
-            ->where('created_at', '>=', now()->subDays(7))
-            ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy('fecha', 'asc')
-            ->get();
-
-            dd('¡Sí pasé por el controlador!', $tarjetasPare);
-
         return Inertia::render('dashboard', [
-            'datosGrafico' => $tarjetasPare
+            'datosGrafico' => $this->servicio->obtenerDashboard(),
         ]);
     }
-    public function index(Request $request)
+
+    public function index(FiltroEventoRequest $request)
     {
-        $query = Evento::with(['tipoEvento', 'proyecto']);
+        $user = Auth::user();
 
-        if ($request->filled('id_proyecto')) {
-            $query->where('id_proyecto', $request->id_proyecto);
+        if (! $user) {
+            return redirect()->route('login');
         }
 
-        if ($request->filled('condicion')) {
-            $query->where('condicion', $request->condicion);
+        if (! $user->tieneRol('Administrador', 'Supervisor')) {
+            return redirect()->route('eventos.mis-reportes');
         }
-
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
-        }
-
-        if ($request->filled('fecha_inicio')) {
-            $query->whereDate('fecha_creacion', '>=', $request->fecha_inicio);
-        }
-
-        if ($request->filled('fecha_fin')) {
-            $query->whereDate('fecha_creacion', '<=', $request->fecha_fin);
-        }
-
-        $eventos = $query->orderByDesc('fecha_creacion')->get();
-        $proyectos = \App\Models\Proyecto::all();
 
         return Inertia::render('Eventos/Index', [
-            'eventos' => $eventos,
-            'proyectos' => $proyectos,
-            'filtros' => $request->only(['id_proyecto', 'condicion', 'estado', 'fecha_inicio', 'fecha_fin'])
+            'eventos' => $this->servicio->listar($request->filtros()),
+            'proyectos' => $this->servicio->listarProyectos(),
+            'filtros' => $request->filtros(),
         ]);
     }
-    public function indexGrafico(Request $request)
+
+    public function MisReportes(FiltroEventoRequest $request)
     {
-        $query = Evento::where('id_tipo_evento', 4);
+        return Inertia::render('Eventos/MisReportes', [
+            'eventos' => $this->servicio->listarMisReportes($request->filtros()),
+            'proyectos' => $this->servicio->listarProyectos(),
+            'filtros' => $request->filtros(),
+        ]);
+    }
 
-        if ($request->filled('id_proyecto')) {
-            $query->where('id_proyecto', $request->id_proyecto);
-        }
-        if ($request->filled('fecha_inicio')) {
-            $query->whereDate('fecha_creacion', '>=', $request->fecha_inicio);
-        }
-        if ($request->filled('fecha_fin')) {
-            $query->whereDate('fecha_creacion', '<=', $request->fecha_fin);
-        }
-
-        $eventos = $query->get();
-
-        $condicionesNombres = [
-            1 => '1. Cond. Inseguras',
-            2 => '2. Herramientas',
-            3 => '3. Falta EPP',
-            4 => '4. Capacitación',
-            5 => '5. Procedimientos',
-            6 => '6. Recursos',
-            7 => '7. AST/VATS/ERT',
-            8 => '8. Permisos',
-            9 => '9. Est. Físico/Mental',
-            10 => '10. Otros',
-        ];
-
-        // Calculate totals per condition
-        $datosGrafico = [];
-        foreach ($condicionesNombres as $id => $nombre) {
-            $datosGrafico[] = [
-                'id' => "c{$id}",
-                'condicion' => $nombre,
-                'hallazgos' => $eventos->where('condicion', $id)->count()
-            ];
-        }
-
-        $proyectos = \App\Models\Proyecto::all();
+    public function indexGrafico(FiltroEventoRequest $request)
+    {
+        $filtros = $request->filtrosGrafico();
 
         return Inertia::render('dashboard', [
-            'datosGrafico' => $datosGrafico,
-            'proyectos' => $proyectos,
-            'filtros' => $request->only(['id_proyecto', 'fecha_inicio', 'fecha_fin'])
+            'datosGrafico' => $this->servicio->listarGrafico($filtros),
+            'proyectos' => $this->servicio->listarProyectos(),
+            'filtros' => $filtros,
         ]);
     }
-
-    private function proyectoActualDelTrabajador()
-    {
-        $trabajador = auth()->user()->trabajador;
-
-        abort_if(! $trabajador, 403, 'El usuario autenticado no está registrado como trabajador.');
-
-        // Administrativo: administra proyectos vía asignaciones directas
-        if ($trabajador->administrativo) {
-            $asignacion = Asignacion::where('id_administrador', $trabajador->id_trabajador)
-                ->where('fecha_inicio', '<=', now())
-                ->where(function ($q) {
-                    $q->whereNull('fecha_termino')
-                    ->orWhere('fecha_termino', '>=', now());
-                })
-                ->latest('fecha_inicio')
-                ->first();
-
-            abort_if(! $asignacion, 422, 'No tienes un proyecto asignado actualmente.');
-
-            return $asignacion->id_proyecto;
-        }
-
-        // Supervisor: tiene cuadrillas a cargo, las cuadrillas tienen asignaciones
-        if ($trabajador->supervisor) {
-            $cuadrilla = \App\Models\Cuadrilla::where('id_supervisor', $trabajador->id_trabajador)->first();
-
-            abort_if(! $cuadrilla, 422, 'No tienes una cuadrilla asignada.');
-
-            $asignacion = Asignacion::where('id_cuadrilla', $cuadrilla->id_cuadrilla)
-                ->where('fecha_inicio', '<=', now())
-                ->where(function ($q) {
-                    $q->whereNull('fecha_termino')
-                    ->orWhere('fecha_termino', '>=', now());
-                })
-                ->latest('fecha_inicio')
-                ->first();
-
-            abort_if(! $asignacion, 422, 'Tu cuadrilla no tiene un proyecto asignado actualmente.');
-
-            return $asignacion->id_proyecto;
-        }
-
-        // Obrero: pertenece a una cuadrilla
-        if ($trabajador->obrero) {
-            abort_if(! $trabajador->obrero->id_cuadrilla, 422, 'No tienes una cuadrilla asignada.');
-
-            $asignacion = Asignacion::where('id_cuadrilla', $trabajador->obrero->id_cuadrilla)
-                ->where('fecha_inicio', '<=', now())
-                ->where(function ($q) {
-                    $q->whereNull('fecha_termino')
-                    ->orWhere('fecha_termino', '>=', now());
-                })
-                ->latest('fecha_inicio')
-                ->first();
-
-            abort_if(! $asignacion, 422, 'Tu cuadrilla no tiene un proyecto asignado actualmente.');
-
-            return $asignacion->id_proyecto;
-        }
-
-        abort(403, 'El usuario no tiene un rol válido (obrero, supervisor o administrativo).');
-    }
-
-    public function store(Request $request)
-{
-    // 1. Validar que evidencia sea un arreglo y cada archivo cumpla las reglas
-    $request->validate([
-        'id_tipo_evento' => 'required|integer',
-        'condicion'      => 'required|integer',
-        'descripcion'    => 'required|string|max:500',
-        'referencia'     => 'required|string',
-        'evidencia'      => 'nullable|array|max:3',
-        'evidencia.*'    => 'file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120', // Máximo 5MB por archivo
-    ]);
-
-    $rutasArchivos = [];
-
-    // 2. Si vienen archivos, los recorremos y guardamos
-    if ($request->hasFile('evidencia')) {
-        foreach ($request->file('evidencia') as $archivo) {
-            // Guarda en storage/app/public/evidencias y devuelve la ruta
-            $ruta = $archivo->store('evidencias', 'public');
-            $rutasArchivos[] = $ruta;
-        }
-    }
-
-    // 3. Crear el registro en la base de datos
-    $evento = Evento::create([
-        'id_tipo_evento' => $request->id_tipo_evento,
-        'condicion'      => $request->condicion,
-        'descripcion'    => $request->descripcion,
-        'referencia'     => $request->referencia,
-        'id_proyecto'    => $this->proyectoActualDelTrabajador(),
-        'id_trabajador'  => auth()->user()->trabajador?->id_trabajador,
-        'estado'         => 'abierta',
-        // Convertimos el arreglo de rutas a JSON para guardarlo en una sola columna
-        'evidencia'      => json_encode($rutasArchivos), 
-    ]);
-
-    // 4. Lógica de Alertas Inmediatas (Módulo A) - Todas las tarjetas PARE son críticas
-    \Illuminate\Support\Facades\Log::alert("ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE registrada. Evento ID: {$evento->id_evento}, Proyecto ID: {$evento->id_proyecto}");
-
-    return redirect()->route('eventos.index')->with('success', 'Reporte creado con éxito');
-}
-
 
     public function create()
     {
-        return Inertia::render('Eventos/Create', [
-            'tiposEvento' => \App\Models\TipoEvento::all(),
-        ]);
+        return Inertia::render(
+            'Eventos/Create',
+            $this->servicio->obtenerDatosFormularioCrear()
+        );
     }
 
-    private function obreroAutenticado(): Obrero
+    public function store(CrearEventoRequest $request)
     {
-        $obrero = auth()->user()->trabajador?->obrero;
+        $this->servicio->crear($request->toData());
 
-        abort_if(! $obrero, 403, 'El usuario autenticado no está registrado como obrero.');
+        $destino = Auth::user()?->tieneRol('Administrador', 'Supervisor')
+            ? 'eventos.index'
+            : 'eventos.mis-reportes';
 
-        return $obrero;
+        return redirect()->route($destino)->with(
+            'success',
+            'Reporte creado con éxito'
+        );
     }
 
-    private function supervisorAutenticado(): Supervisor
-    {
-        $supervisor = auth()->user()->trabajador?->supervisor;
-
-        abort_if(! $supervisor, 403, 'El usuario autenticado no está registrado como supervisor.');
-
-        return $supervisor;
-    }
-
-    private function administrativoAutenticado(): Administrativo
-    {
-        $administrativo = auth()->user()->trabajador?->administrativo;
-
-        abort_if(! $administrativo, 403, 'El usuario autenticado no está registrado como administrativo.');
-
-        return $administrativo;
-    }
-
-    
     public function show(Evento $evento)
     {
-        $evento->load(['tipoEvento', 'proyecto', 'administrador']);
+        $user = Auth::user();
+        abort_unless($user, 401);
+
+        $trabajadorId = $user->trabajador?->id_trabajador;
+
+        if (! $user->tieneRol('Administrador')) {
+            $tieneAcceso = $trabajadorId
+                && ((int) $evento->id_trabajador === (int) $trabajadorId
+                    || ($user->tieneRol('Supervisor')
+                        && (int) $evento->id_supervisor === (int) $trabajadorId));
+
+            if (! $tieneAcceso && $user->tieneRol('Supervisor')) {
+                $tieneAcceso = $this->servicio->supervisorPuedeVer($evento, (int) $trabajadorId);
+            }
+
+            abort_unless($tieneAcceso, 403, 'No tienes permisos para ver este reporte.');
+        }
 
         return Inertia::render('Eventos/Show', [
-            'evento' => $evento,
+            'evento' => $this->servicio->obtener($evento),
         ]);
+    }
+
+    public function verArchivo(string $archivo)
+    {
+        return $this->servicio->responderArchivo($archivo);
+    }
+
+    public function obtenerEvidencias(Evento $evento)
+    {
+        return response()->json($this->servicio->obtenerEvidencias($evento));
     }
 
     public function edit(Evento $evento)
     {
-        $evento->load(['incidente', 'fatalidad']);
+        $user = Auth::user();
+        $trabajadorId = $user?->trabajador?->id_trabajador;
+        $puedeEditar = $user && ($user->tieneRol('Administrador')
+            || ($trabajadorId
+                && (int) $evento->id_trabajador === (int) $trabajadorId
+                && in_array($evento->estado, ['abierto', 'abierta'], true)));
+
+        abort_unless($puedeEditar, 403, 'No tienes permiso para editar este reporte.');
 
         return Inertia::render('Eventos/Edit', [
-            'evento' => $evento,
+            'evento' => $this->servicio->obtenerParaEditar($evento),
         ]);
     }
 
-    public function update(Request $request, Evento $evento)
+    public function update(ActualizarEventoRequest $request, Evento $evento)
     {
-        $validated = $request->validate([
-            'condicion' => 'required|string',
-            'descripcion' => 'required|string',
-            'referencia' => 'required|string',
-        ]);
+        $user = Auth::user();
+        $trabajadorId = $user?->trabajador?->id_trabajador;
+        $puedeEditar = $user && ($user->tieneRol('Administrador')
+            || ($trabajadorId
+                && (int) $evento->id_trabajador === (int) $trabajadorId
+                && in_array($evento->estado, ['abierto', 'abierta'], true)));
 
-        $evento->update([
-            'condicion' => $validated['condicion'],
-            'descripcion' => $validated['descripcion'],
-            'referencia' => $validated['referencia'],
-        ]);
+        abort_unless($puedeEditar, 403, 'No tienes permiso para editar este reporte.');
 
-        return redirect()->route('eventos.show', $evento->id_evento);
+        $this->servicio->actualizar($evento, $request->toData());
+
+        return redirect()->route('eventos.show', $evento->id_evento)
+            ->with('success', 'Reporte actualizado con éxito');
     }
 
     public function tomarReporte(Evento $evento)
     {
-        $supervisor = $this->supervisorAutenticado();
-        $cuadrillaObrero = $evento->trabajador->cuadrilla;
-
-        abort_if(! $cuadrillaObrero, 422, 'El trabajador no tiene cuadrilla asignada.');
-        abort_unless($cuadrillaObrero->id_supervisor === $supervisor->id_trabajador, 403, 'No eres el supervisor asignado a esta cuadrilla.');
-        abort_if($evento->estado !== 'abierta', 422, 'El evento ya fue tomado o cerrada.');
-
-        $evento->update([
-            'id_supervisor' => $supervisor->id_trabajador,
-            'estado' => 'proceso',
-        ]);
+        $this->servicio->tomarReporte($evento);
 
         return redirect()->route('eventos.show', $evento->id_evento);
     }
 
-    public function cerrar(Request $request, Evento $evento)
+    public function cerrar(CerrarEventoRequest $request, Evento $evento)
     {
-        $administrativo = $this->administrativoAutenticado();
+        abort_unless(
+            Auth::user()?->tieneRol('Administrador'),
+            403,
+            'Solo un administrador puede cerrar un reporte.'
+        );
 
-        abort_if(!in_array($evento->estado, ['abierta', 'proceso']), 422, 'El evento debe estar abierta o en proceso antes de cerrarse.');
+        $this->servicio->cerrar($evento, $request->toData());
 
-        $request->validate([
-            'justificacion'    => 'required|string|max:500',
-            'evidencia_cierre' => 'nullable|array|max:3',
-            'evidencia_cierre.*' => 'file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
-        ]);
-
-        $rutasArchivos = [];
-        if ($request->hasFile('evidencia_cierre')) {
-            foreach ($request->file('evidencia_cierre') as $archivo) {
-                $ruta = $archivo->store('evidencias_cierre', 'public');
-                $rutasArchivos[] = $ruta;
-            }
-        }
-
-        $evento->update([
-            'id_administrador' => $administrativo->id_trabajador,
-            'estado' => 'cerrada',
-            'justificacion' => $request->justificacion,
-            'evidencia_cierre' => json_encode($rutasArchivos),
-            'fecha_cierre' => now(),
-        ]);
-
-        return redirect()->route('eventos.show', $evento->id_evento)->with('success', 'Evento cerrada con éxito');
+        return redirect()->route('eventos.show', $evento->id_evento)
+            ->with('success', 'Evento cerrado con éxito');
     }
 
     public function destroy(Evento $evento)
     {
-        $evento->delete();
+        abort_unless(
+            Auth::user()?->tieneRol('Administrador'),
+            403,
+            'Solo un administrador puede eliminar reportes.'
+        );
+
+        $this->servicio->eliminar($evento);
 
         return redirect()->route('eventos.index');
     }
+
+    public function apiSinAdministrador()
+    {
+        return response()->json($this->servicio->listarSinAdministrador());
+    }
 }
-
-
-

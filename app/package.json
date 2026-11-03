@@ -3,6 +3,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
+        "typecheck": "tsc --noEmit --pretty false",
         "build:ssr": "vite build && vite build --ssr",
         "dev": "vite"
     },
@@ -10,7 +11,7 @@
         "@tailwindcss/forms": "^0.5.11",
         "@types/toastr": "^2.1.43",
         "autoprefixer": "^10.4.27",
-        "axios": "^1.14.0",
+        "axios": "^1.20.0",
         "postcss": "^8.5.8"
     },
     "dependencies": {

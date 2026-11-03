@@ -2,22 +2,27 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use Notifiable;
-    //protected $connection = "usuarios";
+    use HasApiTokens, Notifiable;
 
     protected $table = "users";
     protected $primaryKey = "id_user";
+
+    const CREATED_AT = 'created_at';
+    const UPDATED_AT = 'updated_at';
+
     protected $fillable = [
         "id_trabajador",
         "email",
         "password",
-        "fecha_creation"
+        "fecha_creacion",
     ];
 
     protected $hidden = [
@@ -25,12 +30,20 @@ class User extends Authenticatable
         "remember_token",
     ];
 
+    protected ?array $permisosCache = null;
+
     protected function casts(): array
     {
         return [
             "email_verified_at" => "datetime",
+            "fecha_creacion" => "datetime",
             "password" => "hashed",
         ];
+    }
+
+    public function trabajador(): BelongsTo
+    {
+        return $this->belongsTo(Trabajador::class, 'id_trabajador', 'id_trabajador');
     }
 
     public function trabajadorOrFail(): Trabajador
@@ -40,9 +53,7 @@ class User extends Authenticatable
         );
     }
 
-    // ============================================================
     // ROLES
-    // ============================================================
 
     public function roles(): BelongsToMany
     {
@@ -51,18 +62,24 @@ class User extends Authenticatable
 
     public function rolesActivos(): BelongsToMany
     {
-        return $this->roles()->where('estado', 'activo');
+        return $this->roles()->where('roles.estado', 'activo');
     }
+
     public function rolesArray(): array
-{
-    return $this->rolesActivos()
-        ->pluck('nombre')
-        ->all();
-}
-    // ============================================================
+    {
+        return $this->rolesActivos()
+            ->pluck('roles.nombre')
+            ->map(fn (string $nombre) => match (strtolower(trim($nombre))) {
+                'admin', 'administrador' => 'Administrador',
+                'supervisor' => 'Supervisor',
+                'usuario' => 'Usuario',
+                'rrhh' => 'RRHH',
+                default => $nombre,
+            })
+            ->all();
+    }
+
     // PERMISOS
-    // ============================================================
-    protected ?array $permisosCache = null;
 
     public function permisosArray(): array
     {
@@ -75,22 +92,21 @@ class User extends Authenticatable
             ->all();
     }
 
-    public function tieneRol(string $nombreRol): bool
+    public function tieneRol(string ...$nombresRoles): bool
     {
-        return $this->rolesActivos()
-            ->where("nombre", $nombreRol)
-            ->exists();
+        $userRoles = array_map('strtolower', $this->rolesArray());
+        foreach ($nombresRoles as $rol) {
+            if (in_array(strtolower($rol), $userRoles, true)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function tienePermiso(string $permiso): bool
     {
         return $this->rolesActivos()
-            ->whereHas('permisos', fn ($q) => $q->where('nombre', $permiso))
+            ->whereHas('permisos', fn ($q) => $q->where('permisos.nombre', $permiso))
             ->exists();
-    }
-
-    public function trabajador()
-    {
-        return $this->belongsTo(Trabajador::class, 'id_trabajador', 'id_trabajador');
     }
 }

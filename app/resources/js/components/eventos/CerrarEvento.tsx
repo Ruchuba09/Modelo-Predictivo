@@ -10,7 +10,7 @@ interface CerrarEventoProps {
 export default function CerrarEvento({ eventoId, estado, onCerrado }: CerrarEventoProps) {
   const [cargando, setCargando] = useState(false);
 
-  const puedeCerrar = estado === 'abierto';
+  const puedeCerrar = ['abierto', 'abierta', 'en_revision', 'proceso'].includes(estado);
 
   const handleCerrar = () => {
     if (!puedeCerrar) return;

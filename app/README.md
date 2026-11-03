@@ -1,81 +1,54 @@
-# README del proyecto
+# Aplicación Laravel + React
 
-Aplicacion Laravel 13 + React 19 con Vite y TypeScript.
+## Requisitos
 
-## Comandos iniciales
-Ejecútalos en una terminal dentro del contenedor (terminal de VSC o Docker).
+- PHP 8.3+ y extensiones PDO/PostgreSQL requeridas por Laravel.
+- Composer.
+- Node.js 22+ y npm.
+- PostgreSQL con el esquema legacy documentado en [docs/database.md](docs/database.md).
 
-Generar `APP_KEY` y luego asignarla en `.env` (Deben crearlo en base al `.env.example`):
+## Desarrollo local
 
-```bash
-php artisan key:generate --show
-```
-
-Corrección de permisos:
+Desde este directorio:
 
 ```bash
-chown -R www-data:www-data /var/www/app
-chmod -R 775 /var/www/app/storage
-chmod -R 775 /var/www/app/bootstrap/cache/
+composer install
+cp .env.example .env
+php artisan key:generate
+npm ci
 ```
 
-Ejecutar migracion inicial:
+Configura `DB_CONNECTION=usuarios` y los valores `PG_*` en `.env`. Asegúrate de que PostgreSQL tenga instalado el esquema completo antes de ejecutar páginas que consultan datos. `php artisan migrate` aplica únicamente las migraciones parciales incluidas; no inicializa todas las tablas del producto.
+
+Levanta la aplicación y Vite con:
 
 ```bash
-php artisan tinker --execute="DB::statement(\"CREATE SCHEMA IF NOT EXISTS laravel\")"
-php artisan migrate
+composer run dev
 ```
-# Librerias incluidas:
 
-## Principales
+## Calidad
 
-- `laravel/framework`: framework backend principal.
-- `inertiajs/inertia-laravel` + `@inertiajs/react`: puente Laravel-React sin API REST tradicional.
-- `laravel/sanctum`: autenticacion para SPA/API.
-- `laravel/telescope`: inspeccion de requests, jobs, logs y queries.
-- `laravel/pulse`: metricas y monitoreo de rendimiento.
-- `react`: libreria base de UI.
-- `vite` + `laravel-vite-plugin`: bundling y desarrollo frontend.
-- `typescript`: tipado estatico en frontend.
-- `tailwindcss`: utilidades CSS.
-- `@mui/material`: componentes UI listos para uso.
-- `@radix-ui/*`: primitivas UI accesibles (avatar, dialog, select, tooltip, etc).
+```bash
+composer validate --strict
+composer run test:unit
+composer run test:routes
+npm run typecheck
+npm run build
+```
 
-## Datos y tablas
+Las pruebas feature con acceso a modelos requieren una base PostgreSQL de pruebas con el esquema completo. Evita `migrate:fresh` en bases compartidas o con datos.
 
-- `@tanstack/react-query`: cache y sincronizacion de datos remotos.
-- `@tanstack/react-table`: construccion de tablas complejas.
-- `@tanstack/react-virtual`: virtualizacion para listas/tablas grandes.
+La arquitectura, rutas y autenticación de API se describen en [docs/api.md](docs/api.md).
 
-## Visuales y UX
+## Datos sintéticos para el modelo predictivo
 
-- `chart.js` + plugins: graficos y anotaciones.
-- `lucide-react` + `@fortawesome/fontawesome-free` + `bootstrap-icons`: iconografia.
-- `toastr`: notificaciones toast.
-- `react-dropzone` + `dropzone`: carga de archivos drag and drop.
-- `signature_pad`: captura de firmas en canvas.
+Para crear un lote grande en un entorno de desarrollo, ejecuta el comando manual (no forma parte de `DatabaseSeeder`):
 
-## Backend
+```powershell
+$env:APP_ENV = 'local'
+php artisan model:seed-predictive --projects=60 --workers=360 --squads=40 --events=1800 --months=60 --seed=20261029
+```
 
-- `maatwebsite/excel`: importacion/exportacion Excel/CSV.
-- `barryvdh/laravel-dompdf` + `iio/libmergepdf` + `spatie/pdf-to-image`: generacion, union y conversion de PDFs.
-- `predis/predis`: cliente Redis para cache/colas/sesiones.
-- `simplesoftwareio/simple-qrcode`: generacion de codigos QR.
-- `tightenco/ziggy`: uso de rutas Laravel en JavaScript.
+El comando crea proyectos activos con 60 meses de historial, clientes, faenas, áreas, trabajadores, supervisores, cuadrillas, asignaciones, actividades y eventos fechados; si está instalada la ampliación del esquema, también genera cientos de miles de filas de horas-hombre, asistencia, avance semanal y clima. Los registros quedan marcados con un prefijo `SINTETICO-*`. Para repetirlo, usa otro `--tag` y otro `--seed`; no borra registros previos. No se ejecuta en producción.
 
-## Desarrollo y testing
-
-- `phpunit/phpunit`: pruebas unitarias e integracion.
-- `laravel/dusk`: pruebas end-to-end.
-- `mockery/mockery`: mocks para pruebas.
-- `fakerphp/faker`: datos fake para tests y seeders.
-- `nunomaduro/collision`: mejor salida de errores en consola.
-- `laravel/pail`: visor en tiempo real de logs.
-- `laravel/breeze` + `laravel/ui`: scaffolding de autenticacion y UI base.
-
-
-## Normas gráficas
-
-La documentación visual y el catálogo de assets viven en:
-
-- [Normas gráficas y assets](./docs/normas-graficas.md)
+Los conteos se pueden ajustar, por ejemplo `--projects=100 --workers=600 --squads=60 --events=5000 --months=84`. Las vistas del modelo deben estar instaladas con los scripts en `../python/database` antes de consultar las predicciones.

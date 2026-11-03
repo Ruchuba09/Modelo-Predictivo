@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
     obtenerProyectos,
+    obtenerProyecto,
     eliminarProyecto,
     type Proyecto,
 } from "../api/proyectosApi";
 
-export function useProyectos() {
+export function useProyectos(id?: number) {
     const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+    const [proyecto, setProyecto] = useState<Proyecto | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -16,32 +18,37 @@ export function useProyectos() {
             setLoading(true);
             setError(null);
 
-            const data = await obtenerProyectos();
-
-            setProyectos(data);
+            if (id !== undefined) {
+                const data = await obtenerProyecto(id);
+                setProyecto(data);
+            } else {
+                const data = await obtenerProyectos();
+                setProyectos(data);
+            }
         } catch (err) {
             setError(
                 err instanceof Error
                     ? err.message
+                    : id !== undefined
+                    ? "Error al cargar el proyecto"
                     : "Error al cargar proyectos"
             );
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [id]);
 
     useEffect(() => {
         cargarProyectos();
     }, [cargarProyectos]);
 
-    const eliminar = async (id: number) => {
+    const eliminar = async (idEliminar: number) => {
         try {
-            await eliminarProyecto(id);
+            await eliminarProyecto(idEliminar);
 
             setProyectos((actuales) =>
                 actuales.filter(
-                    (proyecto) =>
-                        proyecto.id_proyecto !== id
+                    (item) => item.id_proyecto !== idEliminar
                 )
             );
         } catch (err) {
@@ -55,9 +62,13 @@ export function useProyectos() {
 
     return {
         proyectos,
+        proyecto,
         loading,
         error,
         recargar: cargarProyectos,
         eliminar,
     };
 }
+
+export const useProyecto = useProyectos;
+
