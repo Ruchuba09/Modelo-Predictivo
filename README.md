@@ -105,6 +105,113 @@ NOMBRE          = # Tu nombre de usuario de GitHub
 
 Desde la carpeta `docker/`:
 
+```# Modelo Predictivo
+
+Aplicación web para la gestión y análisis predictivo de incidentes, tarjetas de "pare" y prevención de riesgos laborales. Construida con **Laravel 13** (backend) y **React + Inertia.js** (frontend), usando **PostgreSQL** como base de datos y **Redis** para colas y caché.
+
+## Índice
+
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Requisitos previos](#requisitos-previos)
+- [Opción A: Instalación con Docker (recomendada)](#opción-a-instalación-con-docker-recomendada)
+- [Opción B: Instalación sin Docker (local)](#opción-b-instalación-sin-docker-local)
+- [Servicio de modelo predictivo (Python)](#servicio-de-modelo-predictivo-python)
+- [Comandos útiles](#comandos-útiles)
+- [Solución de problemas](#solución-de-problemas)
+
+## Estructura del proyecto
+
+```
+Modelo-Predictivo/
+├── app/             # Aplicación Laravel + React (el código del proyecto)
+├── docker/          # Configuración de Docker (Nginx, PHP, Redis, PostgreSQL, pgAdmin, servicio Python)
+└── python/          # Servicio de modelo predictivo (FastAPI + scikit-learn)
+```
+
+## Requisitos previos
+
+Antes de elegir una opción de instalación, revisa qué tienes instalado en tu equipo:
+
+- **¿Tienes Docker Desktop instalado?** → Sigue la [Opción A](#opción-a-instalación-con-docker-recomendada). Es la forma más simple porque Docker se encarga de instalar PHP, Node, PostgreSQL y Redis por ti dentro de contenedores; **no necesitas tener Laravel, PHP ni PostgreSQL instalados en tu máquina**.
+- **¿No tienes Docker y prefieres instalar todo localmente?** → Sigue la [Opción B](#opción-b-instalación-sin-docker-local). Ahí se detalla cómo instalar PHP, Composer, Node y PostgreSQL si aún no los tienes.
+
+> 💡 Si no estás seguro de cuál elegir, se recomienda la **Opción A (Docker)**: es más rápida de levantar y evita conflictos de versiones con software que ya tengas instalado.
+
+---
+
+## Opción A: Instalación con Docker (recomendada)
+
+### A.1 Requisitos
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y en ejecución.
+- Git.
+- (Opcional pero recomendado) Visual Studio Code con las extensiones:
+  - Dev Containers
+  - Container Tools
+  - Docker
+
+No necesitas instalar PHP, Composer, Node ni PostgreSQL: todo corre dentro de los contenedores.
+
+#### Habilitar la virtualización en la BIOS (solo Windows)
+
+Docker Desktop necesita que la virtualización de hardware esté activada. Si al instalar o abrir Docker Desktop aparece un error como `Virtualization support not detected` o `WSL 2 installation is incomplete`, debes habilitarla manualmente:
+
+1. Reinicia el computador y entra a la **BIOS/UEFI** (normalmente presionando `F2`, `F10`, `F12`, `Del` o `Esc` justo al encender el equipo; la tecla depende de la marca del computador).
+2. Busca una opción llamada **Virtualization Technology**, **Intel VT-x**, **AMD-V** o **SVM Mode** (suele estar en la pestaña `Advanced` o `CPU Configuration`).
+3. Cámbiala a **Enabled**.
+4. Guarda los cambios (`F10` en la mayoría de los equipos) y reinicia.
+
+#### Instalar WSL (Windows Subsystem for Linux)
+
+Docker Desktop en Windows requiere WSL 2 para funcionar. Para instalarlo:
+
+1. Abre **PowerShell como administrador** (click derecho → `Ejecutar como administrador`).
+2. Ejecuta el siguiente comando:
+
+```powershell
+wsl --install
+```
+
+3. Reinicia el computador cuando termine la instalación.
+4. Si WSL ya estaba instalado pero desactualizado, actualízalo con:
+
+```powershell
+wsl --update
+```
+
+5. Abre Docker Desktop y confirma que en `Settings` → `General` esté marcada la opción `Use the WSL 2 based engine`.
+
+### A.2 Clonar el repositorio
+
+Clona el repositorio oficial desde la rama `main`:
+
+```bash
+git clone https://github.com/Ruchuba09/Modelo-Predictivo.git
+cd Modelo-Predictivo
+```
+
+### A.3 Configurar variables de entorno de Docker
+
+Dentro de la carpeta `docker/`, copia el archivo de ejemplo y complétalo:
+
+```bash
+cd docker
+cp .env.example .env
+```
+
+#### Obtener tu token de GitHub
+
+```env
+GITHUB_TOKEN    = # Un Personal Access Token de GitHub, generado en https://github.com/settings/tokens
+URL_REPOSITORIO = https://github.com/AVA-UCSC/Modelo-Predictivo-Nicolas
+RAMA            = Nicolas
+CORREO          = # Tu correo asociado a GitHub
+NOMBRE          = # Tu nombre de usuario de GitHub
+```
+### A.4 Levantar los contenedores
+
+Desde la carpeta `docker/`:
+
 ```bash
 docker compose up -d --build
 ```
@@ -151,7 +258,15 @@ Para registrar la base de datos dentro de pgAdmin:
   
 ### A.8 Credenciales demo de desarrollo
 
-Las cuentas de demostración solo deben usarse en entornos locales. Cambia las credenciales antes de exponer una instancia y no ejecutes seeders demo en producción.
+Si corriste `php artisan db:seed` (o el seeder completo incluye `UserSeeder`), quedan disponibles las siguientes cuentas de prueba, todas con la misma contraseña:
+
+| Rol | Email | Contraseña |
+|---|---|---|
+| Usuario/trabajador | `trabajador@empresa.cl` | `12345678` |
+| Supervisor | `supervisor@empresa.cl` | `87654321` |
+| Admin | `admin@empresa.cl` | `12345678` |
+
+⚠️ Estas cuentas y contraseña son solo para entornos locales de desarrollo. Cambia las credenciales antes de exponer una instancia y no ejecutes seeders demo en producción.
 
 ### A.9 Detener y limpiar el entorno
 
