@@ -8,6 +8,7 @@ Aplicación web para la gestión y análisis predictivo de incidentes, tarjetas 
 - [Requisitos previos](#requisitos-previos)
 - [Opción A: Instalación con Docker (recomendada)](#opción-a-instalación-con-docker-recomendada)
 - [Opción B: Instalación sin Docker (local)](#opción-b-instalación-sin-docker-local)
+- [Servicio de modelo predictivo (Python)](#servicio-de-modelo-predictivo-python)
 - [Comandos útiles](#comandos-útiles)
 - [Solución de problemas](#solución-de-problemas)
 
@@ -16,7 +17,8 @@ Aplicación web para la gestión y análisis predictivo de incidentes, tarjetas 
 ```
 Modelo-Predictivo/
 ├── app/             # Aplicación Laravel + React (el código del proyecto)
-└── docker/          # Configuración de Docker (Nginx, PHP, Redis, PostgreSQL, pgAdmin)
+├── docker/          # Configuración de Docker (Nginx, PHP, Redis, PostgreSQL, pgAdmin, servicio Python)
+└── python/          # Servicio de modelo predictivo (FastAPI + scikit-learn)
 ```
 
 ## Requisitos previos
@@ -107,7 +109,9 @@ Desde la carpeta `docker/`:
 docker compose up -d --build
 ```
 
-Esto va a construir y levantar: Laravel, Nginx, Redis, PostgreSQL, workers de colas y pgAdmin. La primera vez puede tardar varios minutos.
+Esto va a construir y levantar: Laravel, Nginx, Redis, PostgreSQL, workers de colas, pgAdmin y el servicio de modelo predictivo (Python/FastAPI). La primera vez puede tardar varios minutos.
+
+> 💡 El servicio de modelo predictivo necesita que las vistas de PostgreSQL existan en la base de datos antes de poder responder predicciones; revisa la sección [Servicio de modelo predictivo (Python)](#servicio-de-modelo-predictivo-python) para prepararlas.
 
 ### A.5 Acceder a la aplicación
 
@@ -280,6 +284,70 @@ Por defecto: `http://localhost:8000`
 
 ---
 
+## Servicio de modelo predictivo (Python)
+
+Además del backend Laravel, el proyecto incluye un servicio independiente en **Python (FastAPI + scikit-learn)**, ubicado en `python/`. Estima la probabilidad de que un proyecto registre uno o más eventos de cierto tipo en las próximas semanas, usando vistas de PostgreSQL y un clasificador `HistGradientBoosting`. No depende de ningún proveedor externo: todo el cálculo se hace con los datos ya presentes en la base.
+
+Laravel consume este servicio de forma transparente a través de sus propias rutas (`/api/v1/modelo-predictivo/...`), por lo que normalmente no necesitas llamarlo directamente; esta sección es para levantarlo, prepararlo y, si lo necesitas, consultarlo o depurarlo de forma independiente.
+
+### Preparar las vistas de PostgreSQL (obligatorio)
+
+El modelo lee desde vistas que no vienen en las migraciones de Laravel. Ejecuta los siguientes scripts contra la misma base de datos que usa Laravel, **en este orden**:
+
+1. `python/database/01_vistas_modelo_predictivo.sql` — debe ejecutarse después de tener cargado el esquema base del proyecto (ver [docs/database.md](app/docs/database.md)). Crea la serie semanal, los eventos unificados y las variables de contexto.
+2. `python/database/03_ampliacion_modelo_datos.sql` — agrega tablas adicionales y la vista opcional `v_proyecto_semana_extra`.
+
+Ambas deben quedar en el esquema `public`. Sin estos scripts, el servicio responde pero no puede generar predicciones.
+
+### Con Docker (recomendado)
+
+Si ya levantaste el proyecto con la [Opción A](#opción-a-instalación-con-docker-recomendada), el servicio `predictive-model` se construye y arranca automáticamente junto con Laravel — no requiere pasos extra.
+
+- Laravel lo consulta internamente en `http://predictive-model:8000` (dentro de la red de Docker); se puede sobrescribir con `PREDICTIVE_MODEL_URL` en `app/.env`.
+- Si tu PostgreSQL usa credenciales o nombre de base distintos a los predeterminados del `docker compose`, define `PREDICTIVE_DATABASE_URL` en `docker/.env`.
+- El contenedor **no publica el puerto 8000 al host** por defecto, así que `http://localhost:8000` no estará disponible desde tu navegador. Para explorar la documentación interactiva de FastAPI (`/docs`) o llamar al servicio directamente desde tu máquina, agrega temporalmente en `docker/compose.yml`, dentro del servicio `predictive-model`:
+
+  ```yaml
+  ports:
+    - "8000:8000"
+  ```
+
+  y vuelve a levantar los contenedores (`docker compose up -d --build`).
+
+### Sin Docker (local)
+
+```bash
+cd python
+pip install -r requirements.txt
+```
+
+Define `DATABASE_URL` apuntando a tu PostgreSQL y levanta el servicio con Uvicorn:
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg2://usuario:clave@localhost:5432/postgres"
+uvicorn servicio:app --host 127.0.0.1 --port 8000
+```
+
+En Linux/macOS, el equivalente es:
+
+```bash
+export DATABASE_URL="postgresql+psycopg2://usuario:clave@localhost:5432/postgres"
+uvicorn servicio:app --host 127.0.0.1 --port 8000
+```
+
+### Endpoints principales
+
+| Endpoint | Descripción |
+|---|---|
+| `GET /health` | Verifica la conexión con PostgreSQL |
+| `GET /tipos` | Lista `todos` y los tipos de evento encontrados en los datos |
+| `GET /predicciones?tipo_objetivo=todos&horizonte=4&id_proyecto=123` | Devuelve la probabilidad por proyecto, el ranking global y, si se indica `id_proyecto`, el detalle por trabajador, cuadrilla, actividad, área, faena y cliente. `horizonte` acepta de 1 a 52 semanas |
+| `GET /docs` | Documentación interactiva de FastAPI (Swagger UI) |
+
+El servicio reentrena el modelo en cada solicitud y necesita un mínimo de 100 filas proyecto-semana con ejemplos positivos y negativos para el objetivo elegido; si no hay datos suficientes, devuelve estimaciones históricas suavizadas en lugar de dejar el panel vacío, indicando el método de respaldo usado. Para el detalle completo del contrato HTTP (estructura de la respuesta, suavizado jerárquico, manejo de exposición histórica, etc.) revisa [`python/README.md`](python/README.md).
+
+---
+
 ## Comandos útiles
 
 | Comando | Descripción |
@@ -299,3 +367,4 @@ Por defecto: `http://localhost:8000`
 - **Error de conexión a la base de datos:** revisa que PostgreSQL esté corriendo y que `PG_HOST`, `PG_PORT`, `PG_DATABASE`, `PG_USERNAME` y `PG_PASSWORD` correspondan a la conexión seleccionada.
 - **`npm install` falla por dependencias nativas:** borra `node_modules` y `package-lock.json`, y vuelve a ejecutar `npm install`.
 - **Cambios en `.env` no se reflejan:** ejecuta `php artisan config:clear`.
+- **El modelo predictivo responde error o datos vacíos:** confirma que ejecutaste los scripts `python/database/01_vistas_modelo_predictivo.sql` y `python/database/03_ampliacion_modelo_datos.sql`, y revisa el estado del servicio en `GET /health` (vía `docker compose logs predictive-model` si corre en Docker).
