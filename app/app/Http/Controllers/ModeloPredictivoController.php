@@ -20,7 +20,7 @@ class ModeloPredictivoController extends Controller
         ]);
 
         $parametros = [
-            'tipo_objetivo' => $filtros['tipo_objetivo'] ?? 'todos',
+            'tipo_objetivo' => $filtros['tipo_objetivo'] ?? 'incidentes_reales',
             'horizonte' => $filtros['horizonte'] ?? 4,
         ];
         if (isset($filtros['id_proyecto'])) {
@@ -44,7 +44,7 @@ class ModeloPredictivoController extends Controller
 
         return $this->solicitarModelo('/predicciones', [
             'id_proyecto' => $proyecto->getKey(),
-            'tipo_objetivo' => $filtros['tipo_objetivo'] ?? 'todos',
+            'tipo_objetivo' => $filtros['tipo_objetivo'] ?? 'incidentes_reales',
             'horizonte' => $filtros['horizonte'] ?? 4,
         ]);
     }

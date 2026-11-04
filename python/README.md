@@ -27,8 +27,9 @@ uvicorn servicio:app --host 127.0.0.1 --port 8000
 ## Contrato HTTP
 
 - `GET /health`: comprueba conexión con PostgreSQL.
-- `GET /tipos`: devuelve `todos` y los tipos encontrados en los datos.
-- `GET /predicciones?tipo_objetivo=todos&horizonte=4&id_proyecto=123`: devuelve la probabilidad y la semana base del proyecto, las variables usadas por el clasificador y, al indicar un proyecto, el análisis predictivo por trabajador, trabajador-actividad, configuración de cuadrilla, actividad, área, faena y cliente. El horizonte acepta de 1 a 52 semanas.
+- `GET /tipos`: devuelve `incidentes_reales`, `todos` y los tipos encontrados en los datos.
+  `incidentes_reales` (predeterminado) agrupa accidentes, incidentes y Reportes Flash; los hallazgos, Previene y Tarjetas PARE quedan solo como predictores. Ningún total cuenta `informe_investigacion`, porque documenta un incidente ya contado por su Reporte Flash.
+- `GET /predicciones?tipo_objetivo=incidentes_reales&horizonte=4&id_proyecto=123`: devuelve la probabilidad y la semana base del proyecto, las variables usadas por el clasificador y, al indicar un proyecto, el análisis predictivo por trabajador, trabajador-actividad, configuración de cuadrilla, actividad, área, faena y cliente. El horizonte acepta de 1 a 52 semanas.
 
 La misma respuesta incluye `analisis_global.cuadrillas` con la probabilidad de cada cuadrilla activa; omitir `id_proyecto` devuelve todas las cuadrillas de todos los proyectos vigentes, y enviarlo filtra ese listado al proyecto indicado. El bloque `predicciones` conserva el ranking de todos los proyectos para la vista comparativa.
 

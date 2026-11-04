@@ -7,6 +7,11 @@ interface ProyectoItem {
     nombre: string;
 }
 
+interface AreaItem {
+    id_area: number;
+    nombre: string;
+}
+
 interface TrabajadorItem {
     id_trabajador: number;
     nombre: string;
@@ -28,6 +33,8 @@ interface CreatePageProps {
     usuarioTrabajador?: UsuarioTrabajador | null;
     trabajadores?: TrabajadorItem[];
     proyectos?: ProyectoItem[];
+    idTipoPare?: number | null;
+    areasPorProyecto?: Record<number, AreaItem[]>;
 }
 
 const condicionesPare: { [key: number]: string } = {
@@ -49,16 +56,19 @@ export default function Create() {
         usuarioTrabajador = null,
         trabajadores = [],
         proyectos = [],
+        idTipoPare = null,
+        areasPorProyecto = {},
     } = usePage().props as unknown as CreatePageProps;
 
     const [esParaMi, setEsParaMi] = useState<boolean>(true);
 
     const { data, setData, post, processing, errors } = useForm({
-        id_tipo_evento: 4, // 4 = Tarjeta PARE (Accidente)
+        id_tipo_evento: idTipoPare ?? 0,
         condicion: 0,
         descripcion: '',
         referencia: '',
         id_proyecto: '' as number | '',
+        id_area: '' as number | '',
         id_trabajador: (usuarioTrabajador?.id_trabajador || '') as number | '',
         es_para_mi: true as boolean,
         evidencia: [] as File[],
@@ -111,6 +121,19 @@ export default function Create() {
             }));
         }
     }, [proyectosDisponibles]);
+
+    const areasDisponibles: AreaItem[] = useMemo(
+        () => (data.id_proyecto ? areasPorProyecto[Number(data.id_proyecto)] ?? [] : []),
+        [data.id_proyecto, areasPorProyecto]
+    );
+
+    // Al cambiar de proyecto, el área anterior puede no pertenecer a su faena
+    useEffect(() => {
+        const existe = areasDisponibles.some((a) => a.id_area === Number(data.id_area));
+        if (!existe) {
+            setData('id_area', areasDisponibles.length === 1 ? areasDisponibles[0].id_area : '');
+        }
+    }, [areasDisponibles]);
 
     // Cambiar entre 'Para mí' y 'Para un tercero'
     const handleCambiarModo = (paraMi: boolean) => {
@@ -168,8 +191,18 @@ export default function Create() {
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
 
+        if (!idTipoPare) {
+            alert('El tipo de evento "Tarjeta PARE" no está configurado. Contacte al administrador.');
+            return;
+        }
+
         if (!data.id_proyecto) {
             alert('Por favor, seleccione un proyecto.');
+            return;
+        }
+
+        if (areasDisponibles.length > 0 && !data.id_area) {
+            alert('Por favor, seleccione el área.');
             return;
         }
 
@@ -321,10 +354,37 @@ export default function Create() {
                                 )}
                             </div>
 
-                            {/* ÁREA / REFERENCIA */}
+                            {/* ÁREA DE LA FAENA */}
+                            {areasDisponibles.length > 0 && (
+                                <div>
+                                    <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
+                                        Área
+                                    </label>
+                                    <select
+                                        required
+                                        value={data.id_area}
+                                        onChange={(e) =>
+                                            setData('id_area', e.target.value ? Number(e.target.value) : '')
+                                        }
+                                        className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 transition-colors cursor-pointer"
+                                    >
+                                        <option value="">Selecciona el área...</option>
+                                        {areasDisponibles.map((a) => (
+                                            <option key={a.id_area} value={a.id_area}>
+                                                {a.nombre}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            {errors.id_area && (
+                                <p className="text-red-400 text-xs mt-1">{errors.id_area}</p>
+                            )}
+
+                            {/* LUGAR EXACTO */}
                             <div>
                                 <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
-                                    Área/Zona
+                                    Lugar exacto
                                 </label>
                                 <input
                                     type="text"

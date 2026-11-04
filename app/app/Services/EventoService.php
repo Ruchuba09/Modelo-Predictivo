@@ -7,6 +7,7 @@ use App\DataTransferObjects\CerrarEventoData;
 use App\DataTransferObjects\CrearEventoData;
 use App\Enums\EstadoEvento;
 use App\Models\Administrativo;
+use App\Models\Area;
 use App\Models\Asignacion;
 use App\Models\Cuadrilla;
 use App\Models\Evento;
@@ -15,14 +16,23 @@ use App\Models\Proyecto;
 use App\Models\Supervisor;
 use App\Models\TipoEvento;
 use App\Models\Trabajador;
+use App\Models\User;
+use App\Notifications\TarjetaPareRegistrada;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class EventoService
 {
-    private const TIPO_EVENTO_PARE = 4;
+    private const NOMBRE_TIPO_PARE = 'Tarjeta PARE';
+
+    /** Departamentos que reciben el aviso de PARE además del supervisor. */
+    private const DEPARTAMENTOS_PREVENCION = [
+        'Prevención de Riesgos',
+        'Seguridad y Salud Ocupacional',
+    ];
 
     private const CONDICIONES = [
         1 => '1. Cond. Inseguras',
@@ -37,9 +47,21 @@ class EventoService
         10 => '10. Otros',
     ];
 
+    private ?int $idTipoPare = null;
+
     public function __construct(
         private readonly EvidenciaEventoService $evidencias
     ) {}
+
+    /**
+     * El id de la Tarjeta PARE cambia según cómo se cargó la base, por lo que
+     * se resuelve siempre por nombre.
+     */
+    public function idTipoPare(): ?int
+    {
+        return $this->idTipoPare ??= TipoEvento::where('nombre', self::NOMBRE_TIPO_PARE)
+            ->value('id_tipo_evento');
+    }
 
     public function obtenerDashboard(): Collection
     {
@@ -54,7 +76,7 @@ class EventoService
         }
 
         return Evento::select($columnas)
-            ->where('id_tipo_evento', self::TIPO_EVENTO_PARE)
+            ->where('id_tipo_evento', $this->idTipoPare())
             ->where('fecha_creacion', '>=', now()->subDays(7))
             ->groupBy(DB::raw('DATE(fecha_creacion)'))
             ->orderBy('fecha', 'asc')
@@ -175,7 +197,25 @@ class EventoService
             'usuarioTrabajador' => $usuarioTrabajador,
             'trabajadores' => $trabajadores,
             'proyectos' => $this->listarProyectosParaCrear(),
+            'idTipoPare' => $this->idTipoPare(),
+            'areasPorProyecto' => $this->areasPorProyecto(),
         ];
+    }
+
+    /** Áreas de la faena de cada proyecto, para el selector del formulario. */
+    private function areasPorProyecto(): Collection
+    {
+        $areasPorFaena = Area::orderBy('codigo_area')->get()->groupBy('id_faena');
+
+        return Proyecto::pluck('id_faena', 'id_proyecto')
+            ->map(fn ($idFaena) => $areasPorFaena->get($idFaena, collect())
+                ->map(fn (Area $area) => [
+                    'id_area' => $area->id_area,
+                    'nombre' => $area->descripcion
+                        ? "{$area->codigo_area} - {$area->descripcion}"
+                        : $area->codigo_area,
+                ])
+                ->values());
     }
 
     public function crear(CrearEventoData $datos): Evento
@@ -190,7 +230,7 @@ class EventoService
         $rutasArchivos = [];
 
         try {
-            return DB::transaction(function () use (
+            $evento = DB::transaction(function () use (
                 $datos,
                 $idTrabajador,
                 &$rutasArchivos
@@ -206,6 +246,7 @@ class EventoService
                     'descripcion' => $datos->descripcion,
                     'referencia' => $datos->referencia,
                     'id_proyecto' => $datos->idProyecto,
+                    'id_area' => $datos->idArea,
                     'id_trabajador' => $idTrabajador,
                     'id_supervisor' => $this->supervisorDelTrabajador($idTrabajador),
                     'estado' => EstadoEvento::Abierto,
@@ -222,18 +263,63 @@ class EventoService
                     $evento->trabajadores()->sync([$idTrabajador]);
                 }
 
-                Log::alert(
-                    "ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE registrada. " .
-                    "Evento ID: {$evento->id_evento}, " .
-                    "Proyecto ID: {$evento->id_proyecto}, " .
-                    "Trabajador ID: {$evento->id_trabajador}"
-                );
-
                 return $evento;
             });
         } catch (\Throwable $e) {
             $this->evidencias->eliminar($rutasArchivos);
             throw $e;
+        }
+
+        $this->avisarTarjetaPare($evento);
+
+        return $evento;
+    }
+
+    /**
+     * Avisa al supervisor y a prevención. Se ejecuta tras confirmar la
+     * transacción: un fallo de correo no debe perder la tarjeta ya registrada.
+     */
+    private function avisarTarjetaPare(Evento $evento): void
+    {
+        if ((int) $evento->id_tipo_evento !== $this->idTipoPare()) {
+            return;
+        }
+
+        Log::alert(
+            "ALERTA DE SEGURIDAD MÓDULO A: Tarjeta PARE registrada. " .
+            "Evento ID: {$evento->id_evento}, " .
+            "Proyecto ID: {$evento->id_proyecto}, " .
+            "Trabajador ID: {$evento->id_trabajador}"
+        );
+
+        try {
+            $idsTrabajadores = DB::table('trabajador_departamento as td')
+                ->join('departamentos as d', 'd.id_departamento', '=', 'td.id_departamento')
+                ->whereIn('d.nombre', self::DEPARTAMENTOS_PREVENCION)
+                ->pluck('td.id_trabajador')
+                ->push($evento->id_supervisor)
+                ->filter()
+                ->unique();
+
+            $usuarios = User::whereIn('id_trabajador', $idsTrabajadores)->get();
+
+            if ($usuarios->isEmpty()) {
+                Log::warning("Tarjeta PARE {$evento->id_evento}: sin destinatarios para el aviso.");
+
+                return;
+            }
+
+            Notification::send($usuarios, new TarjetaPareRegistrada(
+                idEvento: $evento->id_evento,
+                proyecto: $evento->proyecto?->nombre ?? "Proyecto {$evento->id_proyecto}",
+                area: $evento->area?->descripcion ?? $evento->area?->codigo_area,
+                referencia: $evento->referencia,
+                condicion: self::CONDICIONES[(int) $evento->condicion] ?? 'Sin condición',
+            ));
+        } catch (\Throwable $e) {
+            Log::error("Tarjeta PARE {$evento->id_evento}: no se pudo enviar el aviso.", [
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -278,7 +364,7 @@ class EventoService
     {
         $query = Evento::where(
             'id_tipo_evento',
-            self::TIPO_EVENTO_PARE
+            $this->idTipoPare()
         );
 
         if (! empty($filtros['id_proyecto'])) {

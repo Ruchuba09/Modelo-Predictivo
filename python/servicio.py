@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from modelo_predictivo import (
+    OBJETIVO_INCIDENTES,
     generar_analisis_entidades,
     generar_predicciones,
     generar_predicciones_cuadrillas,
@@ -40,7 +41,7 @@ def health():
 @app.get("/tipos")
 def listar_tipos():
     try:
-        return {"tipos": ["todos", *tipos_disponibles(db())]}
+        return {"tipos": [OBJETIVO_INCIDENTES, "todos", *tipos_disponibles(db())]}
     except SQLAlchemyError as exc:
         raise HTTPException(
             status_code=503,
@@ -50,7 +51,7 @@ def listar_tipos():
 
 @app.get("/predicciones")
 def predicciones(
-    tipo_objetivo: str = Query(default="todos", min_length=1, max_length=100),
+    tipo_objetivo: str = Query(default=OBJETIVO_INCIDENTES, min_length=1, max_length=100),
     horizonte: int = Query(default=4, ge=1, le=52),
     id_proyecto: int | None = Query(default=None, ge=1),
 ):
@@ -66,7 +67,7 @@ def predicciones(
                        (SELECT count(*) FROM public.cuadrillas) AS cuadrillas_registradas
             """)).mappings().one()
         disponibles = tipos_disponibles(conexion)
-        if tipo_objetivo != "todos" and tipo_objetivo not in disponibles:
+        if tipo_objetivo not in (OBJETIVO_INCIDENTES, "todos") and tipo_objetivo not in disponibles:
             raise HTTPException(status_code=422, detail="El tipo de evento seleccionado no existe.")
         advertencia_modelo = None
         nombre_modelo = "HistGradientBoostingClassifier"

@@ -1265,14 +1265,15 @@ INSERT INTO public.hallazgos_intrava (id_intrava, id_proyecto, id_proyecto_intra
 -- ======================================================================
 
 -- Vistas para el modelo predictivo, unidad: proyecto por semana (lunes).
--- PostgreSQL. Crea las vistas y, si falta, la columna eventos.severidad que usan.
+-- PostgreSQL. Crea las vistas y, si faltan, las columnas de eventos que usan.
 
 ALTER TABLE public.eventos
-    ADD COLUMN IF NOT EXISTS severidad VARCHAR(100);
+    ADD COLUMN IF NOT EXISTS severidad VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS fecha_ocurrencia TIMESTAMP WITHOUT TIME ZONE;
 
 CREATE OR REPLACE VIEW public.v_eventos_unificados AS
 SELECT e.id_proyecto,
-       e.fecha_creacion::date AS fecha,
+       COALESCE(e.fecha_ocurrencia, e.fecha_creacion)::date AS fecha,
        lower(regexp_replace(trim(te.nombre), '\s+', '_', 'g')) AS tipo,
        CASE
            WHEN e.severidad ILIKE 'baja%' THEN 1
@@ -1295,13 +1296,15 @@ SELECT id_proyecto, fecha, 'reporte_flash', NULL,
 FROM public.reportes_flash_intrava
 WHERE id_proyecto IS NOT NULL AND fecha IS NOT NULL
 UNION ALL
-SELECT i.id_proyecto, COALESCE(f.fecha, i.sincronizado_en::date),
+-- El informe hereda la fecha de su Reporte Flash; la de sincronizacion no es una
+-- fecha del evento, asi que un informe sin Flash con fecha no entra a la serie.
+SELECT i.id_proyecto, f.fecha,
        'informe_investigacion', NULL,
        'informes_investigacion_intrava', i.id_local::text
 FROM public.informes_investigacion_intrava i
-LEFT JOIN public.reportes_flash_intrava f
+JOIN public.reportes_flash_intrava f
        ON f.id_intrava = i.id_reporte_flash_intrava
-WHERE i.id_proyecto IS NOT NULL
+WHERE i.id_proyecto IS NOT NULL AND f.fecha IS NOT NULL
 UNION ALL
 SELECT id_proyecto, COALESCE(fecha_deteccion, fecha_creacion),
        'hallazgo', NULL, 'hallazgos_intrava', id_intrava::text

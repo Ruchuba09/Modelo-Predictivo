@@ -10,7 +10,7 @@ Antes:       ejecutar 01_vistas_modelo_predictivo.sql en la base.
 
 Uso (PowerShell):
   $env:DATABASE_URL = "postgresql+psycopg2://USUARIO:CLAVE@localhost:5432/postgres"
-  python modelo_predictivo.py --tipo-objetivo todos --horizonte 4
+  python modelo_predictivo.py --horizonte 4
   python modelo_predictivo.py --tipo-objetivo tarjeta_pare
 """
 import argparse
@@ -27,6 +27,29 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 VENTANAS = (1, 4, 12)  # semanas hacia atras para features historicas
+
+# Objetivo por defecto: lo que AVA pide predecir. Hallazgos, Previene y PARE quedan
+# como predictores; incluirlos en el objetivo haria predecir reportes, no incidentes.
+OBJETIVO_INCIDENTES = "incidentes_reales"
+TIPOS_INCIDENTE_REAL = frozenset({"accidente", "incidente", "reporte_flash"})
+# El informe documenta un incidente ya contado por su Reporte Flash.
+TIPOS_SEGUIMIENTO = frozenset({"informe_investigacion"})
+OBJETIVOS_AGRUPADOS = frozenset({"todos", OBJETIVO_INCIDENTES})
+
+
+def filtrar_objetivo(tabla, tipo_obj):
+    """Filas de `tabla` (con columna tipo) que cuentan para el objetivo."""
+    if tipo_obj == "todos":
+        return tabla[~tabla["tipo"].isin(TIPOS_SEGUIMIENTO)]
+    if tipo_obj == OBJETIVO_INCIDENTES:
+        return tabla[tabla["tipo"].isin(TIPOS_INCIDENTE_REAL)]
+    return tabla[tabla["tipo"] == tipo_obj]
+
+
+def mas_probable(entidades, clave_historico="historico_eventos"):
+    """Entidad de mayor riesgo con historial propio; sin historial no hay a quien senalar."""
+    con_historial = [e for e in entidades if e.get(clave_historico, 0) > 0]
+    return max(con_historial, key=lambda e: e["prob_evento"], default=None)
 
 
 def cargar(engine):
@@ -52,7 +75,10 @@ def armar_panel(spine, conteo, ctx, est, extra, tipo_obj, h):
     if conteo.empty:
         raise SystemExit("No hay eventos con proyecto y fecha para entrenar el modelo.")
     tipos = sorted(conteo["tipo"].unique())
-    if tipo_obj != "todos" and tipo_obj not in tipos:
+    if tipo_obj == OBJETIVO_INCIDENTES:
+        if not TIPOS_INCIDENTE_REAL.intersection(tipos):
+            raise SystemExit("No hay incidentes reales registrados para entrenar el modelo.")
+    elif tipo_obj != "todos" and tipo_obj not in tipos:
         raise SystemExit(f"Tipo '{tipo_obj}' no existe. Disponibles: {tipos}")
 
     # Pivot dinamico: un tipo nuevo en la BD aparece solo como nuevas columnas
@@ -71,14 +97,17 @@ def armar_panel(spine, conteo, ctx, est, extra, tipo_obj, h):
 
     cols_n = [f"n_{t}" for t in tipos]
     df[cols_n] = df[cols_n].fillna(0)
-    df["n_todos"] = df[cols_n].sum(axis=1)
-    col_obj = "n_todos" if tipo_obj == "todos" else f"n_{tipo_obj}"
+    df["n_todos"] = df[[f"n_{t}" for t in tipos if t not in TIPOS_SEGUIMIENTO]].sum(axis=1)
+    df[f"n_{OBJETIVO_INCIDENTES}"] = df[
+        [f"n_{t}" for t in tipos if t in TIPOS_INCIDENTE_REAL]
+    ].sum(axis=1)
+    col_obj = f"n_{tipo_obj}"
 
     g = df.groupby("id_proyecto")
     feats = []
 
     # Historial (solo semanas ANTERIORES a t: shift(1) evita fuga de datos)
-    for c in cols_n + ["n_todos"]:
+    for c in cols_n + ["n_todos", f"n_{OBJETIVO_INCIDENTES}"]:
         for w in VENTANAS:
             f = f"{c}_u{w}s"
             df[f] = g[c].transform(lambda s, w=w: s.shift(1).rolling(w, min_periods=1).sum())
@@ -163,7 +192,7 @@ def tipos_disponibles(engine):
     return filas["tipo"].dropna().tolist()
 
 
-def generar_predicciones(engine, tipo_obj="todos", horizonte=4, id_proyecto=None):
+def generar_predicciones(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4, id_proyecto=None):
     """Entrena y devuelve probabilidades junto con los predictores de cada proyecto."""
     df, feats, cats = armar_panel(*cargar(engine), tipo_obj, horizonte)
     obs = df[df["sem_restantes"] >= horizonte - 1].copy()
@@ -213,7 +242,7 @@ def generar_predicciones(engine, tipo_obj="todos", horizonte=4, id_proyecto=None
     return sorted(salida, key=lambda item: item["prob_evento"], reverse=True)
 
 
-def generar_analisis_entidades(engine, id_proyecto, tipo_obj="todos", horizonte=4,
+def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4,
                                probabilidad_proyecto=None):
     """Estima riesgos por trabajador, actividad, cuadrilla, área y cliente.
 
@@ -292,10 +321,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj="todos", horizonte=
     if not extras.empty:
         eventos["id_evento"] = eventos["id_evento"].astype(object)
         eventos = pd.concat([eventos, extras], ignore_index=True)
-    if tipo_obj != "todos":
-        eventos_obj = eventos[eventos["tipo"] == tipo_obj]
-    else:
-        eventos_obj = eventos
+    eventos_obj = filtrar_objetivo(eventos, tipo_obj)
 
     # Incorpora participantes secundarios sin duplicar el trabajador principal.
     participantes = eventos[["id_evento", "id_trabajador"]].dropna().copy()
@@ -310,8 +336,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj="todos", horizonte=
         pass
     participantes = participantes.merge(eventos[["id_evento", "id_proyecto", "fecha", "tipo"]],
                                          on="id_evento", how="inner")
-    if tipo_obj != "todos":
-        participantes = participantes[participantes["tipo"] == tipo_obj]
+    participantes = filtrar_objetivo(participantes, tipo_obj)
 
     # Exposición actual de trabajadores/cuadrillas/actividades del proyecto.
     asignaciones = pd.read_sql(text("""
@@ -455,9 +480,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj="todos", horizonte=
                 "factores": {"id_proyecto": int(id_proyecto), "probabilidad_base_proyecto": round(base, 6)},
             })
 
-    same_client = eventos[eventos["id_cliente"] == p["id_cliente"]] if pd.notna(p["id_cliente"]) else eventos.iloc[0:0]
-    if tipo_obj != "todos" and not same_client.empty:
-        same_client = same_client[same_client["tipo"] == tipo_obj]
+    same_client = eventos_obj[eventos_obj["id_cliente"] == p["id_cliente"]] if pd.notna(p["id_cliente"]) else eventos_obj.iloc[0:0]
     client_n = len(same_client)
     client_exposure = max(semanas_proyecto, semanas_proyecto * max(1, same_client["id_proyecto"].nunique()))
     client_prob, client_rate, client_quality = riesgo(client_n, client_exposure, client_n)
@@ -471,9 +494,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj="todos", horizonte=
                      "eventos_en_proyectos_del_cliente": client_n,
                      "metodo": "historial de eventos del cliente suavizado hacia el riesgo del proyecto"}}
 
-    same_faena = eventos[eventos["id_faena"] == p["id_faena"]] if pd.notna(p["id_faena"]) else eventos.iloc[0:0]
-    if tipo_obj != "todos" and not same_faena.empty:
-        same_faena = same_faena[same_faena["tipo"] == tipo_obj]
+    same_faena = eventos_obj[eventos_obj["id_faena"] == p["id_faena"]] if pd.notna(p["id_faena"]) else eventos_obj.iloc[0:0]
     faena_n = len(same_faena)
     faena_projects = int(same_faena["id_proyecto"].nunique()) if not same_faena.empty else 0
     faena_exposure = max(semanas_proyecto, semanas_proyecto * max(1, faena_projects))
@@ -488,22 +509,23 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj="todos", horizonte=
                      "eventos_en_proyectos_de_la_faena": faena_n,
                      "metodo": "historial de la faena suavizado hacia el riesgo del proyecto"}}
 
-    eventos_proyecto_todos = eventos[eventos["id_proyecto"] == id_proyecto]
+    eventos_proyecto_todos = filtrar_objetivo(eventos[eventos["id_proyecto"] == id_proyecto], "todos")
     distribucion_tipos = eventos_proyecto_todos["tipo"].value_counts() if not eventos_proyecto_todos.empty else pd.Series(dtype=int)
     tipos_historicos = [
         {"tipo": str(nombre), "eventos": int(total)}
         for nombre, total in distribucion_tipos.head(5).items()
     ]
-    if tipo_obj == "todos":
-        tipo_predicho = str(distribucion_tipos.index[0]) if not distribucion_tipos.empty else None
-        eventos_tipo_predicho = int(distribucion_tipos.iloc[0]) if not distribucion_tipos.empty else 0
+    if tipo_obj in OBJETIVOS_AGRUPADOS:
+        distribucion_objetivo = filtrar_objetivo(eventos_proyecto_todos, tipo_obj)["tipo"].value_counts()
+        tipo_predicho = str(distribucion_objetivo.index[0]) if not distribucion_objetivo.empty else None
+        eventos_tipo_predicho = int(distribucion_objetivo.iloc[0]) if not distribucion_objetivo.empty else 0
     else:
         tipo_predicho = tipo_obj
         eventos_tipo_predicho = int((eventos_proyecto_todos["tipo"] == tipo_obj).sum()) if not eventos_proyecto_todos.empty else 0
-    area_probable = areas[0] if areas else None
-    actividad_probable = actividades[0] if actividades else None
-    trabajador_probable = trabajadores[0] if trabajadores else None
-    cuadrilla_probable = cuadrillas[0] if cuadrillas else None
+    area_probable = mas_probable(areas)
+    actividad_probable = mas_probable(actividades)
+    trabajador_probable = mas_probable(trabajadores)
+    cuadrilla_probable = mas_probable(cuadrillas, "historico_eventos_asociados")
     tasa_semanal = -np.log1p(-base) / max(horizonte, 1)
     espera_dias = max(1, int(np.ceil(7 / max(tasa_semanal, 1e-6))))
     fecha_evento = (hoy + pd.Timedelta(days=espera_dias)).date().isoformat()
@@ -556,7 +578,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj="todos", horizonte=
             "evento_estimado": evento_estimado}}
 
 
-def generar_predicciones_historicas(engine, tipo_obj="todos", horizonte=4):
+def generar_predicciones_historicas(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4):
     """Respaldo interpretable para proyectos cuando el clasificador no tiene datos suficientes."""
     proyectos = pd.read_sql("""
         SELECT id_proyecto, nombre, fecha_inicio,
@@ -570,8 +592,7 @@ def generar_predicciones_historicas(engine, tipo_obj="todos", horizonte=4):
         WHERE id_proyecto IS NOT NULL
         GROUP BY id_proyecto, tipo
     """, engine)
-    if tipo_obj != "todos":
-        conteos = conteos[conteos["tipo"] == tipo_obj]
+    conteos = filtrar_objetivo(conteos, tipo_obj)
     por_proyecto = conteos.groupby("id_proyecto")["eventos"].sum() if not conteos.empty else pd.Series(dtype=float)
     hoy = pd.Timestamp.today().normalize()
     proyectos["exposicion_semanas"] = (
@@ -596,7 +617,7 @@ def generar_predicciones_historicas(engine, tipo_obj="todos", horizonte=4):
     return sorted(resultados, key=lambda item: item["prob_evento"], reverse=True)
 
 
-def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj="todos",
+def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj=OBJETIVO_INCIDENTES,
                                     probabilidades_proyecto=None, id_proyecto=None):
     """Calcula riesgo para cada cuadrilla actualmente asignada a proyectos vigentes."""
     from sqlalchemy import text
@@ -647,10 +668,9 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj="todos",
         participantes = participantes.drop_duplicates(["id_evento", "id_proyecto", "id_trabajador"])
     except Exception:
         pass
-    if tipo_obj != "todos":
-        participantes = participantes[participantes["tipo"] == tipo_obj]
+    participantes = filtrar_objetivo(participantes, tipo_obj)
 
-    bases = probabilidades_proyecto or {}
+    bases =probabilidades_proyecto or {}
     base_global = float(np.mean(list(bases.values()))) if bases else 0.05
     hoy = pd.Timestamp.today().normalize()
     salida = []
@@ -706,8 +726,8 @@ def events_obj_project(events, project_id):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tipo-objetivo", default="todos",
-                    help="nombre normalizado del tipo (o 'todos')")
+    ap.add_argument("--tipo-objetivo", default=OBJETIVO_INCIDENTES,
+                    help=f"'{OBJETIVO_INCIDENTES}', 'todos' o el nombre normalizado de un tipo")
     ap.add_argument("--horizonte", type=int, default=4, help="semanas a predecir")
     ap.add_argument("--db", default=os.getenv("DATABASE_URL"))
     ap.add_argument("--salida", default="predicciones_proyectos.csv")

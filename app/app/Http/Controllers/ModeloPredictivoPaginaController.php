@@ -29,7 +29,7 @@ class ModeloPredictivoPaginaController extends Controller
 
         return Inertia::render('ModeloPredictivo/DetalleEventoEstimado', [
             'proyecto' => $proyecto->only(['id_proyecto', 'nombre']),
-            'tipoObjetivo' => $filtros['tipo_objetivo'] ?? 'todos',
+            'tipoObjetivo' => $filtros['tipo_objetivo'] ?? 'incidentes_reales',
             'horizonte' => (int) ($filtros['horizonte'] ?? 4),
         ]);
     }

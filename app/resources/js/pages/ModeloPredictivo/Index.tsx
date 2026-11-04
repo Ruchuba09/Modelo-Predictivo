@@ -3,6 +3,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { Activity, RefreshCw, Sparkles } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { api } from '@/lib/api';
+import { etiquetaTipo } from '@/lib/utils';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 type Proyecto = { id_proyecto: number; nombre: string };
@@ -55,8 +56,8 @@ function mensajeError(error: any): string {
 
 export default function Index() {
     const { proyectos = [] } = usePage<PageProps>().props;
-    const [tipos, setTipos] = useState<string[]>(['todos']);
-    const [tipo, setTipo] = useState('todos');
+    const [tipos, setTipos] = useState<string[]>(['incidentes_reales', 'todos']);
+    const [tipo, setTipo] = useState('incidentes_reales');
     const [horizonte, setHorizonte] = useState(4);
     const [idProyecto, setIdProyecto] = useState('todos');
     const [analisis, setAnalisis] = useState<RespuestaPredicciones['analisis_entidades']>(null);
@@ -73,7 +74,7 @@ export default function Index() {
         let vigente = true;
         api.get<{ tipos: string[] }>('/modelo-predictivo/tipos')
             .then(({ data }) => {
-                if (vigente) setTipos(data.tipos?.length ? data.tipos : ['todos']);
+                if (vigente) setTipos(data.tipos?.length ? data.tipos : ['incidentes_reales', 'todos']);
             })
             .catch((err) => {
                 if (vigente) setError(mensajeError(err));
@@ -175,7 +176,7 @@ export default function Index() {
                                 >
                                     {tipos.map((opcion) => (
                                         <option key={opcion} value={opcion}>
-                                            {opcion === 'todos' ? 'Todos los eventos' : opcion.replace(/_/g, ' ')}
+                                            {etiquetaTipo(opcion)}
                                         </option>
                                     ))}
                                 </select>
@@ -258,7 +259,7 @@ export default function Index() {
                                 <div>
                                     <h2 className="text-lg font-bold text-gris-2">Resultados por proyecto</h2>
                                     <p className="text-xs text-gris-1 mt-1">
-                                        {tipo === 'todos' ? 'Todos los eventos' : tipo.replace(/_/g, ' ')} · próximas {horizonte} {horizonte === 1 ? 'semana' : 'semanas'}
+                                        {etiquetaTipo(tipo)} · próximas {horizonte} {horizonte === 1 ? 'semana' : 'semanas'}
                                     </p>
                                 </div>
                                 <span className="text-xs text-gris-1">Ordenados de mayor a menor probabilidad</span>

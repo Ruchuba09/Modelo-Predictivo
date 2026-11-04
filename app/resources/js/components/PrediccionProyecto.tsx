@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { etiquetaTipo } from '../lib/utils';
 
 type Prediction = {
     id_proyecto: number;
@@ -12,8 +13,8 @@ type EntityAnalysis = { entidades: Record<string, unknown>; contexto: Record<str
 const HORIZONTES = [1, 4, 12];
 
 export default function PrediccionProyecto({ idProyecto }: { idProyecto: number }) {
-    const [tipos, setTipos] = useState<string[]>(['todos']);
-    const [tipo, setTipo] = useState('todos');
+    const [tipos, setTipos] = useState<string[]>(['incidentes_reales', 'todos']);
+    const [tipo, setTipo] = useState('incidentes_reales');
     const [horizonte, setHorizonte] = useState(4);
     const [prediccion, setPrediccion] = useState<Prediction | null>(null);
     const [analisis, setAnalisis] = useState<EntityAnalysis | null>(null);
@@ -22,7 +23,7 @@ export default function PrediccionProyecto({ idProyecto }: { idProyecto: number 
 
     useEffect(() => {
         api.get<{ tipos: string[] }>('/modelo-predictivo/tipos')
-            .then(({ data }) => setTipos(data.tipos?.length ? data.tipos : ['todos']))
+            .then(({ data }) => setTipos(data.tipos?.length ? data.tipos : ['incidentes_reales', 'todos']))
             .catch(() => setError('No se pudieron cargar los tipos de evento.'));
     }, []);
 
@@ -60,7 +61,7 @@ export default function PrediccionProyecto({ idProyecto }: { idProyecto: number 
                     <label className="text-xs font-semibold text-gris-1">
                         Tipo de evento
                         <select value={tipo} onChange={(event) => setTipo(event.target.value)} className="mt-1 block w-full rounded-lg border-verde-3 text-sm text-gris-2">
-                            {tipos.map((opcion) => <option key={opcion} value={opcion}>{opcion === 'todos' ? 'Todos los eventos' : opcion.replace(/_/g, ' ')}</option>)}
+                            {tipos.map((opcion) => <option key={opcion} value={opcion}>{etiquetaTipo(opcion)}</option>)}
                         </select>
                     </label>
                     <label className="text-xs font-semibold text-gris-1">

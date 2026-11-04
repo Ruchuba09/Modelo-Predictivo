@@ -3,6 +3,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, CalendarClock, MapPin, ShieldAlert } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { api } from '@/lib/api';
+import { etiquetaTipo } from '@/lib/utils';
 
 type Proyecto = { id_proyecto: number; nombre: string };
 type EventoEstimado = {
@@ -82,7 +83,7 @@ export default function DetalleEventoEstimado() {
                 <header className="rounded-2xl border border-verde-3 bg-white p-6 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wider text-verde-6">Detalle del evento estimado</p>
                     <h1 className="mt-1 text-2xl font-black text-gris-2">{proyecto.nombre}</h1>
-                    <p className="mt-2 text-sm text-gris-1">Tipo consultado: {tipoObjetivo === 'todos' ? 'todos los eventos' : tipoObjetivo.replace(/_/g, ' ')} · horizonte de {horizonte} {horizonte === 1 ? 'semana' : 'semanas'}.</p>
+                    <p className="mt-2 text-sm text-gris-1">Tipo consultado: {etiquetaTipo(tipoObjetivo).toLowerCase()} · horizonte de {horizonte} {horizonte === 1 ? 'semana' : 'semanas'}.</p>
                 </header>
 
                 {cargando ? <section className="rounded-2xl border border-verde-3 bg-white p-8 text-gris-1">Calculando tiempo y contexto probable…</section>

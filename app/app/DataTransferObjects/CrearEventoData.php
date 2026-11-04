@@ -12,6 +12,7 @@ final readonly class CrearEventoData
         public string $descripcion,
         public string $referencia,
         public int $idProyecto,
+        public ?int $idArea,
         public bool $esParaMi,
         public ?int $idTrabajador,
         public ?string $severidad,
@@ -26,6 +27,9 @@ final readonly class CrearEventoData
             descripcion: $datos['descripcion'],
             referencia: $datos['referencia'],
             idProyecto: (int) $datos['id_proyecto'],
+            idArea: isset($datos['id_area'])
+                ? (int) $datos['id_area']
+                : null,
             esParaMi: (bool) ($datos['es_para_mi'] ?? true),
             idTrabajador: isset($datos['id_trabajador'])
                 ? (int) $datos['id_trabajador']
