@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\situacionCritica;
+use App\Models\SituacionCritica;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -14,7 +14,7 @@ class SituacionCriticaController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = situacionCritica::query()->with(self::RELACIONES)->orderByDesc('id');
+        $query = SituacionCritica::query()->with(self::RELACIONES)->orderByDesc('id');
         $situaciones = $request->boolean('todos')
             ? $query->limit(1000)->get()
             : $query->paginate(min(max($request->integer('per_page', 15), 1), 100));
@@ -24,24 +24,24 @@ class SituacionCriticaController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $situacion = situacionCritica::create($this->validar($request));
+        $situacion = SituacionCritica::create($this->validar($request));
 
         return response()->json($situacion->load(self::RELACIONES), 201);
     }
 
-    public function show(situacionCritica $situacionCritica): JsonResponse
+    public function show(SituacionCritica $situacionCritica): JsonResponse
     {
         return response()->json($situacionCritica->load(self::RELACIONES));
     }
 
-    public function update(Request $request, situacionCritica $situacionCritica): JsonResponse
+    public function update(Request $request, SituacionCritica $situacionCritica): JsonResponse
     {
         $situacionCritica->update($this->validar($request, true));
 
         return response()->json($situacionCritica->fresh(self::RELACIONES));
     }
 
-    public function destroy(situacionCritica $situacionCritica): Response
+    public function destroy(SituacionCritica $situacionCritica): Response
     {
         $situacionCritica->delete();
 

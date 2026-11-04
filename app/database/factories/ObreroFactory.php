@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Trabajador;
-use App\Models\tipo_obrero;
+use App\Models\TipoObrero;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ObreroFactory extends Factory
@@ -12,7 +12,7 @@ class ObreroFactory extends Factory
     {
         return [
             'id_trabajador' => Trabajador::factory(['cargo' => 'Obrero']),
-            'id_tipo_obrero' => tipo_obrero::factory(),
+            'id_tipo_obrero' => TipoObrero::factory(),
             'id_cuadrilla' => null,
         ];
     }

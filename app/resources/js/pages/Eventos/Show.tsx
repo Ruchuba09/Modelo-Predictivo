@@ -463,7 +463,7 @@ export default function Show() {
                                             <div className="flex flex-wrap gap-2.5">
                                                 {evento.evidencia_cierre.map((ruta, idx) => {
                                                     const nombre = ruta.split('/').pop() || `Archivo ${idx + 1}`;
-                                                    const url = `/eventos/archivo/${nombre}`;
+                                                    const url = `/eventos/${evento.id_evento}/archivos/${nombre}`;
                                                     return (
                                                         <a
                                                             key={idx}

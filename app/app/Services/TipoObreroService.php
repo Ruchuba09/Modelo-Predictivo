@@ -2,29 +2,29 @@
 namespace App\Services;
 
 use App\DataTransferObjects\TipoObreroData;
-use App\Models\tipo_obrero;
+use App\Models\TipoObrero;
 use Illuminate\Database\Eloquent\Collection;
 
 class TipoObreroService
 {
     public function listar(): Collection
     {
-        return tipo_obrero::orderBy('nombre')->get();
+        return TipoObrero::orderBy('nombre')->get();
     }
 
-    public function crear(TipoObreroData $datos): tipo_obrero
+    public function crear(TipoObreroData $datos): TipoObrero
     {
-        return tipo_obrero::create($datos->toArray());
+        return TipoObrero::create($datos->toArray());
     }
 
-    public function actualizar(tipo_obrero $tipoObrero, TipoObreroData $datos): tipo_obrero
+    public function actualizar(TipoObrero $tipoObrero, TipoObreroData $datos): TipoObrero
     {
         $tipoObrero->update($datos->toArray());
 
         return $tipoObrero;
     }
 
-    public function eliminar(tipo_obrero $tipoObrero): void
+    public function eliminar(TipoObrero $tipoObrero): void
     {
         $tipoObrero->delete();
     }

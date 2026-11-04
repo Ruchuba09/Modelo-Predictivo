@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EstadoEvento;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +44,7 @@ class Evento extends Model
         'condicion' => 'decimal:2',
         'evidencia' => 'array',
         'evidencia_cierre' => 'array',
+        'estado' => EstadoEvento::class,
     ];
 
     public function tipoEvento(): BelongsTo

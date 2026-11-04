@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\DataTransferObjects\UsuarioData;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreUsuarioRequest;
+use App\Http\Requests\UpdateUsuarioRequest;
 use App\Http\Resources\UsuarioResource;
-use App\Models\Rol;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Validation\Rule;
 
 class UsuarioController extends Controller
 {
@@ -34,17 +33,9 @@ class UsuarioController extends Controller
         return UsuarioResource::collection($usuarios)->response();
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreUsuarioRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'rut' => ['required', 'string', 'max:20', 'exists:personas,rut'],
-            'email' => ['required', 'email', 'max:255', 'unique:usuarios.users,email'],
-            'password' => ['required', 'confirmed', 'min:8'],
-            'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['integer', 'distinct', 'exists:usuarios.roles,id_rol'],
-        ]);
-
-        $usuario = $this->servicio->crear(UsuarioData::fromArray($validated))->load('roles');
+        $usuario = $this->servicio->crear($request->toData())->load('roles');
 
         return (new UsuarioResource($usuario))->response()->setStatusCode(201);
     }
@@ -54,31 +45,16 @@ class UsuarioController extends Controller
         return (new UsuarioResource($this->servicio->obtenerConRoles($usuario)))->response();
     }
 
-    public function update(Request $request, User $usuario): JsonResponse
+    public function update(UpdateUsuarioRequest $request, User $usuario): JsonResponse
     {
-        $validated = $request->validate([
-            'rut' => [
-                'required', 'string', 'max:20',
-                'exists:personas,rut',
-            ],
-            'email' => [
-                'required', 'email', 'max:255',
-                Rule::unique('usuarios.users', 'email')->ignore($usuario->id_user, 'id_user'),
-            ],
-            'password' => ['nullable', 'confirmed', 'min:8'],
-            'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['integer', 'distinct', 'exists:usuarios.roles,id_rol'],
-        ]);
-
-        $usuario = $this->servicio->actualizar($usuario, UsuarioData::fromArray($validated))->load('roles');
+        $usuario = $this->servicio->actualizar($usuario, $request->toData())->load('roles');
 
         return (new UsuarioResource($usuario))->response();
     }
 
-    public function destroy(User $usuario): Response
+    public function destroy(Request $request, User $usuario): Response
     {
-        abort_if(auth()->id() === $usuario->getKey(), 409, 'No puedes eliminar tu propia cuenta.');
-        $this->servicio->eliminar($usuario);
+        $this->servicio->eliminar($usuario, $request->user());
 
         return response()->noContent();
     }

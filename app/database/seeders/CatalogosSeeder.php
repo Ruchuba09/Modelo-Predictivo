@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Departamento;
 use App\Models\TipoEvento;
-use App\Models\tipo_obrero;
+use App\Models\TipoObrero;
 use Illuminate\Database\Seeder;
 
 class CatalogosSeeder extends Seeder
@@ -24,7 +24,7 @@ class CatalogosSeeder extends Seeder
             ['nombre' => 'Mecánico', 'descripcion' => 'Mantenimiento y reparación mecánica.'],
             ['nombre' => 'Eléctrico', 'descripcion' => 'Instalaciones y mantenimiento eléctrico.'],
         ] as $tipoObrero) {
-            tipo_obrero::firstOrCreate(['nombre' => $tipoObrero['nombre']], $tipoObrero + ['estado' => 'activo']);
+            TipoObrero::firstOrCreate(['nombre' => $tipoObrero['nombre']], $tipoObrero + ['estado' => 'activo']);
         }
 
         foreach (['Operaciones', 'Prevención de Riesgos', 'Mantenimiento'] as $nombre) {

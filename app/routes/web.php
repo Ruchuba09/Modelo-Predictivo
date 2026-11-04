@@ -5,34 +5,19 @@ use App\Http\Controllers\TrabajadorController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\PermisoController;
-use App\Http\Controllers\CuadrillaController;
 use App\Http\Controllers\SituacionCriticaController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\EventoEstadisticaController;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\InicioController;
+use App\Http\Controllers\ModeloPredictivoPaginaController;
+use App\Http\Controllers\ProyectoPaginaController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Auth::check() ? redirect()->route('portal') : redirect()->route('login');
-});
-
-Route::get('/test-auth', function () {
-    return response()->json([
-        'authenticated' => Auth::check(),
-        'user' => Auth::user(),
-    ]);
-})->middleware('auth');
+Route::get('/', InicioController::class)->name('inicio');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/portal', function () {
-        return Inertia::render('portal');
-    })->name('portal');
-
-    Route::get('/reportes', function () {
-        return Inertia::render('reportes');
-    });
+    Route::inertia('/portal', 'portal')->name('portal');
+    Route::inertia('/reportes', 'reportes')->name('reportes');
 
     // Rutas exclusivas para Administradores
     Route::middleware('role:Administrador')->group(function () {
@@ -78,12 +63,8 @@ Route::middleware('auth')->group(function () {
     // Rutas para Administradores y Supervisores
     Route::middleware('role:Administrador,Supervisor')->group(function () {
         // Estadísticas
-        Route::get('/eventos/estadisticas', function (\Illuminate\Http\Request $request) {
-            return Inertia::render('Eventos/EventosEstadisticas', [
-                'proyectos' => \App\Models\Proyecto::select('id_proyecto', 'nombre')->get(),
-                'filtrosIniciales' => $request->all(),
-            ]);
-        })->name('eventos.estadisticas');
+        Route::get('/eventos/estadisticas', [EventoEstadisticaController::class, 'pagina'])
+            ->name('eventos.estadisticas');
 
         Route::get('/api/eventos/estadisticas', [EventoEstadisticaController::class, 'index'])
             ->name('api.eventos.estadisticas');
@@ -96,55 +77,31 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/dashboard', [EventoController::class, 'indexGrafico'])->name('dashboard');
 
-        Route::get('/modelo-predictivo', function () {
-            return Inertia::render('ModeloPredictivo/Index', [
-                'proyectos' => \App\Models\Proyecto::select('id_proyecto', 'nombre')->get(),
-            ]);
-        })->name('modelo-predictivo.index');
+        Route::get('/modelo-predictivo', [ModeloPredictivoPaginaController::class, 'index'])
+            ->name('modelo-predictivo.index');
+        Route::get('/modelo-predictivo/proyectos/{proyecto}/evento-estimado', [ModeloPredictivoPaginaController::class, 'eventoEstimado'])
+            ->name('modelo-predictivo.evento-estimado');
 
-        Route::get('/modelo-predictivo/proyectos/{proyecto}/evento-estimado', function (Request $request, \App\Models\Proyecto $proyecto) {
-            $filtros = $request->validate([
-                'tipo_objetivo' => ['sometimes', 'string', 'max:100'],
-                'horizonte' => ['sometimes', 'integer', 'between:1,52'],
-            ]);
+        Route::inertia('/proyectos', 'proyectos/Index')->name('proyectos.index');
+        Route::inertia('/proyectos/create', 'proyectos/Create')->name('proyectos.create');
+        Route::get('/proyectos/{id}', [ProyectoPaginaController::class, 'show'])
+            ->whereNumber('id')
+            ->name('proyectos.show');
 
-            return Inertia::render('ModeloPredictivo/DetalleEventoEstimado', [
-                'proyecto' => $proyecto->only(['id_proyecto', 'nombre']),
-                'tipoObjetivo' => $filtros['tipo_objetivo'] ?? 'todos',
-                'horizonte' => (int) ($filtros['horizonte'] ?? 4),
-            ]);
-        })->name('modelo-predictivo.evento-estimado');
-
-        Route::get('/proyectos', function () {
-            return Inertia::render('proyectos/Index');
-        })->name('proyectos.index');
-        Route::get('/proyectos/create', function () {
-            return Inertia::render('proyectos/Create');
-        })->name('proyectos.create');
-        Route::get('/proyectos/{id}', function ($id) {
-            return Inertia::render('proyectos/Show', [
-                'id' => $id,
-            ]);
-        })->name('proyectos.show');
-
-        Route::get('/cuadrillas', fn () => Inertia::render('Cuadrillas/Index'))
-            ->name('cuadrillas.index');
-        Route::get('/api/cuadrillas/supervisores', [CuadrillaController::class, 'supervisores']);
-        Route::apiResource('/api/cuadrillas', CuadrillaController::class)
-            ->parameters(['cuadrillas' => 'cuadrilla'])
-            ->whereNumber('cuadrilla')
-            ->names('api.cuadrillas');
+        // El CRUD de cuadrillas lo consume el frontend desde /api/v1/cuadrillas.
+        Route::inertia('/cuadrillas', 'Cuadrillas/Index')->name('cuadrillas.index');
     });
 
     // Eventos y reportes
-    Route::get('/eventos/mis-reportes', [EventoController::class, 'MisReportes'])
+    Route::get('/eventos/mis-reportes', [EventoController::class, 'misReportes'])
         ->name('eventos.mis-reportes');
 
     Route::resource('eventos', EventoController::class)
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
         ->whereNumber('evento');
 
-    Route::get('/eventos/archivo/{archivo}', [EventoController::class, 'verArchivo'])
+    Route::get('/eventos/{evento}/archivos/{archivo}', [EventoController::class, 'verArchivo'])
+        ->whereNumber('evento')
         ->name('eventos.archivo');
     Route::get('/eventos/{evento}/evidencias', [EventoController::class, 'obtenerEvidencias'])
         ->whereNumber('evento')

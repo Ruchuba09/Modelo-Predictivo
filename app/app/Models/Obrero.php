@@ -33,6 +33,6 @@ class Obrero extends Model
 
     public function tipoObrero()
     {
-        return $this->belongsTo(tipo_obrero::class, 'id_tipo_obrero', 'id_tipo_obrero');
+        return $this->belongsTo(TipoObrero::class, 'id_tipo_obrero', 'id_tipo_obrero');
     }
 }

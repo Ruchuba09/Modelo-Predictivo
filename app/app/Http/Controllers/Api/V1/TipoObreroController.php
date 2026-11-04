@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TipoObreroRequest;
 use App\Http\Resources\TipoObreroResource;
-use App\Models\tipo_obrero;
+use App\Models\TipoObrero;
 use App\Services\TipoObreroService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -17,7 +17,7 @@ class TipoObreroController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = tipo_obrero::query()
+        $query = TipoObrero::query()
             ->when($request->string('buscar')->toString(), fn ($query, $buscar) => $query
                 ->where('nombre', 'ilike', "%{$buscar}%"))
             ->orderBy('nombre');
@@ -34,17 +34,17 @@ class TipoObreroController extends Controller
         return new TipoObreroResource($this->servicio->crear($request->toData()));
     }
 
-    public function show(tipo_obrero $tipoObrero): TipoObreroResource
+    public function show(TipoObrero $tipoObrero): TipoObreroResource
     {
         return new TipoObreroResource($tipoObrero);
     }
 
-    public function update(TipoObreroRequest $request, tipo_obrero $tipoObrero): TipoObreroResource
+    public function update(TipoObreroRequest $request, TipoObrero $tipoObrero): TipoObreroResource
     {
         return new TipoObreroResource($this->servicio->actualizar($tipoObrero, $request->toData()));
     }
 
-    public function destroy(tipo_obrero $tipoObrero): Response
+    public function destroy(TipoObrero $tipoObrero): Response
     {
         $this->servicio->eliminar($tipoObrero);
 

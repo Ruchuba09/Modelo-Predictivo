@@ -20,7 +20,7 @@ use App\Models\Supervisor;
 use App\Models\TipoEvento;
 use App\Models\Trabajador;
 use App\Models\Administrativo;
-use App\Models\tipo_obrero;
+use App\Models\TipoObrero;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -37,7 +37,7 @@ class DatosDemoSeeder extends Seeder
         DB::transaction(function () {
             $administrador = Administrativo::query()->first()
                 ?? throw new \RuntimeException('Ejecuta TrabajadorSeeder antes de DatosDemoSeeder.');
-            $tipoObrero = tipo_obrero::query()->firstOrFail();
+            $tipoObrero = TipoObrero::query()->firstOrFail();
             $tipoPare = TipoEvento::firstOrCreate(['nombre' => 'Tarjeta PARE']);
 
             $clientes = Cliente::factory()->count(3)->create();

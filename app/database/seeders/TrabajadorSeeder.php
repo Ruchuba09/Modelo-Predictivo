@@ -7,19 +7,19 @@ use App\Models\Obrero;
 use App\Models\Supervisor;
 use App\Models\Trabajador;
 use App\Models\Persona;
-use App\Models\tipo_obrero;
+use App\Models\TipoObrero;
 use Illuminate\Database\Seeder;
 
 class TrabajadorSeeder extends Seeder
 {
     public function run(): void
     {
-        $tipoObrero = tipo_obrero::query()
+        $tipoObrero = TipoObrero::query()
             ->where('estado', 'activo')
             ->orderBy('id_tipo_obrero')
             ->first()
-            ?? tipo_obrero::query()->orderBy('id_tipo_obrero')->first()
-            ?? tipo_obrero::create([
+            ?? TipoObrero::query()->orderBy('id_tipo_obrero')->first()
+            ?? TipoObrero::create([
                 'nombre' => 'General',
                 'descripcion' => 'Tipo de obrero para cuentas de prueba.',
                 'estado' => 'activo',

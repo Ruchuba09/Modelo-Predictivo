@@ -3,6 +3,7 @@
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PermissionMiddleware;
 use App\Http\Middleware\RoleMiddleware;
+use App\Console\Commands\PrivatizarEvidencias;
 use App\Console\Commands\SeedPredictiveData;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
@@ -18,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withCommands([SeedPredictiveData::class])
+    ->withCommands([SeedPredictiveData::class, PrivatizarEvidencias::class])
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->statefulApi();
 

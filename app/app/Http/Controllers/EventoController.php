@@ -8,31 +8,25 @@ use App\Http\Requests\CrearEventoRequest;
 use App\Http\Requests\FiltroEventoRequest;
 use App\Models\Evento;
 use App\Services\EventoService;
-use Illuminate\Support\Facades\Auth;
+use App\Services\EvidenciaEventoService;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
+/**
+ * Pantallas Inertia de eventos. La autorización de cada evento está en
+ * App\Policies\EventoPolicy (compartida con Api\V1\EventoController).
+ */
 class EventoController extends Controller
 {
     public function __construct(
-        private readonly EventoService $servicio
+        private readonly EventoService $servicio,
+        private readonly EvidenciaEventoService $evidencias,
     ) {}
-
-    public function dashboard()
-    {
-        return Inertia::render('dashboard', [
-            'datosGrafico' => $this->servicio->obtenerDashboard(),
-        ]);
-    }
 
     public function index(FiltroEventoRequest $request)
     {
-        $user = Auth::user();
-
-        if (! $user) {
-            return redirect()->route('login');
-        }
-
-        if (! $user->tieneRol('Administrador', 'Supervisor')) {
+        // Quien no puede ver el listado general va a sus propios reportes.
+        if ($request->user()->cannot('viewAny', Evento::class)) {
             return redirect()->route('eventos.mis-reportes');
         }
 
@@ -43,7 +37,7 @@ class EventoController extends Controller
         ]);
     }
 
-    public function MisReportes(FiltroEventoRequest $request)
+    public function misReportes(FiltroEventoRequest $request)
     {
         return Inertia::render('Eventos/MisReportes', [
             'eventos' => $this->servicio->listarMisReportes($request->filtros()),
@@ -65,6 +59,8 @@ class EventoController extends Controller
 
     public function create()
     {
+        $this->authorize('create', Evento::class);
+
         return Inertia::render(
             'Eventos/Create',
             $this->servicio->obtenerDatosFormularioCrear()
@@ -73,9 +69,11 @@ class EventoController extends Controller
 
     public function store(CrearEventoRequest $request)
     {
+        $this->authorize('create', Evento::class);
+
         $this->servicio->crear($request->toData());
 
-        $destino = Auth::user()?->tieneRol('Administrador', 'Supervisor')
+        $destino = $request->user()->can('viewAny', Evento::class)
             ? 'eventos.index'
             : 'eventos.mis-reportes';
 
@@ -87,49 +85,30 @@ class EventoController extends Controller
 
     public function show(Evento $evento)
     {
-        $user = Auth::user();
-        abort_unless($user, 401);
-
-        $trabajadorId = $user->trabajador?->id_trabajador;
-
-        if (! $user->tieneRol('Administrador')) {
-            $tieneAcceso = $trabajadorId
-                && ((int) $evento->id_trabajador === (int) $trabajadorId
-                    || ($user->tieneRol('Supervisor')
-                        && (int) $evento->id_supervisor === (int) $trabajadorId));
-
-            if (! $tieneAcceso && $user->tieneRol('Supervisor')) {
-                $tieneAcceso = $this->servicio->supervisorPuedeVer($evento, (int) $trabajadorId);
-            }
-
-            abort_unless($tieneAcceso, 403, 'No tienes permisos para ver este reporte.');
-        }
+        $this->authorize('view', $evento);
 
         return Inertia::render('Eventos/Show', [
             'evento' => $this->servicio->obtener($evento),
         ]);
     }
 
-    public function verArchivo(string $archivo)
+    public function verArchivo(Evento $evento, string $archivo)
     {
-        return $this->servicio->responderArchivo($archivo);
+        $this->authorize('view', $evento);
+
+        return $this->evidencias->responder($evento, $archivo);
     }
 
     public function obtenerEvidencias(Evento $evento)
     {
-        return response()->json($this->servicio->obtenerEvidencias($evento));
+        $this->authorize('view', $evento);
+
+        return response()->json($this->evidencias->listar($evento));
     }
 
     public function edit(Evento $evento)
     {
-        $user = Auth::user();
-        $trabajadorId = $user?->trabajador?->id_trabajador;
-        $puedeEditar = $user && ($user->tieneRol('Administrador')
-            || ($trabajadorId
-                && (int) $evento->id_trabajador === (int) $trabajadorId
-                && in_array($evento->estado, ['abierto', 'abierta'], true)));
-
-        abort_unless($puedeEditar, 403, 'No tienes permiso para editar este reporte.');
+        $this->authorize('update', $evento);
 
         return Inertia::render('Eventos/Edit', [
             'evento' => $this->servicio->obtenerParaEditar($evento),
@@ -138,14 +117,7 @@ class EventoController extends Controller
 
     public function update(ActualizarEventoRequest $request, Evento $evento)
     {
-        $user = Auth::user();
-        $trabajadorId = $user?->trabajador?->id_trabajador;
-        $puedeEditar = $user && ($user->tieneRol('Administrador')
-            || ($trabajadorId
-                && (int) $evento->id_trabajador === (int) $trabajadorId
-                && in_array($evento->estado, ['abierto', 'abierta'], true)));
-
-        abort_unless($puedeEditar, 403, 'No tienes permiso para editar este reporte.');
+        $this->authorize('update', $evento);
 
         $this->servicio->actualizar($evento, $request->toData());
 
@@ -155,6 +127,8 @@ class EventoController extends Controller
 
     public function tomarReporte(Evento $evento)
     {
+        $this->authorize('tomar', $evento);
+
         $this->servicio->tomarReporte($evento);
 
         return redirect()->route('eventos.show', $evento->id_evento);
@@ -162,11 +136,7 @@ class EventoController extends Controller
 
     public function cerrar(CerrarEventoRequest $request, Evento $evento)
     {
-        abort_unless(
-            Auth::user()?->tieneRol('Administrador'),
-            403,
-            'Solo un administrador puede cerrar un reporte.'
-        );
+        $this->authorize('cerrar', $evento);
 
         $this->servicio->cerrar($evento, $request->toData());
 
@@ -174,21 +144,12 @@ class EventoController extends Controller
             ->with('success', 'Evento cerrado con éxito');
     }
 
-    public function destroy(Evento $evento)
+    public function destroy(Request $request, Evento $evento)
     {
-        abort_unless(
-            Auth::user()?->tieneRol('Administrador'),
-            403,
-            'Solo un administrador puede eliminar reportes.'
-        );
+        $this->authorize('delete', $evento);
 
         $this->servicio->eliminar($evento);
 
         return redirect()->route('eventos.index');
-    }
-
-    public function apiSinAdministrador()
-    {
-        return response()->json($this->servicio->listarSinAdministrador());
     }
 }

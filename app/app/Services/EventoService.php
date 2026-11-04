@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DataTransferObjects\ActualizarEventoData;
 use App\DataTransferObjects\CerrarEventoData;
 use App\DataTransferObjects\CrearEventoData;
+use App\Enums\EstadoEvento;
 use App\Models\Administrativo;
 use App\Models\Asignacion;
 use App\Models\Cuadrilla;
@@ -14,12 +15,10 @@ use App\Models\Proyecto;
 use App\Models\Supervisor;
 use App\Models\TipoEvento;
 use App\Models\Trabajador;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class EventoService
 {
@@ -37,6 +36,10 @@ class EventoService
         9 => '9. Est. Físico/Mental',
         10 => '10. Otros',
     ];
+
+    public function __construct(
+        private readonly EvidenciaEventoService $evidencias
+    ) {}
 
     public function obtenerDashboard(): Collection
     {
@@ -192,7 +195,7 @@ class EventoService
                 $idTrabajador,
                 &$rutasArchivos
             ) {
-                $rutasArchivos = $this->guardarArchivos(
+                $rutasArchivos = $this->evidencias->guardar(
                     $datos->evidencias,
                     'evidencias'
                 );
@@ -205,7 +208,7 @@ class EventoService
                     'id_proyecto' => $datos->idProyecto,
                     'id_trabajador' => $idTrabajador,
                     'id_supervisor' => $this->supervisorDelTrabajador($idTrabajador),
-                    'estado' => 'abierto',
+                    'estado' => EstadoEvento::Abierto,
                     'evidencia' => $rutasArchivos,
                 ];
 
@@ -229,7 +232,7 @@ class EventoService
                 return $evento;
             });
         } catch (\Throwable $e) {
-            $this->eliminarArchivos($rutasArchivos);
+            $this->evidencias->eliminar($rutasArchivos);
             throw $e;
         }
     }
@@ -263,7 +266,12 @@ class EventoService
 
     public function eliminar(Evento $evento): void
     {
-        $evento->delete();
+        $rutas = $this->evidencias->rutas($evento);
+
+        DB::transaction(fn () => $evento->delete());
+
+        // Los archivos se borran solo si la fila se eliminó correctamente.
+        $this->evidencias->eliminar($rutas);
     }
 
     public function listarGrafico(array $filtros = []): array
@@ -339,24 +347,26 @@ class EventoService
             'No eres el supervisor asignado a esta cuadrilla.'
         );
 
-        abort_if(
-            ! in_array($evento->estado, ['abierto', 'abierta'], true),
-            422,
-            'El evento ya fue tomado o cerrado.'
-        );
+        // Bloquea la fila: si dos supervisores lo toman a la vez, el segundo
+        // espera, ve el estado ya actualizado y recibe el 422.
+        DB::transaction(function () use ($evento, $supervisor) {
+            $bloqueado = Evento::whereKey($evento->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $evento->update([
-            'id_supervisor' => $supervisor->id_trabajador,
-            'estado' => 'en_revision',
-        ]);
-    }
+            abort_unless(
+                $bloqueado->estado?->puedeTomarse(),
+                422,
+                'El evento ya fue tomado o cerrado.'
+            );
 
-    public function supervisorPuedeVer(Evento $evento, int $idSupervisor): bool
-    {
-        $cuadrilla = $evento->trabajador?->cuadrillaActual();
+            $bloqueado->update([
+                'id_supervisor' => $supervisor->id_trabajador,
+                'estado' => EstadoEvento::EnRevision,
+            ]);
 
-        return (bool) ($cuadrilla
-            && (int) $cuadrilla->id_supervisor === $idSupervisor);
+            $evento->setRawAttributes($bloqueado->getAttributes(), true);
+        });
     }
 
     public function cerrar(
@@ -364,12 +374,6 @@ class EventoService
         CerrarEventoData $datos
     ): void {
         $administrativo = $this->administrativoAutenticado();
-
-        abort_if(
-            ! in_array($evento->estado, ['abierto', 'abierta', 'en_revision', 'proceso'], true),
-            422,
-            'El evento debe estar abierto o en proceso antes de cerrarse.'
-        );
 
         $rutasArchivos = [];
 
@@ -380,21 +384,33 @@ class EventoService
                 $administrativo,
                 &$rutasArchivos
             ) {
-                $rutasArchivos = $this->guardarArchivos(
+                $bloqueado = Evento::whereKey($evento->getKey())
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                abort_unless(
+                    $bloqueado->estado?->esPendiente(),
+                    422,
+                    'El evento debe estar abierto o en revisión antes de cerrarse.'
+                );
+
+                $rutasArchivos = $this->evidencias->guardar(
                     $datos->evidenciasCierre,
                     'evidencias_cierre'
                 );
 
-                $evento->update([
+                $bloqueado->update([
                     'id_administrador' => $administrativo->id_trabajador,
-                    'estado' => 'cerrado',
+                    'estado' => EstadoEvento::Cerrado,
                     'justificacion' => $datos->justificacion,
                     'evidencia_cierre' => $rutasArchivos,
                     'fecha_cierre' => now(),
                 ]);
+
+                $evento->setRawAttributes($bloqueado->getAttributes(), true);
             });
         } catch (\Throwable $e) {
-            $this->eliminarArchivos($rutasArchivos);
+            $this->evidencias->eliminar($rutasArchivos);
             throw $e;
         }
     }
@@ -410,57 +426,6 @@ class EventoService
             ->whereNull('id_administrador')
             ->orderByDesc('fecha_creacion')
             ->get();
-    }
-
-    public function obtenerEvidencias(Evento $evento): array
-    {
-        $evidencias = $evento->evidencia;
-
-        if (is_string($evidencias)) {
-            $evidencias = json_decode($evidencias, true) ?: [];
-        } elseif (! is_array($evidencias)) {
-            $evidencias = [];
-        }
-
-        $archivos = [];
-
-        foreach ($evidencias as $ruta) {
-            $nombre = basename($ruta);
-            $extension = strtolower(
-                pathinfo($ruta, PATHINFO_EXTENSION)
-            );
-
-            $archivos[] = [
-                'nombre' => $nombre,
-                'ruta' => "/eventos/archivo/{$nombre}",
-                'extension' => $extension ?: 'archivo',
-                'es_imagen' => in_array(
-                    $extension,
-                    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
-                    true
-                ),
-            ];
-        }
-
-        return [
-            'total' => count($archivos),
-            'evidencias' => $archivos,
-        ];
-    }
-
-    public function responderArchivo(string $archivo)
-    {
-        $nombreSeguro = basename($archivo);
-
-        foreach (['evidencias', 'evidencias_cierre'] as $carpeta) {
-            $ruta = "{$carpeta}/{$nombreSeguro}";
-
-            if (Storage::disk('public')->exists($ruta)) {
-                return Storage::disk('public')->response($ruta);
-            }
-        }
-
-        abort(404, 'Archivo no encontrado');
     }
 
     public function obtenerProyectosDeTrabajador(
@@ -583,15 +548,7 @@ class EventoService
 
         $estado = strtolower(trim((string) ($filtros['estado'] ?? '')));
         if ($estado !== '') {
-            if (in_array($estado, ['abierto', 'abierta'], true)) {
-                $query->whereIn('estado', ['abierto', 'abierta', 'en_revision', 'proceso']);
-            } elseif (in_array($estado, ['cerrado', 'cerrada'], true)) {
-                $query->whereIn('estado', ['cerrado', 'cerrada']);
-            } elseif (is_numeric($estado)) {
-                $query->where('condicion', (int) $estado);
-            } else {
-                $query->where('estado', $estado);
-            }
+            $this->filtrarPorEstado($query, $estado);
         } elseif (! empty($filtros['condicion'])) {
             $query->where('condicion', $filtros['condicion']);
         }
@@ -610,6 +567,26 @@ class EventoService
                 '<=',
                 $filtros['fecha_fin']
             );
+        }
+    }
+
+    /**
+     * "abierto" incluye todo lo pendiente (abierto + en revisión), como en
+     * el listado original. Un número filtra por condición.
+     */
+    public static function filtrarPorEstado($query, string $estado): void
+    {
+        $enum = EstadoEvento::desdeTexto($estado);
+
+        if ($enum === EstadoEvento::Abierto) {
+            $query->whereIn('estado', EstadoEvento::valoresPendientes());
+        } elseif ($enum !== null) {
+            $query->where('estado', $enum->value);
+        } elseif (is_numeric($estado)) {
+            $query->where('condicion', (int) $estado);
+        } else {
+            // Valor desconocido: no debe devolver resultados.
+            $query->whereRaw('1 = 0');
         }
     }
 
@@ -638,30 +615,6 @@ class EventoService
             $subquery->orWhere('id_supervisor', $idTrabajador)
                 ->orWhere('id_trabajador', $idTrabajador);
         });
-    }
-
-    private function guardarArchivos(
-        array $archivos,
-        string $carpeta
-    ): array {
-        $rutas = [];
-
-        foreach ($archivos as $archivo) {
-            if (! $archivo instanceof UploadedFile) {
-                continue;
-            }
-
-            $rutas[] = $archivo->store($carpeta, 'public');
-        }
-
-        return $rutas;
-    }
-
-    private function eliminarArchivos(array $rutas): void
-    {
-        foreach ($rutas as $ruta) {
-            Storage::disk('public')->delete($ruta);
-        }
     }
 
     private function supervisorAutenticado(): Supervisor

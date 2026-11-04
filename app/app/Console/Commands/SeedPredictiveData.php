@@ -14,7 +14,7 @@ use App\Models\Proyecto;
 use App\Models\Supervisor;
 use App\Models\TipoEvento;
 use App\Models\Trabajador;
-use App\Models\tipo_obrero;
+use App\Models\TipoObrero;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -63,8 +63,8 @@ class SeedPredictiveData extends Command
         ): int {
         mt_srand($seed);
         fake()->seed($seed);
-        $tipoObrero = tipo_obrero::query()->first()
-            ?? tipo_obrero::query()->create([
+        $tipoObrero = TipoObrero::query()->first()
+            ?? TipoObrero::query()->create([
                 'nombre' => 'General',
                 'descripcion' => 'Tipo sintético para los datos predictivos.',
                 'estado' => 'activo',

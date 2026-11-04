@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\situacionCritica;
+use App\Models\SituacionCritica;
 use App\Models\Evento;
 use App\Models\Supervisor;
 use App\Models\Trabajador;
@@ -17,7 +17,7 @@ class SituacionCriticaController extends Controller
     public function index()
     {
         return Inertia::render('SituacionCriticas/Index', [
-            'situacionCriticas' => situacionCritica::with(['trabajador.persona', 'supervisor.trabajador.persona', 'evento'])
+            'situacionCriticas' => SituacionCritica::with(['trabajador.persona', 'supervisor.trabajador.persona', 'evento'])
                 ->orderByDesc('id')->get()->map(fn ($item) => $this->presentar($item)),
         ]);
     }
@@ -35,14 +35,14 @@ class SituacionCriticaController extends Controller
      */
     public function store(Request $request)
     {
-        situacionCritica::create($this->validar($request));
+        SituacionCritica::create($this->validar($request));
         return redirect()->route('situacion-criticas.index')->with('success', 'Situación crítica registrada.');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(situacionCritica $situacionCritica)
+    public function show(SituacionCritica $situacionCritica)
     {
         return Inertia::render('SituacionCriticas/Show', [
             'situacionCritica' => $this->presentar($situacionCritica->load(['trabajador.persona', 'supervisor.trabajador.persona', 'evento'])),
@@ -52,7 +52,7 @@ class SituacionCriticaController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(situacionCritica $situacionCritica)
+    public function edit(SituacionCritica $situacionCritica)
     {
         return Inertia::render('SituacionCriticas/Edit', array_merge(
             $this->opciones(),
@@ -63,7 +63,7 @@ class SituacionCriticaController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, situacionCritica $situacionCritica)
+    public function update(Request $request, SituacionCritica $situacionCritica)
     {
         $situacionCritica->update($this->validar($request));
         return redirect()->route('situacion-criticas.index')->with('success', 'Situación crítica actualizada.');
@@ -72,7 +72,7 @@ class SituacionCriticaController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(situacionCritica $situacionCritica)
+    public function destroy(SituacionCritica $situacionCritica)
     {
         $situacionCritica->delete();
         return redirect()->route('situacion-criticas.index')->with('success', 'Situación crítica eliminada.');
@@ -102,7 +102,7 @@ class SituacionCriticaController extends Controller
         ]);
     }
 
-    private function presentar(situacionCritica $situacion): array
+    private function presentar(SituacionCritica $situacion): array
     {
         return array_merge($situacion->toArray(), [
             'trabajador' => $this->trabajadorPlano($situacion->trabajador),
