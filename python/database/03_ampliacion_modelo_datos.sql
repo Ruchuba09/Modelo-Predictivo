@@ -322,6 +322,7 @@ CREATE TABLE IF NOT EXISTS public.mantenciones_equipo (
 -- ============================================================
 
 ALTER TABLE public.eventos
+    ADD COLUMN IF NOT EXISTS severidad VARCHAR(100),
     ADD COLUMN IF NOT EXISTS fecha_ocurrencia TIMESTAMP WITHOUT TIME ZONE,
     ADD COLUMN IF NOT EXISTS id_reportante BIGINT,
     ADD COLUMN IF NOT EXISTS tipo_reporte VARCHAR(20),

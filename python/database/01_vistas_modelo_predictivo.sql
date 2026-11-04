@@ -1,5 +1,8 @@
 -- Vistas para el modelo predictivo, unidad: proyecto por semana (lunes).
--- PostgreSQL. No modifica tablas ni datos.
+-- PostgreSQL. Crea las vistas y, si falta, la columna eventos.severidad que usan.
+
+ALTER TABLE public.eventos
+    ADD COLUMN IF NOT EXISTS severidad VARCHAR(100);
 
 CREATE OR REPLACE VIEW public.v_eventos_unificados AS
 SELECT e.id_proyecto,

@@ -4,9 +4,11 @@ El servicio estima la probabilidad de que un proyecto registre uno o más evento
 
 ## Preparar PostgreSQL
 
-Ejecuta los scripts en la base que usa Laravel, en este orden:
+En una base nueva basta con `docker/postgres/AVA_BaseDatos_unificada.sql`, que ya incluye el esquema base, las vistas, la ampliación y datos de prueba (ver `docker/README.md`).
 
-1. `database/01_vistas_modelo_predictivo.sql` después del esquema base `bd_proyecto_completa_intrava.sql`. Crea la serie semanal, eventos unificados y variables de contexto.
+En una base existente, ejecuta los scripts en la base que usa Laravel, en este orden:
+
+1. `database/01_vistas_modelo_predictivo.sql` después del esquema base. Crea la serie semanal, eventos unificados y variables de contexto, y agrega `eventos.severidad` si falta.
 2. `database/03_ampliacion_modelo_datos.sql` para agregar las tablas y la vista opcional `v_proyecto_semana_extra`, que depende de `v_proyecto_semanas`.
 
 Las vistas deben existir en el esquema `public`. La vista `v_proyecto_semana_extra` es opcional para el modelo, pero se crea con el script de ampliación.

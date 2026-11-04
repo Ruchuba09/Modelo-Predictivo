@@ -10,8 +10,8 @@ Antes:       ejecutar 01_vistas_modelo_predictivo.sql en la base.
 
 Uso (PowerShell):
   $env:DATABASE_URL = "postgresql+psycopg2://USUARIO:CLAVE@localhost:5432/postgres"
-  python 02_modelo_predictivo.py --tipo-objetivo tarjeta_pare --horizonte 4
-  python 02_modelo_predictivo.py --tipo-objetivo todos
+  python modelo_predictivo.py --tipo-objetivo todos --horizonte 4
+  python modelo_predictivo.py --tipo-objetivo tarjeta_pare
 """
 import argparse
 import os
@@ -141,6 +141,9 @@ def evaluar(nombre, modelo, Xtr, ytr, Xte, yte):
     if Xtr.empty or Xte.empty or ytr.nunique() < 2:
         print(f"\n[{nombre}] Sin suficientes clases o filas para evaluar.")
         return None
+    # Una variable opcional cargada hace poco puede no tener datos en el tramo de entrenamiento.
+    Xtr = Xtr.dropna(axis=1, how="all")
+    Xte = Xte[Xtr.columns]
     modelo.fit(Xtr, ytr)
     p = modelo.predict_proba(Xte)[:, 1]
     print(f"\n[{nombre}]")
@@ -703,7 +706,7 @@ def events_obj_project(events, project_id):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tipo-objetivo", default="tarjeta_pare",
+    ap.add_argument("--tipo-objetivo", default="todos",
                     help="nombre normalizado del tipo (o 'todos')")
     ap.add_argument("--horizonte", type=int, default=4, help="semanas a predecir")
     ap.add_argument("--db", default=os.getenv("DATABASE_URL"))

@@ -19,7 +19,17 @@ docker compose up -d --build
 - URL: `https://localhost/`
 - El navegador mostrara una advertencia de seguridad (`La conexion no es privada`) porque se usa un certificado local.
 - Continuar desde `Opciones avanzadas` -> `Continuar a localhost (no seguro)`.
-- Configura `/var/www/app/.env` desde `app/.env.example` y verifica que el PostgreSQL tenga el esquema legacy requerido antes de abrir la aplicación.
+- Configura `/var/www/app/.env` desde `app/.env.example` y verifica que el PostgreSQL tenga el esquema requerido antes de abrir la aplicación.
+
+## Crear la base de datos
+`postgres/AVA_BaseDatos_unificada.sql` crea el esquema completo con datos básicos de prueba y sus usuarios. Se ejecuta en una base vacía; si ya hay tablas se detiene sin cambiar nada.
+
+```bash
+docker compose cp postgres/AVA_BaseDatos_unificada.sql postgres:/tmp/ava.sql
+docker compose exec postgres psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/ava.sql
+```
+
+También se puede abrir y ejecutar completo en pgAdmin.
 
 ## Abrir contenedor
 1. Abrir la barra lateral de Docker en VS Code.
