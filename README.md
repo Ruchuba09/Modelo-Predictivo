@@ -262,7 +262,7 @@ Puedes levantar backend y frontend por separado, o usar el comando combinado que
 composer run dev
 ```
 
-Esto levanta al mismo tiempo: el servidor de Laravel, el worker de colas, los logs (`pail`) y Vite (frontend).
+Esto levanta al mismo tiempo: el servidor de Laravel, el worker de colas, los logs (`pail`), Vite (frontend) y el servicio Python del modelo predictivo. Para el modelo, crea antes su entorno virtual ([python/README.md](python/README.md)); sin él, el resto de la aplicación funciona igual.
 
 Si prefieres levantarlos por separado, en dos terminales distintas:
 

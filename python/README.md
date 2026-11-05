@@ -17,12 +17,22 @@ Las vistas deben existir en el esquema `public`. La vista `v_proyecto_semana_ext
 
 `docker compose up --build` construye el servicio Python junto con Laravel. Configura `PREDICTIVE_DATABASE_URL` en `docker/.env` si PostgreSQL usa credenciales o base distintas a las predeterminadas. Laravel consulta el servicio interno en `http://predictive-model:8000`; puede sobrescribirse con `PREDICTIVE_MODEL_URL` en `app/.env`.
 
-En local, instala `requirements.txt` y define `DATABASE_URL`, por ejemplo:
+## Ejecución local con Laravel
+
+Crea el entorno virtual una vez, desde `python/`. Las versiones fijadas se probaron con Python 3.13:
 
 ```powershell
-$env:DATABASE_URL = "postgresql+psycopg2://usuario:clave@localhost:5432/postgres"
-uvicorn servicio:app --host 127.0.0.1 --port 8000
+py -3.13 -m venv venv
+venv\Scripts\python -m pip install -r requirements.txt
 ```
+
+Luego, `composer run dev` en `app/` levanta el servicio junto con Laravel. También se puede levantar solo:
+
+```powershell
+php artisan modelo:servir
+```
+
+El comando usa la conexión de Laravel, por lo que ambos leen la misma base, y toma el puerto de `PREDICTIVE_MODEL_URL`. Fuera de Docker, `DB_HOST` en `app/.env` debe ser `127.0.0.1`. Si `PREDICTIVE_MODEL_URL` apunta a otro host, como en Docker, el comando no levanta nada.
 
 ## Contrato HTTP
 

@@ -35,6 +35,7 @@ type RespuestaPredicciones = {
     unidad_analisis: string;
     evento: string;
     modelo: string;
+    validacion?: { auc_roc: number; prevalencia: number; filas_validacion: number } | null;
     predicciones: Prediccion[];
     advertencia_modelo?: string | null;
     analisis_entidades?: {
@@ -217,6 +218,11 @@ export default function Index() {
                     )}
                     {error && <p className="mt-5 rounded-lg border border-rojo-1/30 bg-red-50 p-3 text-sm text-rojo-1" role="alert">{error}</p>}
                     {advertenciaModelo && <p className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="status">{advertenciaModelo} Se muestran estimaciones históricas suavizadas para que el análisis por entidad siga disponible.</p>}
+                    {metadatos?.validacion && (
+                        <p className="mt-5 rounded-lg border border-verde-3 bg-verde-1 p-3 text-sm text-gris-2" role="status">
+                            Validado con las semanas más recientes: AUC-ROC {metadatos.validacion.auc_roc.toFixed(2)} en {metadatos.validacion.filas_validacion} semanas-proyecto (prevalencia {Math.round(metadatos.validacion.prevalencia * 100)}%).
+                        </p>
+                    )}
                 </section>
 
                 {generada && resultados.length > 0 && (
