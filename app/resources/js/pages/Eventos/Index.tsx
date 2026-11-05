@@ -23,7 +23,7 @@ interface Evento {
     fecha_creacion?: string;
     tipoEvento?: { id_tipo_evento: number; nombre: string };
     proyecto?: { id_proyecto: number; nombre: string };
-    area?: { id_area: number; nombre: string } | null;
+    area?: { id_area: number; codigo_area: string; descripcion?: string | null } | null;
 }
 
 function EstadoBadge({ estado }: { estado: string }) {

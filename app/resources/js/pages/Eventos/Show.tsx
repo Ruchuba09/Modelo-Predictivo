@@ -68,7 +68,7 @@ interface Evento {
     evidencia_cierre?: string[] | null;
     tipoEvento?: { id_tipo_evento: number; nombre: string };
     proyecto?: { id_proyecto: number; nombre: string };
-    area?: { id_area: number; nombre: string } | null;
+    area?: { id_area: number; codigo_area: string; descripcion?: string | null } | null;
     administrador?: PersonaRel | null;
     administrativo?: PersonaRel | null;
     trabajador?: PersonaRel | null;
@@ -125,7 +125,7 @@ export default function Show() {
     const esTrabajadorPuro = !esAdmin && !esSupervisor;
     const rutaListado = esTrabajadorPuro ? route('eventos.mis-reportes') : route('eventos.index');
 
-    const { evento } = usePage().props as unknown as { evento: Evento };
+    const { evento, puedeEditar } = usePage().props as unknown as { evento: Evento; puedeEditar?: boolean };
     const estadoStyle = ESTADO_STYLES[evento.estado] ?? ESTADO_STYLES['abierta'];
     
     const estaCerrada = ['cerrado', 'cerrada'].includes(evento.estado);
@@ -223,13 +223,21 @@ export default function Show() {
 
             <div className="max-w-[1100px] mx-auto p-6 lg:p-8">
                 {/* Barra de Acciones */}
-                <div className="mb-6 flex items-center justify-start">
+                <div className="mb-6 flex items-center justify-between gap-3">
                     <Link
                         href={rutaListado}
                         className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-white dark:bg-[#1E242B] text-verde-6 dark:text-verde-5 border border-verde-5 hover:bg-verde-5 hover:text-black transition-all shadow-sm whitespace-nowrap cursor-pointer"
                     >
                         ← Volver al listado
                     </Link>
+                    {puedeEditar && (
+                        <Link
+                            href={`/eventos/${evento.id_evento}/edit`}
+                            className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-bold bg-verde-5 hover:bg-verde-6 text-black transition-colors"
+                        >
+                            Editar reporte
+                        </Link>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -247,7 +255,10 @@ export default function Show() {
                         </div>
 
                         <div className="flex flex-col mb-3">
-                            <InfoRow label="Área/Zona" value={evento.referencia} />
+                            {evento.area && (
+                                <InfoRow label="Área" value={evento.area.descripcion || evento.area.codigo_area} />
+                            )}
+                            <InfoRow label="Lugar exacto" value={evento.referencia} />
                             <InfoRow
                                 label={`Condición #${evento.condicion}`}
                                 value={CONDICIONES_PARE[evento.condicion]}

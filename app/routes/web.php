@@ -17,7 +17,7 @@ Route::get('/', InicioController::class)->name('inicio');
 
 Route::middleware('auth')->group(function () {
     Route::inertia('/portal', 'portal')->name('portal');
-    Route::inertia('/reportes', 'reportes')->name('reportes');
+    Route::redirect('/reportes', '/eventos/create')->name('reportes');
 
     // Rutas exclusivas para Administradores
     Route::middleware('role:Administrador')->group(function () {
@@ -49,6 +49,9 @@ Route::middleware('auth')->group(function () {
             ->parameters(['trabajadores' => 'trabajador']);
 
         Route::resource('/departamentos', DepartamentoController::class);
+
+        // El CRUD de faenas y áreas lo consume el frontend desde /api/v1.
+        Route::inertia('/faenas', 'Faenas/Index')->name('faenas.index');
 
         Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
         Route::get('/situacion-criticas/crear', [SituacionCriticaController::class, 'create'])->name('situacion-criticas.crear');
@@ -90,6 +93,7 @@ Route::middleware('auth')->group(function () {
 
         // El CRUD de cuadrillas lo consume el frontend desde /api/v1/cuadrillas.
         Route::inertia('/cuadrillas', 'Cuadrillas/Index')->name('cuadrillas.index');
+        Route::inertia('/fuentes-intrava', 'Intrava/Index')->name('intrava.index');
     });
 
     // Eventos y reportes

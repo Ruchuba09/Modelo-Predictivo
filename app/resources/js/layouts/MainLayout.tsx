@@ -25,6 +25,8 @@ const NAV_ITEMS: NavItem[] = [
             { href: '/eventos', label: 'Listado de reportes', roles: ['Administrador', 'Supervisor'] },
             { href: '/eventos/mis-reportes', label: 'Mis reportes' },
             { href: '/eventos/estadisticas', label: 'Estadísticas', roles: ['Administrador'] },
+            { href: '/fuentes-intrava', label: 'Fuentes Intrava', roles: ['Administrador', 'Supervisor'] },
+            { href: '/situacion-criticas', label: 'Situaciones críticas', roles: ['Administrador'] },
         ],
     },
     {
@@ -35,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
             { href: '/modelo-predictivo', label: 'Modelo predictivo', roles: ['Administrador', 'Supervisor'] },
             { href: '/cuadrillas', label: 'Cuadrillas', roles: ['Administrador', 'Supervisor'] },
             { href: '/trabajadores', label: 'Trabajadores', roles: ['Administrador'] },
+            { href: '/faenas', label: 'Faenas y áreas', roles: ['Administrador'] },
         ],
     },
     {
@@ -60,6 +63,9 @@ const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
     '/modelo-predictivo': { title: 'Modelo Predictivo', subtitle: 'Predicciones de eventos para los proyectos vigentes' },
     '/cuadrillas': { title: 'Cuadrillas', subtitle: 'Gestión de equipos de trabajo' },
     '/trabajadores': { title: 'Trabajadores', subtitle: 'Personal y asignaciones' },
+    '/faenas': { title: 'Faenas y áreas', subtitle: 'Lugares de trabajo donde se ubican los reportes' },
+    '/fuentes-intrava': { title: 'Fuentes Intrava', subtitle: 'Previene, Reportes Flash, Investigaciones y Hallazgos' },
+    '/situacion-criticas': { title: 'Situaciones críticas', subtitle: 'Registro de situaciones críticas asociadas a eventos' },
     '/usuarios': { title: 'Usuarios del Sistema', subtitle: 'Administración de cuentas y accesos' },
     '/roles': { title: 'Roles', subtitle: 'Roles del sistema' },
     '/permisos': { title: 'Permisos', subtitle: 'Permisos de seguridad' },
