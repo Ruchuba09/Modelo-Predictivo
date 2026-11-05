@@ -1,4 +1,7 @@
 import os
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
@@ -8,6 +11,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from modelo_predictivo import TIPOS_INCIDENTE_REAL  # noqa: E402
 
 DB_URL = os.getenv(
     "DATABASE_URL",
@@ -29,11 +35,16 @@ def leer(sql, fechas=()):
 
 
 # ---------------------------------------------------------------- carga
-ev = leer("""SELECT id_evento, id_trabajador, id_proyecto, id_tipo_evento, severidad,
-                    fecha_creacion, fecha_cierre FROM eventos""",
-          ["fecha_creacion", "fecha_cierre"])
-ev["fecha"] = ev.fecha_creacion.dt.normalize()
+ev = leer("""SELECT e.id_evento, e.id_trabajador, e.id_proyecto, e.id_tipo_evento, e.severidad,
+                    COALESCE(e.fecha_ocurrencia, e.fecha_creacion) AS fecha_evento, e.fecha_cierre,
+                    lower(regexp_replace(trim(te.nombre), '[[:space:]]+', '_', 'g')) AS tipo
+             FROM eventos e JOIN tipo_eventos te USING (id_tipo_evento)""",
+          ["fecha_evento", "fecha_cierre"])
+ev["fecha"] = ev.fecha_evento.dt.normalize()
 ev["fecha_cierre"] = ev.fecha_cierre.dt.normalize()
+ev["es_incidente"] = ev.tipo.isin(TIPOS_INCIDENTE_REAL)
+# Misma escala que v_eventos_unificados: alta, critica o grave.
+ev["severidad_alta"] = ev.severidad.str.contains(r"^(?:alta|cr.tic|grave)", case=False, na=False)
 
 mem = leer("""SELECT id_trabajador, id_cuadrilla, fecha_inicio, fecha_fin
               FROM trabajadores_cuadrillas""", ["fecha_inicio", "fecha_fin"])
@@ -95,14 +106,15 @@ def dias_desde_ultimo(exp, fechas, clave):
 def diccionarios(df, clave):
     return (
         fechas_por(df, clave),
-        fechas_por(df[df.severidad == "Alta"], clave),
+        fechas_por(df[df.severidad_alta], clave),
         fechas_por(df.dropna(subset=["fecha_cierre"]), clave, "fecha_cierre"),
+        fechas_por(df[df.es_incidente], clave),
     )
 
 
 def agregar_historia(exp, clave, dicts):
     """Caracteristicas: SOLO eventos con fecha < t (sin fuga)."""
-    fechas, alta, cierres = dicts
+    fechas, alta, cierres, _ = dicts
     for d in (7, 30, 90):
         exp[f"ev_{d}d"] = contar(exp, fechas, clave, -d, 0)
     exp["ev_total"] = contar(exp, fechas, clave, -SIN_LIMITE, 0)
@@ -113,8 +125,8 @@ def agregar_historia(exp, clave, dicts):
 
 
 def agregar_etiquetas(exp, clave, dicts):
-    """Etiquetas: eventos con t <= fecha < t+H (miran al futuro)."""
-    fechas = dicts[0]
+    """Etiquetas: incidentes reales con t <= fecha < t+H (miran al futuro)."""
+    fechas = dicts[3]
     for h in HORIZONTES:
         n = contar(exp, fechas, clave, 0, h)
         exp[f"n_eventos_{h}d"] = n

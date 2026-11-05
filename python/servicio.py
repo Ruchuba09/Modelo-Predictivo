@@ -7,10 +7,12 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from modelo_predictivo import (
     OBJETIVO_INCIDENTES,
+    DatosInsuficientes,
     generar_analisis_entidades,
     generar_predicciones,
     generar_predicciones_cuadrillas,
     generar_predicciones_historicas,
+    sin_nulos,
     tipos_disponibles,
 )
 
@@ -70,12 +72,13 @@ def predicciones(
         if tipo_objetivo not in (OBJETIVO_INCIDENTES, "todos") and tipo_objetivo not in disponibles:
             raise HTTPException(status_code=422, detail="El tipo de evento seleccionado no existe.")
         advertencia_modelo = None
+        validacion = None
         nombre_modelo = "HistGradientBoostingClassifier"
         try:
             # Siempre entrega la tabla comparativa de todos los proyectos vigentes;
             # el id solicitado solo limita el análisis detallado por entidades.
-            resultados = generar_predicciones(conexion, tipo_objetivo, horizonte)
-        except (ValueError, SystemExit) as exc:
+            resultados, validacion = generar_predicciones(conexion, tipo_objetivo, horizonte)
+        except DatosInsuficientes as exc:
             # La falta de historial suficiente no deja la vista vacía: entrega
             # un estimador histórico explícito para todos los proyectos.
             resultados = generar_predicciones_historicas(conexion, tipo_objetivo, horizonte)
@@ -110,19 +113,18 @@ def predicciones(
         )
     except HTTPException:
         raise
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except SQLAlchemyError as exc:
         raise HTTPException(
             status_code=503,
             detail="No se pudo generar la predicción. Revisa las vistas, los datos y el tipo seleccionado.",
         ) from exc
-    return {
+    return sin_nulos({
         "tipo_objetivo": tipo_objetivo,
         "horizonte_semanas": horizonte,
         "unidad_analisis": "proyecto-semana",
         "evento": "al menos un evento del tipo objetivo dentro del horizonte seleccionado",
         "modelo": nombre_modelo,
+        "validacion": validacion,
         "predicciones": resultados,
         "analisis_entidades": analisis,
         "analisis_global": {"cuadrillas": cuadrillas, "proximo_evento": proximo_evento_global},
@@ -133,4 +135,4 @@ def predicciones(
             "cuadrillas_predichas": len(cuadrillas),
         },
         "advertencia_modelo": advertencia_modelo,
-    }
+    })

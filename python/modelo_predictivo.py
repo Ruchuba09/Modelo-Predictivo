@@ -36,6 +36,116 @@ TIPOS_INCIDENTE_REAL = frozenset({"accidente", "incidente", "reporte_flash"})
 TIPOS_SEGUIMIENTO = frozenset({"informe_investigacion"})
 OBJETIVOS_AGRUPADOS = frozenset({"todos", OBJETIVO_INCIDENTES})
 
+# Minimos para publicar el clasificador; bajo ellos el servicio usa el estimador de respaldo.
+MIN_POSITIVOS = 20
+MIN_NEGATIVOS = 20
+MIN_PROYECTOS = 3
+MIN_AUC_VALIDACION = 0.6
+
+
+class DatosInsuficientes(Exception):
+    """Los datos no permiten entrenar o validar el clasificador."""
+
+
+def nuevo_clasificador():
+    return HistGradientBoostingClassifier(
+        categorical_features="from_dtype", max_depth=4, learning_rate=0.05,
+        max_iter=300, l2_regularization=1.0, random_state=0,
+    )
+
+
+def filas_observadas(df, h, hoy=None):
+    """Filas cuyo horizonte ya termino: la semana en curso aun no tiene resultado definitivo."""
+    hoy = pd.Timestamp.today().normalize() if hoy is None else hoy
+    semana_actual = hoy - pd.Timedelta(days=hoy.weekday())
+    ultima_semana = df["semana"] + pd.Timedelta(weeks=h - 1)
+    return df[(df["sem_restantes"] >= h - 1) & (ultima_semana < semana_actual)].copy()
+
+
+def verificar_datos(obs):
+    positivos = int(obs["y"].sum())
+    negativos = len(obs) - positivos
+    proyectos = obs["id_proyecto"].nunique()
+    if positivos < MIN_POSITIVOS or negativos < MIN_NEGATIVOS or proyectos < MIN_PROYECTOS:
+        raise DatosInsuficientes(
+            f"Datos insuficientes para el clasificador: {positivos} positivos, {negativos} negativos "
+            f"y {proyectos} proyectos (minimos: {MIN_POSITIVOS}, {MIN_NEGATIVOS} y {MIN_PROYECTOS})."
+        )
+
+
+def dividir_temporal(obs, h):
+    """Entrena con el pasado y prueba con el futuro, con una brecha para no solapar objetivos."""
+    corte = obs["semana"].quantile(0.8)
+    return obs[obs["semana"] < corte - pd.Timedelta(weeks=h)], obs[obs["semana"] >= corte], corte
+
+
+def _logit(probabilidades):
+    p = np.clip(probabilidades, 1e-6, 1 - 1e-6)
+    return np.log(p / (1 - p)).reshape(-1, 1)
+
+
+def validar_temporal(obs, columnas, h):
+    """Devuelve las metricas del tramo futuro y el calibrador ajustado sobre ese tramo."""
+    tr, te, _ = dividir_temporal(obs, h)
+    if tr["y"].nunique() < 2 or te["y"].nunique() < 2:
+        raise DatosInsuficientes("El tramo temporal de validacion no tiene ambas clases.")
+    p = nuevo_clasificador().fit(tr[columnas], tr["y"]).predict_proba(te[columnas])[:, 1]
+    auc = float(roc_auc_score(te["y"], p))
+    if auc < MIN_AUC_VALIDACION:
+        raise DatosInsuficientes(
+            f"El clasificador no discrimina en la validacion temporal (AUC-ROC {auc:.2f}, minimo {MIN_AUC_VALIDACION})."
+        )
+    metricas = {
+        "auc_roc": round(auc, 4),
+        "auc_pr": round(float(average_precision_score(te["y"], p)), 4),
+        "brier": round(float(brier_score_loss(te["y"], p)), 4),
+        "prevalencia": round(float(te["y"].mean()), 4),
+        "filas_entrenamiento": len(tr),
+        "filas_validacion": len(te),
+    }
+    return metricas, LogisticRegression().fit(_logit(p), te["y"])
+
+
+def tasa_desde_probabilidad(probabilidad, horizonte):
+    p = min(max(float(probabilidad), 0.0001), 0.9999)
+    return -np.log1p(-p) / max(horizonte, 1)
+
+
+def semanas_exposicion(inicio, termino, hoy):
+    """Semanas de actividad hasta el termino del proyecto o hasta hoy."""
+    if pd.isna(inicio):
+        return 1.0
+    fin = min(termino, hoy) if pd.notna(termino) else hoy
+    return max(1.0, (fin - inicio).days / 7)
+
+
+def acotar_al_proyecto(entidades, tasa_proyecto, horizonte):
+    """Reduce tasas cuya suma supere la del proyecto: una parte no puede superar al total."""
+    suma = sum(e["tasa_semanal_suavizada"] for e in entidades)
+    if suma <= tasa_proyecto or suma == 0:
+        return
+    factor = tasa_proyecto / suma
+    for e in entidades:
+        tasa = e["tasa_semanal_suavizada"] * factor
+        e["tasa_semanal_suavizada"] = round(float(tasa), 6)
+        e["prob_evento"] = round(float(1 - np.exp(-tasa * horizonte)), 6)
+
+
+def con_defecto(valor, defecto):
+    """Un nulo de pandas puede ser NaN, que en Python cuenta como verdadero."""
+    return defecto if pd.isna(valor) or not valor else valor
+
+
+def sin_nulos(valor):
+    """Reemplaza NaN, infinitos y NaT por None: JSON no los admite."""
+    if isinstance(valor, dict):
+        return {clave: sin_nulos(x) for clave, x in valor.items()}
+    if isinstance(valor, (list, tuple)):
+        return [sin_nulos(x) for x in valor]
+    if valor is pd.NaT or valor is pd.NA or (isinstance(valor, float) and not np.isfinite(valor)):
+        return None
+    return valor
+
 
 def filtrar_objetivo(tabla, tipo_obj):
     """Filas de `tabla` (con columna tipo) que cuentan para el objetivo."""
@@ -73,13 +183,13 @@ def armar_panel(spine, conteo, ctx, est, extra, tipo_obj, h):
     if h < 1 or h > 52:
         raise SystemExit("El horizonte debe estar entre 1 y 52 semanas.")
     if conteo.empty:
-        raise SystemExit("No hay eventos con proyecto y fecha para entrenar el modelo.")
+        raise DatosInsuficientes("No hay eventos con proyecto y fecha para entrenar el modelo.")
     tipos = sorted(conteo["tipo"].unique())
     if tipo_obj == OBJETIVO_INCIDENTES:
         if not TIPOS_INCIDENTE_REAL.intersection(tipos):
-            raise SystemExit("No hay incidentes reales registrados para entrenar el modelo.")
+            raise DatosInsuficientes("No hay incidentes reales registrados para entrenar el modelo.")
     elif tipo_obj != "todos" and tipo_obj not in tipos:
-        raise SystemExit(f"Tipo '{tipo_obj}' no existe. Disponibles: {tipos}")
+        raise DatosInsuficientes(f"Tipo '{tipo_obj}' no tiene eventos. Disponibles: {tipos}")
 
     # Pivot dinamico: un tipo nuevo en la BD aparece solo como nuevas columnas
     n = conteo.pivot_table(index=["id_proyecto", "semana"], columns="tipo",
@@ -193,13 +303,12 @@ def tipos_disponibles(engine):
 
 
 def generar_predicciones(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4, id_proyecto=None):
-    """Entrena y devuelve probabilidades junto con los predictores de cada proyecto."""
+    """Valida, entrena y devuelve (predicciones calibradas, metricas de validacion)."""
     df, feats, cats = armar_panel(*cargar(engine), tipo_obj, horizonte)
-    obs = df[df["sem_restantes"] >= horizonte - 1].copy()
-    if obs["y"].nunique() < 2 or len(obs) < 100:
-        raise ValueError(
-            "Hay menos de 100 observaciones completas o el objetivo solo tiene una clase."
-        )
+    obs = filas_observadas(df, horizonte)
+    verificar_datos(obs)
+    columnas = feats + cats
+    validacion, calibrador = validar_temporal(obs, columnas, horizonte)
 
     hoy = pd.Timestamp.today().normalize()
     ult = df.sort_values("semana").groupby("id_proyecto", as_index=False).tail(1)
@@ -207,15 +316,11 @@ def generar_predicciones(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4, id_p
     if id_proyecto is not None:
         ult = ult[ult["id_proyecto"] == int(id_proyecto)]
     if ult.empty:
-        return []
+        return [], validacion
 
-    columnas = feats + cats
-    final = HistGradientBoostingClassifier(
-        categorical_features="from_dtype", max_depth=4, learning_rate=0.05,
-        max_iter=300, l2_regularization=1.0, random_state=0,
-    )
-    final.fit(obs[columnas], obs["y"])
-    probabilidades = final.predict_proba(ult[columnas])[:, 1]
+    final = nuevo_clasificador().fit(obs[columnas], obs["y"])
+    crudas = final.predict_proba(ult[columnas])[:, 1]
+    probabilidades = calibrador.predict_proba(_logit(crudas))[:, 1]
     salida = []
     for (_, fila), prob in zip(ult.iterrows(), probabilidades):
         variables = {}
@@ -239,7 +344,7 @@ def generar_predicciones(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4, id_p
             "prob_evento": round(float(prob), 6),
             "variables": variables,
         })
-    return sorted(salida, key=lambda item: item["prob_evento"], reverse=True)
+    return sorted(salida, key=lambda item: item["prob_evento"], reverse=True), validacion
 
 
 def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4,
@@ -265,11 +370,11 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
     p = proyecto.iloc[0]
     hoy = pd.Timestamp.today().normalize()
     inicio = pd.to_datetime(p["fecha_inicio"], errors="coerce")
-    semanas_proyecto = max(1.0, (hoy - inicio).days / 7) if pd.notna(inicio) else 1.0
+    semanas_proyecto = semanas_exposicion(inicio, pd.to_datetime(p["fecha_termino"], errors="coerce"), hoy)
     semanas_prior = 8.0
     base = float(probabilidad_proyecto if probabilidad_proyecto is not None else 0.05)
     base = min(max(base, 0.0001), 0.9999)
-    hazard_base = -np.log1p(-base) / max(horizonte, 1)
+    hazard_base = tasa_desde_probabilidad(base, horizonte)
 
     columnas_evento = pd.read_sql(text("""
         SELECT column_name FROM information_schema.columns
@@ -336,7 +441,8 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
         pass
     participantes = participantes.merge(eventos[["id_evento", "id_proyecto", "fecha", "tipo"]],
                                          on="id_evento", how="inner")
-    participantes = filtrar_objetivo(participantes, tipo_obj)
+    participantes = filtrar_objetivo(participantes, tipo_obj).copy()
+    participantes["fecha"] = pd.to_datetime(participantes["fecha"])
 
     # Exposición actual de trabajadores/cuadrillas/actividades del proyecto.
     asignaciones = pd.read_sql(text("""
@@ -351,18 +457,19 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
         LEFT JOIN public.obreros o ON o.id_cuadrilla = a.id_cuadrilla
         LEFT JOIN public.trabajadores t ON t.id_trabajador = o.id_trabajador
         LEFT JOIN public.personas pe ON pe.id_persona = t.id_persona
-        LEFT JOIN public.actividades ac ON ac.id_asignacion = a.id_asignacion
+        LEFT JOIN public.actividades ac
+               ON ac.id_asignacion = a.id_asignacion
+              AND COALESCE(ac.fecha_inicio, a.fecha_inicio) <= CURRENT_DATE
+              AND COALESCE(ac.fecha_termino, 'infinity'::date) >= CURRENT_DATE
         WHERE a.id_proyecto = :id
           AND a.fecha_inicio <= CURRENT_DATE
           AND COALESCE(a.fecha_termino, 'infinity'::date) >= CURRENT_DATE
-          AND (ac.id_actividad IS NULL OR
-               (COALESCE(ac.fecha_inicio, a.fecha_inicio) <= CURRENT_DATE AND
-                COALESCE(ac.fecha_termino, 'infinity'::date) >= CURRENT_DATE))
     """), engine, params={"id": id_proyecto})
 
-    def riesgo(n_eventos, exposicion, soporte):
+    def riesgo(n_eventos, exposicion, soporte, fraccion=1.0):
+        """`fraccion` es la parte del riesgo del proyecto que corresponde a la entidad a priori."""
         exposicion = max(float(exposicion or 0), 0.0)
-        tasa = (float(n_eventos) + hazard_base * semanas_prior) / (exposicion + semanas_prior)
+        tasa = (float(n_eventos) + hazard_base * fraccion * semanas_prior) / (exposicion + semanas_prior)
         prob = 1 - np.exp(-tasa * horizonte)
         calidad = "alta" if soporte >= 20 else "media" if soporte >= 5 else "baja"
         return round(float(np.clip(prob, 0, 1)), 6), round(float(tasa), 6), calidad
@@ -372,18 +479,30 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
             return 0
         return int((tabla[columna] == valor).sum())
 
+    def eventos_desde(tabla, inicio):
+        """Limita los eventos al periodo medido por la exposicion."""
+        return tabla if pd.isna(inicio) else tabla[tabla["fecha"] >= inicio]
+
+    # Solo se reduce frente a una probabilidad de proyecto calculada, no frente al valor por defecto.
+    def acotar(entidades):
+        if probabilidad_proyecto is not None:
+            acotar_al_proyecto(entidades, hazard_base, horizonte)
+
     trabajadores = []
-    for wid in sorted(asignaciones["id_trabajador"].dropna().astype(int).unique()):
+    ids_trabajadores = sorted(asignaciones["id_trabajador"].dropna().astype(int).unique())
+    for wid in ids_trabajadores:
         asign = asignaciones[asignaciones["id_trabajador"] == wid].iloc[0]
-        n = int(((participantes["id_trabajador"] == wid) &
-                 (participantes["id_proyecto"] == id_proyecto)).sum())
-        n_historico_total = contar(participantes, "id_trabajador", wid)
+        en_proyecto = participantes[(participantes["id_trabajador"] == wid) &
+                                    (participantes["id_proyecto"] == id_proyecto)]
         fecha_asig = pd.to_datetime(asign["asignacion_inicio"], errors="coerce")
+        n = len(eventos_desde(en_proyecto, fecha_asig))
+        n_historico_total = contar(participantes, "id_trabajador", wid)
         expos = max(1.0, (hoy - fecha_asig).days / 7) if pd.notna(fecha_asig) else semanas_proyecto
-        prob, tasa, calidad = riesgo(n, expos, n)
+        prob, tasa, calidad = riesgo(n, expos, n, 1 / len(ids_trabajadores))
         trabajadores.append({"id_trabajador": int(wid), "nombre_trabajador": asign.get("nombre_trabajador"), "cargo": asign.get("cargo"),
             "prob_evento": prob, "tipo_objetivo": tipo_obj, "horizonte_semanas": horizonte,
-            "historico_eventos": n, "historico_eventos_todos_proyectos": n_historico_total,
+            "historico_eventos": n, "historico_eventos_proyecto": len(en_proyecto),
+            "historico_eventos_todos_proyectos": n_historico_total,
             "semanas_exposicion_estimadas": round(expos, 1),
             "tasa_semanal_suavizada": tasa, "evidencia": calidad,
             "id_cuadrilla": int(asign["id_cuadrilla"]) if pd.notna(asign["id_cuadrilla"]) else None,
@@ -391,24 +510,30 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
             "factores": {"probabilidad_base_proyecto": round(base, 6), "eventos_historicos_asociados": n,
                          "actividad_actual": asign.get("actividad"), "metodo": "tasa histórica suavizada hacia el riesgo del proyecto"}})
 
+    acotar(trabajadores)
+
     # Una predicción por trabajador y actividad actualmente asignada.
     trabajador_actividad = []
-    for _, asign in asignaciones.dropna(subset=["id_trabajador", "id_actividad"]).drop_duplicates(
-            ["id_trabajador", "id_actividad"]).iterrows():
+    pares = asignaciones.dropna(subset=["id_trabajador", "id_actividad"]).drop_duplicates(
+        ["id_trabajador", "id_actividad"])
+    for _, asign in pares.iterrows():
         wid, aid = int(asign["id_trabajador"]), int(asign["id_actividad"])
         subset = eventos_obj[(eventos_obj["id_proyecto"] == id_proyecto) &
                              (eventos_obj["id_actividad"] == aid)]
         ids_eventos = set(subset["id_evento"].astype(int)) if not subset.empty else set()
-        n = int(participantes[participantes["id_trabajador"] == wid]["id_evento"].isin(ids_eventos).sum())
-        expos = max(1.0, (hoy - pd.to_datetime(asign["actividad_inicio"], errors="coerce")).days / 7) \
-            if pd.notna(pd.to_datetime(asign["actividad_inicio"], errors="coerce")) else semanas_proyecto
-        prob, tasa, calidad = riesgo(n, expos, n)
+        inicio_actividad = pd.to_datetime(asign["actividad_inicio"], errors="coerce")
+        del_trabajador = participantes[(participantes["id_trabajador"] == wid) &
+                                       participantes["id_evento"].isin(ids_eventos)]
+        n = len(eventos_desde(del_trabajador, inicio_actividad))
+        expos = max(1.0, (hoy - inicio_actividad).days / 7) if pd.notna(inicio_actividad) else semanas_proyecto
+        prob, tasa, calidad = riesgo(n, expos, n, 1 / len(pares))
         trabajador_actividad.append({"id_trabajador": wid, "id_actividad": aid,
             "actividad": asign.get("actividad"), "prob_evento": prob, "tipo_objetivo": tipo_obj,
             "horizonte_semanas": horizonte, "historico_eventos": n,
             "semanas_exposicion_estimadas": round(expos, 1), "tasa_semanal_suavizada": tasa,
             "evidencia": calidad, "factores": {"eventos_del_trabajador_en_esta_actividad": n,
             "probabilidad_base_proyecto": round(base, 6), "metodo": "tasa histórica trabajador-actividad suavizada"}})
+    acotar(trabajador_actividad)
 
     cuadrillas = []
     for squad, grupo in asignaciones.dropna(subset=["id_cuadrilla"]).groupby("id_cuadrilla"):
@@ -429,19 +554,21 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
                          "metodo": "combinación independiente aproximada de riesgos individuales"}})
 
     actividades = []
+    n_actividades = asignaciones["id_actividad"].nunique()
     for aid, grupo in asignaciones.dropna(subset=["id_actividad"]).groupby("id_actividad"):
         aid = int(aid)
         n = int(((eventos_obj["id_proyecto"] == id_proyecto) &
                  (eventos_obj["id_actividad"] == aid)).sum()) if not eventos_obj.empty else 0
-        prob, tasa, calidad = riesgo(n, semanas_proyecto, n)
+        prob, tasa, calidad = riesgo(n, semanas_proyecto, n, 1 / n_actividades)
         actividades.append({"id_actividad": aid, "nombre": grupo["actividad"].dropna().iloc[0]
             if grupo["actividad"].notna().any() else f"Actividad {aid}", "prob_evento": prob,
             "tipo_objetivo": tipo_obj, "horizonte_semanas": horizonte, "historico_eventos": n,
             "tasa_semanal_suavizada": tasa, "evidencia": calidad,
             "factores": {"id_asignaciones_activas": sorted(grupo["id_asignacion"].astype(int).unique().tolist()),
                          "probabilidad_base_proyecto": round(base, 6)}})
+    acotar(actividades)
 
-    areas_df = pd.read_sql(text("""
+    areas_df =pd.read_sql(text("""
         SELECT id_area, codigo_area, descripcion FROM public.areas WHERE id_faena = :faena
     """), engine, params={"faena": int(p["id_faena"])}) if pd.notna(p["id_faena"]) else pd.DataFrame()
     areas = []
@@ -449,18 +576,19 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
         aid = int(area["id_area"])
         n = int(((eventos_obj["id_proyecto"] == id_proyecto) & (eventos_obj["id_area"] == aid)).sum()) \
             if not eventos_obj.empty else 0
-        prob, tasa, calidad = riesgo(n, semanas_proyecto, n)
+        prob, tasa, calidad = riesgo(n, semanas_proyecto, n, 1 / len(areas_df))
         areas.append({"id_area": aid, "nombre": area.get("descripcion") or area.get("codigo_area"),
             "prob_evento": prob, "tipo_objetivo": tipo_obj, "horizonte_semanas": horizonte,
             "historico_eventos": n, "tasa_semanal_suavizada": tasa, "evidencia": calidad,
             "factores": {"id_faena": int(p["id_faena"]), "probabilidad_base_proyecto": round(base, 6)}})
+    acotar(areas)
 
     dimensiones_operativas = []
     eventos_proyecto = eventos_obj[eventos_obj["id_proyecto"] == id_proyecto]
     for nombre, columna in [(f"dimension_{nombre}", f"dimension_{nombre}") for nombre in dimensiones_ids]:
         valores = eventos_proyecto[columna].dropna().value_counts() if not eventos_proyecto.empty else pd.Series(dtype=int)
         for valor, n in valores.items():
-            prob, tasa, calidad = riesgo(int(n), semanas_proyecto, int(n))
+            prob, tasa, calidad = riesgo(int(n), semanas_proyecto, int(n), 1 / len(valores))
             dimensiones_operativas.append({
                 "dimension": nombre.replace("dimension_", ""),
                 "valor": int(valor) if isinstance(valor, (int, np.integer)) else str(valor),
@@ -472,7 +600,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
     if not eventos_proyecto.empty:
         valores_severidad = eventos_proyecto["severidad"].dropna().astype(str).value_counts()
         for valor, n in valores_severidad.items():
-            prob, tasa, calidad = riesgo(int(n), semanas_proyecto, int(n))
+            prob, tasa, calidad = riesgo(int(n), semanas_proyecto, int(n), 1 / len(valores_severidad))
             dimensiones_operativas.append({
                 "dimension": "severidad", "valor": valor, "prob_evento": prob,
                 "tipo_objetivo": tipo_obj, "horizonte_semanas": horizonte,
@@ -480,9 +608,22 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
                 "factores": {"id_proyecto": int(id_proyecto), "probabilidad_base_proyecto": round(base, 6)},
             })
 
+    todos_proyectos = pd.read_sql(text("""
+        SELECT id_cliente, id_faena, fecha_inicio, fecha_termino FROM public.proyectos
+    """), engine)
+    for columna in ("fecha_inicio", "fecha_termino"):
+        todos_proyectos[columna] = pd.to_datetime(todos_proyectos[columna])
+
+    def exposicion_conjunta(columna, valor):
+        """Suma la duracion real de cada proyecto del cliente o de la faena."""
+        grupo = todos_proyectos[todos_proyectos[columna] == valor]
+        return max(semanas_proyecto, sum(
+            semanas_exposicion(f["fecha_inicio"], f["fecha_termino"], hoy) for _, f in grupo.iterrows()
+        ))
+
     same_client = eventos_obj[eventos_obj["id_cliente"] == p["id_cliente"]] if pd.notna(p["id_cliente"]) else eventos_obj.iloc[0:0]
     client_n = len(same_client)
-    client_exposure = max(semanas_proyecto, semanas_proyecto * max(1, same_client["id_proyecto"].nunique()))
+    client_exposure = exposicion_conjunta("id_cliente", p["id_cliente"])
     client_prob, client_rate, client_quality = riesgo(client_n, client_exposure, client_n)
     cliente = {"id_cliente": int(p["id_cliente"]) if pd.notna(p["id_cliente"]) else None,
         "nombre": p.get("cliente"), "prob_evento": client_prob, "tipo_objetivo": tipo_obj,
@@ -497,7 +638,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
     same_faena = eventos_obj[eventos_obj["id_faena"] == p["id_faena"]] if pd.notna(p["id_faena"]) else eventos_obj.iloc[0:0]
     faena_n = len(same_faena)
     faena_projects = int(same_faena["id_proyecto"].nunique()) if not same_faena.empty else 0
-    faena_exposure = max(semanas_proyecto, semanas_proyecto * max(1, faena_projects))
+    faena_exposure = exposicion_conjunta("id_faena", p["id_faena"])
     faena_prob, faena_rate, faena_quality = riesgo(faena_n, faena_exposure, faena_n)
     faena = {"id_faena": int(p["id_faena"]) if pd.notna(p["id_faena"]) else None,
         "nombre": p.get("faena"),
@@ -582,7 +723,9 @@ def generar_predicciones_historicas(engine, tipo_obj=OBJETIVO_INCIDENTES, horizo
     """Respaldo interpretable para proyectos cuando el clasificador no tiene datos suficientes."""
     proyectos = pd.read_sql("""
         SELECT id_proyecto, nombre, fecha_inicio,
-               LEAST(COALESCE(fecha_termino, CURRENT_DATE), CURRENT_DATE) AS fecha_fin
+               LEAST(COALESCE(fecha_termino, CURRENT_DATE), CURRENT_DATE) AS fecha_fin,
+               fecha_inicio <= CURRENT_DATE
+                   AND (fecha_termino IS NULL OR fecha_termino >= CURRENT_DATE) AS vigente
         FROM public.proyectos
         WHERE fecha_inicio IS NOT NULL
     """, engine)
@@ -601,7 +744,8 @@ def generar_predicciones_historicas(engine, tipo_obj=OBJETIVO_INCIDENTES, horizo
     total_exposicion = float(proyectos["exposicion_semanas"].sum()) if not proyectos.empty else 1.0
     hazard_prior = max(float(por_proyecto.sum()) / max(total_exposicion, 1), 0.0001)
     resultados = []
-    for _, proyecto in proyectos.iterrows():
+    # Los proyectos terminados aportan a la tasa global, pero no tienen riesgo futuro.
+    for _, proyecto in proyectos[proyectos["vigente"]].iterrows():
         eventos_hist = int(por_proyecto.get(proyecto["id_proyecto"], 0))
         semanas = float(proyecto["exposicion_semanas"])
         hazard = (eventos_hist + hazard_prior * 8) / (semanas + 8)
@@ -649,17 +793,19 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj=OBJETIVO_INCID
     eventos = pd.read_sql(text("""
         SELECT e.id_evento, e.id_proyecto,
                lower(regexp_replace(trim(te.nombre), '[[:space:]]+', '_', 'g')) AS tipo,
-               e.id_trabajador
+               e.id_trabajador,
+               COALESCE(e.fecha_ocurrencia, e.fecha_creacion)::date AS fecha
         FROM public.eventos e
         JOIN public.tipo_eventos te USING (id_tipo_evento)
         WHERE e.id_proyecto IS NOT NULL
     """), engine)
-    participantes = eventos[["id_evento", "id_proyecto", "tipo", "id_trabajador"]].dropna().copy()
+    participantes = eventos[["id_evento", "id_proyecto", "tipo", "id_trabajador", "fecha"]].dropna().copy()
     try:
         extras = pd.read_sql(text("""
             SELECT et.id_evento, e.id_proyecto,
                    lower(regexp_replace(trim(te.nombre), '[[:space:]]+', '_', 'g')) AS tipo,
-                   et.id_trabajador
+                   et.id_trabajador,
+                   COALESCE(e.fecha_ocurrencia, e.fecha_creacion)::date AS fecha
             FROM public.evento_trabajador et
             JOIN public.eventos e USING (id_evento)
             JOIN public.tipo_eventos te USING (id_tipo_evento)
@@ -668,17 +814,20 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj=OBJETIVO_INCID
         participantes = participantes.drop_duplicates(["id_evento", "id_proyecto", "id_trabajador"])
     except Exception:
         pass
-    participantes = filtrar_objetivo(participantes, tipo_obj)
+    participantes = filtrar_objetivo(participantes, tipo_obj).copy()
+    participantes["fecha"] = pd.to_datetime(participantes["fecha"])
 
-    bases =probabilidades_proyecto or {}
+    bases = probabilidades_proyecto or {}
     base_global = float(np.mean(list(bases.values()))) if bases else 0.05
     hoy = pd.Timestamp.today().normalize()
+    trabajadores_por_proyecto = asignaciones.groupby("id_proyecto")["id_trabajador"].nunique()
     salida = []
     for (proyecto_id, cuadrilla_id), grupo in asignaciones.groupby(["id_proyecto", "id_cuadrilla"], dropna=False):
         proyecto_id = int(proyecto_id) if pd.notna(proyecto_id) else None
         miembros = grupo.dropna(subset=["id_trabajador"]).drop_duplicates("id_trabajador")
         base = float(bases.get(proyecto_id, base_global)) if proyecto_id is not None else base_global
-        hazard_prior = -np.log1p(-min(max(base, 0.0001), 0.9999)) / max(horizonte, 1)
+        total_trabajadores = int(trabajadores_por_proyecto.get(proyecto_id, len(miembros))) or 1
+        hazard_prior = tasa_desde_probabilidad(base, horizonte) / total_trabajadores
         predicciones_miembros = []
         historico = 0
         for _, miembro in miembros.iterrows():
@@ -686,27 +835,28 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj=OBJETIVO_INCID
             filtro_trabajador = participantes["id_trabajador"] == wid
             if proyecto_id is not None:
                 filtro_trabajador &= participantes["id_proyecto"] == proyecto_id
-            n = int(filtro_trabajador.sum())
             inicio = pd.to_datetime(miembro["asignacion_inicio"], errors="coerce")
-            exposicion = max(1.0, (hoy - inicio).days / 7) if pd.notna(inicio) else 52.0
+            if pd.notna(inicio):
+                filtro_trabajador &= participantes["fecha"] >= inicio
+            n = int(filtro_trabajador.sum())
+            exposicion =max(1.0, (hoy - inicio).days / 7) if pd.notna(inicio) else 52.0
             tasa = (n + hazard_prior * 8) / (exposicion + 8)
             prob = float(np.clip(1 - np.exp(-tasa * horizonte), 0, 1))
             historico += n
             predicciones_miembros.append({
                 "id_trabajador": wid,
-                "nombre": miembro["trabajador"] or f"Trabajador {wid}",
+                "nombre": con_defecto(miembro["trabajador"], f"Trabajador {wid}"),
                 "cargo": miembro["cargo"],
                 "historico_eventos": n,
                 "semanas_exposicion_estimadas": round(exposicion, 1),
+                "tasa_semanal_suavizada": round(float(tasa), 6),
                 "prob_evento": round(prob, 6),
             })
-        prob_cuadrilla = 1 - float(np.prod([1 - x["prob_evento"] for x in predicciones_miembros])) \
-            if predicciones_miembros else base
         salida.append({
-            "id_proyecto": proyecto_id, "proyecto": grupo.iloc[0]["proyecto"] or "Sin proyecto activo",
+            "id_proyecto": proyecto_id, "proyecto": con_defecto(grupo.iloc[0]["proyecto"], "Sin proyecto activo"),
             "id_cuadrilla": int(cuadrilla_id),
-            "cuadrilla": grupo.iloc[0]["numero_cuadrilla"] or f"Cuadrilla {int(cuadrilla_id)}",
-            "prob_evento": round(float(prob_cuadrilla), 6), "tipo_objetivo": tipo_obj,
+            "cuadrilla": con_defecto(grupo.iloc[0]["numero_cuadrilla"], f"Cuadrilla {int(cuadrilla_id)}"),
+            "prob_evento": round(base, 6), "tipo_objetivo": tipo_obj,
             "horizonte_semanas": horizonte, "integrantes": len(predicciones_miembros),
             "historico_eventos_asociados": historico,
             "evidencia": "alta" if historico >= 20 else "media" if historico >= 5 else "baja",
@@ -716,6 +866,16 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj=OBJETIVO_INCID
                          "combinacion_independiente_aproximada": True,
                          "metodo": "combina el riesgo suavizado de cada integrante; no supone que los riesgos sean independientes en la realidad"},
         })
+
+    # Con todos los integrantes calculados, el conjunto de cada proyecto no supera su riesgo.
+    for proyecto_id, probabilidad in bases.items():
+        integrantes = [m for c in salida if c["id_proyecto"] == proyecto_id for m in c["miembros"]]
+        acotar_al_proyecto(integrantes, tasa_desde_probabilidad(probabilidad, horizonte), horizonte)
+    for cuadrilla in salida:
+        if cuadrilla["miembros"]:
+            cuadrilla["prob_evento"] = round(
+                1 - float(np.prod([1 - m["prob_evento"] for m in cuadrilla["miembros"]])), 6
+            )
     return sorted(salida, key=lambda item: item["prob_evento"], reverse=True)
 
 
@@ -740,31 +900,25 @@ def main():
     engine = create_engine(a.db)
     if a.solo_prediccion:
         import json
+        predicciones, validacion = generar_predicciones(engine, a.tipo_objetivo, a.horizonte)
         print(json.dumps({
             "tipo_objetivo": a.tipo_objetivo,
             "horizonte": a.horizonte,
             "unidad_analisis": "proyecto-semana",
             "evento": "al menos un evento del tipo objetivo dentro del horizonte",
-            "predicciones": generar_predicciones(
-                engine, a.tipo_objetivo, a.horizonte
-            ),
+            "validacion": validacion,
+            "predicciones": predicciones,
         }))
         return
 
     df, feats, cats = armar_panel(*cargar(engine), a.tipo_objetivo, a.horizonte)
 
-    # Solo filas cuyo horizonte completo ya fue observado
-    obs = df[df["sem_restantes"] >= a.horizonte - 1].copy()
+    obs = filas_observadas(df, a.horizonte)
     print(f"Filas proyecto-semana: {len(obs)} | proyectos: {obs['id_proyecto'].nunique()}"
           f" | prevalencia de y=1: {obs['y'].mean():.3f}")
-    if obs["y"].nunique() < 2 or len(obs) < 100:
-        raise SystemExit("Muy pocos datos o una sola clase: revisa tipo objetivo y datos cargados.")
+    verificar_datos(obs)
 
-    # Validacion TEMPORAL: entrena con el pasado, prueba con el futuro
-    corte = obs["semana"].quantile(0.8)
-    # Se deja una brecha de h semanas para que el objetivo del train no solape el test
-    tr = obs[obs["semana"] < corte - pd.Timedelta(weeks=a.horizonte)]
-    te = obs[obs["semana"] >= corte]
+    tr, te, corte = dividir_temporal(obs, a.horizonte)
     print(f"Train hasta {corte.date()} ({len(tr)} filas) | Test desde {corte.date()} ({len(te)} filas)")
 
     num = [f for f in feats if f not in cats]
@@ -773,24 +927,15 @@ def main():
                           LogisticRegression(max_iter=1000, class_weight="balanced")),
             tr[num], tr["y"], te[num], te["y"])
 
-    gb = HistGradientBoostingClassifier(categorical_features="from_dtype", max_depth=4,
-                                        learning_rate=0.05, max_iter=300,
-                                        l2_regularization=1.0, random_state=0)
-    gb = evaluar("Gradient boosting", gb, tr[num + cats], tr["y"], te[num + cats], te["y"])
+    evaluar("Gradient boosting", nuevo_clasificador(), tr[num + cats], tr["y"], te[num + cats], te["y"])
 
-    # Prediccion actual: semana mas reciente de cada proyecto vigente
-    hoy = pd.Timestamp.today().normalize()
-    ult = df.sort_values("semana").groupby("id_proyecto").tail(1)
-    ult = ult[ult["fecha_termino"].isna() | (ult["fecha_termino"] >= hoy)].copy()
-    final = HistGradientBoostingClassifier(categorical_features="from_dtype", max_depth=4,
-                                           learning_rate=0.05, max_iter=300,
-                                           l2_regularization=1.0, random_state=0)
-    final.fit(obs[num + cats], obs["y"])
-    ult["prob_evento"] = final.predict_proba(ult[num + cats])[:, 1]
-    ult[["id_proyecto", "semana", "prob_evento"]].sort_values("prob_evento", ascending=False) \
-        .to_csv(a.salida, index=False)
+    predicciones, _ = generar_predicciones(engine, a.tipo_objetivo, a.horizonte)
+    pd.DataFrame(predicciones, columns=["id_proyecto", "semana", "prob_evento"]).to_csv(a.salida, index=False)
     print(f"\nPredicciones ({a.horizonte} semanas) guardadas en {a.salida}")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except DatosInsuficientes as exc:
+        raise SystemExit(str(exc)) from exc

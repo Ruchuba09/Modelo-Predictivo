@@ -77,7 +77,7 @@ SELECT sp.id_proyecto,
        sp.semana,
        count(DISTINCT a.id_cuadrilla) AS n_cuadrillas,
        count(DISTINCT c.id_supervisor) AS n_supervisores,
-       count(DISTINCT o.id_trabajador) AS n_obreros,
+       count(DISTINCT COALESCE(tc.id_trabajador, o.id_trabajador)) AS n_obreros,
        count(DISTINCT ac.id_actividad) AS n_actividades
 FROM public.v_proyecto_semanas sp
 LEFT JOIN public.asignaciones a
@@ -85,7 +85,16 @@ LEFT JOIN public.asignaciones a
       AND a.fecha_inicio < sp.semana + 7
       AND COALESCE(a.fecha_termino, 'infinity'::date) >= sp.semana
 LEFT JOIN public.cuadrillas c ON c.id_cuadrilla = a.id_cuadrilla
-LEFT JOIN public.obreros o ON o.id_cuadrilla = a.id_cuadrilla
+-- Membresia vigente en esa semana. Si la cuadrilla no tiene historial con fechas,
+-- se aproxima con su composicion actual.
+LEFT JOIN public.trabajadores_cuadrillas tc
+       ON tc.id_cuadrilla = a.id_cuadrilla
+      AND tc.fecha_inicio < sp.semana + 7
+      AND COALESCE(tc.fecha_fin, 'infinity'::date) >= sp.semana
+LEFT JOIN public.obreros o
+       ON o.id_cuadrilla = a.id_cuadrilla
+      AND NOT EXISTS (SELECT 1 FROM public.trabajadores_cuadrillas h
+                      WHERE h.id_cuadrilla = a.id_cuadrilla)
 LEFT JOIN public.actividades ac
        ON ac.id_asignacion = a.id_asignacion
       AND COALESCE(ac.fecha_inicio, sp.semana) < sp.semana + 7
