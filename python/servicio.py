@@ -1,4 +1,7 @@
+import logging
 import os
+import threading
+from contextlib import asynccontextmanager
 from datetime import date
 
 from fastapi import FastAPI, HTTPException, Query
@@ -7,19 +10,35 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from modelo_predictivo import (
     OBJETIVO_INCIDENTES,
-    DatosInsuficientes,
     generar_analisis_entidades,
-    generar_predicciones,
     generar_predicciones_cuadrillas,
     generar_predicciones_historicas,
     sin_nulos,
     tipos_disponibles,
 )
+from motor_riesgo import obtener_modelos, semana_actual
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL, pool_pre_ping=True) if DATABASE_URL else None
-app = FastAPI(title="Modelo predictivo de eventos", version="1.0.0")
+
+
+def _preentrenar():
+    try:
+        obtener_modelos(engine)
+    except Exception:
+        logging.getLogger(__name__).exception("No se pudo preentrenar el modelo predictivo.")
+
+
+@asynccontextmanager
+async def ciclo_de_vida(_app):
+    # El primer usuario no espera el entrenamiento del objetivo y horizonte predeterminados.
+    if engine is not None:
+        threading.Thread(target=_preentrenar, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="Modelo predictivo de eventos", version="2.0.0", lifespan=ciclo_de_vida)
 
 
 def db():
@@ -51,6 +70,16 @@ def listar_tipos():
         ) from exc
 
 
+@app.post("/modelo/entrenar")
+def entrenar_modelos(
+    tipo_objetivo: str = Query(default=OBJETIVO_INCIDENTES, min_length=1, max_length=100),
+    horizonte: int = Query(default=4, ge=1, le=52),
+):
+    """Reentrena aunque los datos no hayan cambiado y devuelve la calidad de cada nivel."""
+    motor = obtener_modelos(db(), tipo_objetivo, horizonte, forzar=True)
+    return sin_nulos({"modelos": motor["niveles"], "historial": motor.get("historial")})
+
+
 @app.get("/predicciones")
 def predicciones(
     tipo_objetivo: str = Query(default=OBJETIVO_INCIDENTES, min_length=1, max_length=100),
@@ -71,19 +100,33 @@ def predicciones(
         disponibles = tipos_disponibles(conexion)
         if tipo_objetivo not in (OBJETIVO_INCIDENTES, "todos") and tipo_objetivo not in disponibles:
             raise HTTPException(status_code=422, detail="El tipo de evento seleccionado no existe.")
-        advertencia_modelo = None
+        motor = obtener_modelos(conexion, tipo_objetivo, horizonte)
+        calidad_proyecto = motor["niveles"].get("proyecto", {})
+        predicciones_proyecto = motor["predicciones"].get("proyecto", {})
+        advertencia_modelo = calidad_proyecto.get("motivo")
         validacion = None
-        nombre_modelo = "HistGradientBoostingClassifier"
-        try:
-            # Siempre entrega la tabla comparativa de todos los proyectos vigentes;
-            # el id solicitado solo limita el análisis detallado por entidades.
-            resultados, validacion = generar_predicciones(conexion, tipo_objetivo, horizonte)
-        except DatosInsuficientes as exc:
-            # La falta de historial suficiente no deja la vista vacía: entrega
-            # un estimador histórico explícito para todos los proyectos.
+        if predicciones_proyecto:
+            nombre_modelo = calidad_proyecto["modelo"]
+            validacion = {
+                **calidad_proyecto["metricas"],
+                "prevalencia": calidad_proyecto["prevalencia"],
+                "filas_validacion": calidad_proyecto["filas_validacion"],
+                "discriminacion": calidad_proyecto["discriminacion"],
+            }
+            semana = semana_actual().date().isoformat()
+            resultados = sorted((
+                {
+                    "id_proyecto": proyecto, "semana": semana, "prob_evento": p["prob"], "metodo": p["metodo"],
+                    "factores_principales": p["factores"],
+                    "variables": {f["etiqueta"]: f["valor"] for f in p["factores"]},
+                }
+                for proyecto, p in predicciones_proyecto.items()
+            ), key=lambda item: item["prob_evento"], reverse=True)
+        else:
+            # Sin datos para un modelo, el panel no queda vacío: usa una tasa histórica explícita.
             resultados = generar_predicciones_historicas(conexion, tipo_objetivo, horizonte)
-            advertencia_modelo = str(exc)
             nombre_modelo = "Estimador histórico suavizado (respaldo)"
+            advertencia_modelo = f"{advertencia_modelo or ''} Se muestran estimaciones históricas suavizadas.".strip()
         analisis = None
         proximo_evento_global = None
         id_analisis = id_proyecto
@@ -93,13 +136,13 @@ def predicciones(
             principal = next((item for item in resultados if item["id_proyecto"] == id_analisis), None)
             analisis_calculado = generar_analisis_entidades(
                 conexion, id_analisis, tipo_objetivo, horizonte,
-                principal["prob_evento"] if principal else None,
+                principal["prob_evento"] if principal else None, motor["predicciones"],
             )
             if id_proyecto is None:
                 proximo_evento_global = analisis_calculado.get("contexto", {}).get("evento_estimado")
             else:
                 analisis = analisis_calculado
-            if id_proyecto is not None and principal is None and advertencia_modelo and analisis_calculado.get("contexto", {}).get("probabilidad_base_proyecto") is not None:
+            if id_proyecto is not None and principal is None and not predicciones_proyecto and analisis_calculado.get("contexto", {}).get("probabilidad_base_proyecto") is not None:
                 resultados = [{
                     "id_proyecto": id_proyecto,
                     "semana": date.today().isoformat(),
@@ -109,7 +152,7 @@ def predicciones(
                 }]
         probabilidades = {item["id_proyecto"]: item["prob_evento"] for item in resultados}
         cuadrillas = generar_predicciones_cuadrillas(
-            conexion, horizonte, tipo_objetivo, probabilidades, id_proyecto,
+            conexion, horizonte, tipo_objetivo, probabilidades, id_proyecto, motor["predicciones"],
         )
     except HTTPException:
         raise
@@ -125,6 +168,8 @@ def predicciones(
         "evento": "al menos un evento del tipo objetivo dentro del horizonte seleccionado",
         "modelo": nombre_modelo,
         "validacion": validacion,
+        "modelos": motor["niveles"],
+        "historial": motor.get("historial"),
         "predicciones": resultados,
         "analisis_entidades": analisis,
         "analisis_global": {"cuadrillas": cuadrillas, "proximo_evento": proximo_evento_global},

@@ -1,32 +1,10 @@
+"""Objetivos del modelo, riesgo por entidad y estimador historico de respaldo.
+
+El entrenamiento y la seleccion de modelos estan en motor_riesgo.py. Aqui se arma el analisis
+de cada entidad: usa la prediccion del motor cuando existe y, si no, una tasa suavizada.
 """
-Modelo predictivo de eventos por proyecto (unidad: proyecto x semana).
-
-Pregunta que responde: dado el estado del proyecto al inicio de la semana t,
-cual es la probabilidad de que haya >= 1 evento del tipo objetivo en las
-proximas H semanas (t .. t+H-1)?
-
-Requisitos:  pip install pandas sqlalchemy psycopg2-binary scikit-learn
-Antes:       ejecutar 01_vistas_modelo_predictivo.sql en la base.
-
-Uso (PowerShell):
-  $env:DATABASE_URL = "postgresql+psycopg2://USUARIO:CLAVE@localhost:5432/postgres"
-  python modelo_predictivo.py --horizonte 4
-  python modelo_predictivo.py --tipo-objetivo tarjeta_pare
-"""
-import argparse
-import os
-
 import numpy as np
 import pandas as pd
-from sqlalchemy import create_engine
-from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-
-VENTANAS = (1, 4, 12)  # semanas hacia atras para features historicas
 
 # Objetivo por defecto: lo que AVA pide predecir. Hallazgos, Previene y PARE quedan
 # como predictores; incluirlos en el objetivo haria predecir reportes, no incidentes.
@@ -35,76 +13,6 @@ TIPOS_INCIDENTE_REAL = frozenset({"accidente", "incidente", "reporte_flash"})
 # El informe documenta un incidente ya contado por su Reporte Flash.
 TIPOS_SEGUIMIENTO = frozenset({"informe_investigacion"})
 OBJETIVOS_AGRUPADOS = frozenset({"todos", OBJETIVO_INCIDENTES})
-
-# Minimos para publicar el clasificador; bajo ellos el servicio usa el estimador de respaldo.
-MIN_POSITIVOS = 20
-MIN_NEGATIVOS = 20
-MIN_PROYECTOS = 3
-MIN_AUC_VALIDACION = 0.6
-
-
-class DatosInsuficientes(Exception):
-    """Los datos no permiten entrenar o validar el clasificador."""
-
-
-def nuevo_clasificador():
-    return HistGradientBoostingClassifier(
-        categorical_features="from_dtype", max_depth=4, learning_rate=0.05,
-        max_iter=300, l2_regularization=1.0, random_state=0,
-    )
-
-
-def filas_observadas(df, h, hoy=None):
-    """Filas cuyo horizonte ya termino: la semana en curso aun no tiene resultado definitivo."""
-    hoy = pd.Timestamp.today().normalize() if hoy is None else hoy
-    semana_actual = hoy - pd.Timedelta(days=hoy.weekday())
-    ultima_semana = df["semana"] + pd.Timedelta(weeks=h - 1)
-    return df[(df["sem_restantes"] >= h - 1) & (ultima_semana < semana_actual)].copy()
-
-
-def verificar_datos(obs):
-    positivos = int(obs["y"].sum())
-    negativos = len(obs) - positivos
-    proyectos = obs["id_proyecto"].nunique()
-    if positivos < MIN_POSITIVOS or negativos < MIN_NEGATIVOS or proyectos < MIN_PROYECTOS:
-        raise DatosInsuficientes(
-            f"Datos insuficientes para el clasificador: {positivos} positivos, {negativos} negativos "
-            f"y {proyectos} proyectos (minimos: {MIN_POSITIVOS}, {MIN_NEGATIVOS} y {MIN_PROYECTOS})."
-        )
-
-
-def dividir_temporal(obs, h):
-    """Entrena con el pasado y prueba con el futuro, con una brecha para no solapar objetivos."""
-    corte = obs["semana"].quantile(0.8)
-    return obs[obs["semana"] < corte - pd.Timedelta(weeks=h)], obs[obs["semana"] >= corte], corte
-
-
-def _logit(probabilidades):
-    p = np.clip(probabilidades, 1e-6, 1 - 1e-6)
-    return np.log(p / (1 - p)).reshape(-1, 1)
-
-
-def validar_temporal(obs, columnas, h):
-    """Devuelve las metricas del tramo futuro y el calibrador ajustado sobre ese tramo."""
-    tr, te, _ = dividir_temporal(obs, h)
-    if tr["y"].nunique() < 2 or te["y"].nunique() < 2:
-        raise DatosInsuficientes("El tramo temporal de validacion no tiene ambas clases.")
-    p = nuevo_clasificador().fit(tr[columnas], tr["y"]).predict_proba(te[columnas])[:, 1]
-    auc = float(roc_auc_score(te["y"], p))
-    if auc < MIN_AUC_VALIDACION:
-        raise DatosInsuficientes(
-            f"El clasificador no discrimina en la validacion temporal (AUC-ROC {auc:.2f}, minimo {MIN_AUC_VALIDACION})."
-        )
-    metricas = {
-        "auc_roc": round(auc, 4),
-        "auc_pr": round(float(average_precision_score(te["y"], p)), 4),
-        "brier": round(float(brier_score_loss(te["y"], p)), 4),
-        "prevalencia": round(float(te["y"].mean()), 4),
-        "filas_entrenamiento": len(tr),
-        "filas_validacion": len(te),
-    }
-    return metricas, LogisticRegression().fit(_logit(p), te["y"])
-
 
 def tasa_desde_probabilidad(probabilidad, horizonte):
     p = min(max(float(probabilidad), 0.0001), 0.9999)
@@ -129,6 +37,19 @@ def acotar_al_proyecto(entidades, tasa_proyecto, horizonte):
         tasa = e["tasa_semanal_suavizada"] * factor
         e["tasa_semanal_suavizada"] = round(float(tasa), 6)
         e["prob_evento"] = round(float(1 - np.exp(-tasa * horizonte)), 6)
+
+
+def aplicar_modelo(entidades, clave, predicciones, horizonte):
+    """Reemplaza la tasa suavizada por la prediccion del motor cuando existe."""
+    for entidad in entidades:
+        prediccion = (predicciones or {}).get(entidad[clave])
+        if prediccion is None:
+            continue
+        entidad["prob_evento"] = prediccion["prob"]
+        entidad["tasa_semanal_suavizada"] = round(float(tasa_desde_probabilidad(prediccion["prob"], horizonte)), 6)
+        entidad["metodo"] = prediccion["metodo"]
+        entidad["modelo"] = prediccion["modelo"]
+        entidad["factores_principales"] = prediccion["factores"]
 
 
 def con_defecto(valor, defecto):
@@ -162,139 +83,6 @@ def mas_probable(entidades, clave_historico="historico_eventos"):
     return max(con_historial, key=lambda e: e["prob_evento"], default=None)
 
 
-def cargar(engine):
-    q = lambda sql: pd.read_sql(sql, engine)
-    spine = q("SELECT id_proyecto, semana FROM public.v_proyecto_semanas")
-    conteo = q("SELECT * FROM public.v_conteo_semanal_tipo")
-    ctx = q("SELECT * FROM public.v_proyecto_semana_contexto")
-    est = q("SELECT * FROM public.v_proyecto_estatico")
-    try:  # opcional: existe solo si se ejecuto 03_ampliacion_modelo_datos.sql
-        extra = q("SELECT * FROM public.v_proyecto_semana_extra")
-    except Exception:
-        extra = pd.DataFrame(columns=["id_proyecto", "semana"])
-    for d in (spine, conteo, ctx, extra):
-        d["semana"] = pd.to_datetime(d["semana"])
-    est["fecha_inicio"] = pd.to_datetime(est["fecha_inicio"])
-    est["fecha_termino"] = pd.to_datetime(est["fecha_termino"])
-    return spine, conteo, ctx, est, extra
-
-
-def armar_panel(spine, conteo, ctx, est, extra, tipo_obj, h):
-    if h < 1 or h > 52:
-        raise SystemExit("El horizonte debe estar entre 1 y 52 semanas.")
-    if conteo.empty:
-        raise DatosInsuficientes("No hay eventos con proyecto y fecha para entrenar el modelo.")
-    tipos = sorted(conteo["tipo"].unique())
-    if tipo_obj == OBJETIVO_INCIDENTES:
-        if not TIPOS_INCIDENTE_REAL.intersection(tipos):
-            raise DatosInsuficientes("No hay incidentes reales registrados para entrenar el modelo.")
-    elif tipo_obj != "todos" and tipo_obj not in tipos:
-        raise DatosInsuficientes(f"Tipo '{tipo_obj}' no tiene eventos. Disponibles: {tipos}")
-
-    # Pivot dinamico: un tipo nuevo en la BD aparece solo como nuevas columnas
-    n = conteo.pivot_table(index=["id_proyecto", "semana"], columns="tipo",
-                           values="n", aggfunc="sum").add_prefix("n_")
-    sev = conteo.pivot_table(index=["id_proyecto", "semana"], columns="tipo",
-                             values="sev_max", aggfunc="max").add_prefix("sev_")
-    sev = sev.dropna(axis=1, how="all")
-
-    df = (spine.merge(n.reset_index(), how="left", on=["id_proyecto", "semana"])
-               .merge(sev.reset_index(), how="left", on=["id_proyecto", "semana"])
-               .merge(ctx, how="left", on=["id_proyecto", "semana"])
-               .merge(est, how="left", on="id_proyecto")
-               .merge(extra, how="left", on=["id_proyecto", "semana"])
-               .sort_values(["id_proyecto", "semana"]).reset_index(drop=True))
-
-    cols_n = [f"n_{t}" for t in tipos]
-    df[cols_n] = df[cols_n].fillna(0)
-    df["n_todos"] = df[[f"n_{t}" for t in tipos if t not in TIPOS_SEGUIMIENTO]].sum(axis=1)
-    df[f"n_{OBJETIVO_INCIDENTES}"] = df[
-        [f"n_{t}" for t in tipos if t in TIPOS_INCIDENTE_REAL]
-    ].sum(axis=1)
-    col_obj = f"n_{tipo_obj}"
-
-    g = df.groupby("id_proyecto")
-    feats = []
-
-    # Historial (solo semanas ANTERIORES a t: shift(1) evita fuga de datos)
-    for c in cols_n + ["n_todos", f"n_{OBJETIVO_INCIDENTES}"]:
-        for w in VENTANAS:
-            f = f"{c}_u{w}s"
-            df[f] = g[c].transform(lambda s, w=w: s.shift(1).rolling(w, min_periods=1).sum())
-            feats.append(f)
-    for c in [c for c in df.columns if c.startswith("sev_")]:
-        f = f"{c}_u4s"
-        df[f] = g[c].transform(lambda s: s.shift(1).rolling(4, min_periods=1).max())
-        feats.append(f)
-
-    # Semanas desde el ultimo evento objetivo
-    df["_ult"] = df["semana"].where(df[col_obj] > 0)
-    df["_ult"] = df.groupby("id_proyecto")["_ult"].transform(lambda s: s.shift(1).ffill())
-    df["sem_desde_ultimo"] = (df["semana"] - df["_ult"]).dt.days / 7
-    feats.append("sem_desde_ultimo")
-
-    # Contexto y exposicion
-    for c in ["n_cuadrillas", "n_supervisores", "n_obreros", "n_actividades", "n_areas_faena"]:
-        df[c] = df[c].fillna(0)
-        feats.append(c)
-    df["edad_sem"] = g["semana"].transform(lambda s: (s - s.min()).dt.days / 7)
-    df["mes"] = df["semana"].dt.month
-    feats += ["edad_sem", "mes"]
-    if (df["n_obreros"] > 0).any():
-        df["eventos_u4s_por_obrero"] = df[f"{col_obj}_u4s"] / df["n_obreros"].replace(0, np.nan)
-        feats.append("eventos_u4s_por_obrero")
-
-    # Objetivo: >=1 evento objetivo en t .. t+h-1
-    fut = g[col_obj].transform(lambda s: s[::-1].rolling(h, min_periods=1).sum()[::-1])
-    df["y"] = (fut > 0).astype(int)
-    df["sem_restantes"] = g.cumcount(ascending=False)  # semanas observadas despues de t
-
-    # Features opcionales de la ampliacion del modelo de datos.
-    # Valores de la semana REAL (horas, clima, ausentismo...) se usan de la semana
-    # anterior; lo planificado (avance planificado) no necesita desfase.
-    g = df.groupby("id_proyecto")
-    for c in [c for c in extra.columns if c not in ("id_proyecto", "semana")]:
-        if df[c].notna().sum() == 0:
-            continue  # aun no hay datos cargados para esta columna
-        # Avance planificado es conocido al inicio de semana; el resto son
-        # observaciones de la semana y solo se pueden usar desde la semana siguiente.
-        if c == "avance_planificado_pct":
-            f = c
-            df[f] = df[c]
-        else:
-            f = f"{c}_prev"
-            df[f] = g[c].shift(1)
-        feats.append(f)
-    if "horas_hombre_prev" in df and df["horas_hombre_prev"].notna().any():
-        hh4 = g["horas_hombre"].transform(lambda s: s.shift(1).rolling(4, min_periods=1).sum())
-        df["eventos_por_1000h_u4s"] = df[f"{col_obj}_u4s"] / hh4.replace(0, np.nan) * 1000
-        feats.append("eventos_por_1000h_u4s")
-
-    cats = ["id_faena", "id_cliente"]
-    for c in cats:
-        df[c] = df[c].astype("category")
-    return df, feats, cats
-
-
-def evaluar(nombre, modelo, Xtr, ytr, Xte, yte):
-    if Xtr.empty or Xte.empty or ytr.nunique() < 2:
-        print(f"\n[{nombre}] Sin suficientes clases o filas para evaluar.")
-        return None
-    # Una variable opcional cargada hace poco puede no tener datos en el tramo de entrenamiento.
-    Xtr = Xtr.dropna(axis=1, how="all")
-    Xte = Xte[Xtr.columns]
-    modelo.fit(Xtr, ytr)
-    p = modelo.predict_proba(Xte)[:, 1]
-    print(f"\n[{nombre}]")
-    if yte.nunique() < 2:
-        print("  El set de prueba tiene una sola clase; no se puede calcular AUC.")
-        return modelo
-    print(f"  AUC-ROC : {roc_auc_score(yte, p):.3f}")
-    print(f"  AUC-PR  : {average_precision_score(yte, p):.3f}  (base = {yte.mean():.3f})")
-    print(f"  Brier   : {brier_score_loss(yte, p):.3f}")
-    return modelo
-
-
 def tipos_disponibles(engine):
     filas = pd.read_sql(
         "SELECT DISTINCT tipo FROM public.v_conteo_semanal_tipo ORDER BY tipo", engine
@@ -302,58 +90,14 @@ def tipos_disponibles(engine):
     return filas["tipo"].dropna().tolist()
 
 
-def generar_predicciones(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4, id_proyecto=None):
-    """Valida, entrena y devuelve (predicciones calibradas, metricas de validacion)."""
-    df, feats, cats = armar_panel(*cargar(engine), tipo_obj, horizonte)
-    obs = filas_observadas(df, horizonte)
-    verificar_datos(obs)
-    columnas = feats + cats
-    validacion, calibrador = validar_temporal(obs, columnas, horizonte)
-
-    hoy = pd.Timestamp.today().normalize()
-    ult = df.sort_values("semana").groupby("id_proyecto", as_index=False).tail(1)
-    ult = ult[ult["fecha_termino"].isna() | (ult["fecha_termino"] >= hoy)].copy()
-    if id_proyecto is not None:
-        ult = ult[ult["id_proyecto"] == int(id_proyecto)]
-    if ult.empty:
-        return [], validacion
-
-    final = nuevo_clasificador().fit(obs[columnas], obs["y"])
-    crudas = final.predict_proba(ult[columnas])[:, 1]
-    probabilidades = calibrador.predict_proba(_logit(crudas))[:, 1]
-    salida = []
-    for (_, fila), prob in zip(ult.iterrows(), probabilidades):
-        variables = {}
-        for nombre in columnas:
-            valor = fila[nombre]
-            if pd.isna(valor):
-                valor = None
-            elif isinstance(valor, (np.integer,)):
-                valor = int(valor)
-            elif isinstance(valor, (np.floating,)):
-                valor = float(valor)
-            elif isinstance(valor, pd.Timestamp):
-                valor = valor.date().isoformat()
-            else:
-                # Convierte categorías/numpy scalars a tipos JSON nativos.
-                valor = valor.item() if hasattr(valor, "item") else valor
-            variables[nombre] = valor
-        salida.append({
-            "id_proyecto": int(fila["id_proyecto"]),
-            "semana": fila["semana"].date().isoformat(),
-            "prob_evento": round(float(prob), 6),
-            "variables": variables,
-        })
-    return sorted(salida, key=lambda item: item["prob_evento"], reverse=True), validacion
-
-
 def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4,
-                               probabilidad_proyecto=None):
+                               probabilidad_proyecto=None, modelos=None):
     """Estima riesgos por trabajador, actividad, cuadrilla, área y cliente.
 
-    Usa tasas históricas suavizadas hacia la tasa del proyecto. Los vínculos de
-    evento-trabajador y evento-actividad se aprovechan si están instalados.
+    Usa la predicción de `modelos` (salida del motor) cuando el nivel tiene modelo y, si no,
+    una tasa histórica suavizada hacia la tasa del proyecto.
     """
+    modelos = modelos or {}
     from sqlalchemy import text
 
     proyecto = pd.read_sql(text("""
@@ -510,6 +254,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
             "factores": {"probabilidad_base_proyecto": round(base, 6), "eventos_historicos_asociados": n,
                          "actividad_actual": asign.get("actividad"), "metodo": "tasa histórica suavizada hacia el riesgo del proyecto"}})
 
+    aplicar_modelo(trabajadores, "id_trabajador", modelos.get("trabajador"), horizonte)
     acotar(trabajadores)
 
     # Una predicción por trabajador y actividad actualmente asignada.
@@ -551,7 +296,10 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
             "historico_eventos_asociados": n, "evidencia": "media" if n >= 5 else "baja",
             "factores": {"integrantes": len(miembros), "probabilidades_individuales_combinadas": True,
                          "suma_probabilidades_individuales": round(float(suma_riesgos), 6),
-                         "metodo": "combinación independiente aproximada de riesgos individuales"}})
+                         "metodo": "combinación independiente aproximada de riesgos individuales"},
+            "tasa_semanal_suavizada": round(float(tasa_desde_probabilidad(prob, horizonte)), 6)})
+    aplicar_modelo(cuadrillas, "id_cuadrilla", modelos.get("cuadrilla"), horizonte)
+    acotar(cuadrillas)
 
     actividades = []
     n_actividades = asignaciones["id_actividad"].nunique()
@@ -566,6 +314,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
             "tasa_semanal_suavizada": tasa, "evidencia": calidad,
             "factores": {"id_asignaciones_activas": sorted(grupo["id_asignacion"].astype(int).unique().tolist()),
                          "probabilidad_base_proyecto": round(base, 6)}})
+    aplicar_modelo(actividades, "id_actividad", modelos.get("actividad"), horizonte)
     acotar(actividades)
 
     areas_df =pd.read_sql(text("""
@@ -581,6 +330,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
             "prob_evento": prob, "tipo_objetivo": tipo_obj, "horizonte_semanas": horizonte,
             "historico_eventos": n, "tasa_semanal_suavizada": tasa, "evidencia": calidad,
             "factores": {"id_faena": int(p["id_faena"]), "probabilidad_base_proyecto": round(base, 6)}})
+    aplicar_modelo(areas, "id_area", modelos.get("area"), horizonte)
     acotar(areas)
 
     dimensiones_operativas = []
@@ -762,10 +512,11 @@ def generar_predicciones_historicas(engine, tipo_obj=OBJETIVO_INCIDENTES, horizo
 
 
 def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj=OBJETIVO_INCIDENTES,
-                                    probabilidades_proyecto=None, id_proyecto=None):
+                                    probabilidades_proyecto=None, id_proyecto=None, modelos=None):
     """Calcula riesgo para cada cuadrilla actualmente asignada a proyectos vigentes."""
     from sqlalchemy import text
 
+    modelos = modelos or {}
     asignaciones = pd.read_sql(text("""
         SELECT p.id_proyecto, p.nombre AS proyecto,
                a.id_asignacion, c.id_cuadrilla, a.fecha_inicio AS asignacion_inicio,
@@ -846,12 +597,13 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj=OBJETIVO_INCID
             predicciones_miembros.append({
                 "id_trabajador": wid,
                 "nombre": con_defecto(miembro["trabajador"], f"Trabajador {wid}"),
-                "cargo": miembro["cargo"],
+                "cargo": con_defecto(miembro["cargo"], None),
                 "historico_eventos": n,
                 "semanas_exposicion_estimadas": round(exposicion, 1),
                 "tasa_semanal_suavizada": round(float(tasa), 6),
                 "prob_evento": round(prob, 6),
             })
+        aplicar_modelo(predicciones_miembros, "id_trabajador", modelos.get("trabajador"), horizonte)
         salida.append({
             "id_proyecto": proyecto_id, "proyecto": con_defecto(grupo.iloc[0]["proyecto"], "Sin proyecto activo"),
             "id_cuadrilla": int(cuadrilla_id),
@@ -876,66 +628,14 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj=OBJETIVO_INCID
             cuadrilla["prob_evento"] = round(
                 1 - float(np.prod([1 - m["prob_evento"] for m in cuadrilla["miembros"]])), 6
             )
+        cuadrilla["tasa_semanal_suavizada"] = round(float(tasa_desde_probabilidad(cuadrilla["prob_evento"], horizonte)), 6)
+    aplicar_modelo(salida, "id_cuadrilla", modelos.get("cuadrilla"), horizonte)
+    for proyecto_id, probabilidad in bases.items():
+        acotar_al_proyecto([c for c in salida if c["id_proyecto"] == proyecto_id],
+                           tasa_desde_probabilidad(probabilidad, horizonte), horizonte)
     return sorted(salida, key=lambda item: item["prob_evento"], reverse=True)
 
 
 def events_obj_project(events, project_id):
     """Máscara auxiliar para mantener legible el conteo por proyecto."""
     return events["id_proyecto"] == project_id
-
-
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--tipo-objetivo", default=OBJETIVO_INCIDENTES,
-                    help=f"'{OBJETIVO_INCIDENTES}', 'todos' o el nombre normalizado de un tipo")
-    ap.add_argument("--horizonte", type=int, default=4, help="semanas a predecir")
-    ap.add_argument("--db", default=os.getenv("DATABASE_URL"))
-    ap.add_argument("--salida", default="predicciones_proyectos.csv")
-    ap.add_argument("--solo-prediccion", action="store_true",
-                    help="omite la evaluacion temporal para integraciones")
-    a = ap.parse_args()
-    if not a.db:
-        raise SystemExit("Define DATABASE_URL o usa --db")
-
-    engine = create_engine(a.db)
-    if a.solo_prediccion:
-        import json
-        predicciones, validacion = generar_predicciones(engine, a.tipo_objetivo, a.horizonte)
-        print(json.dumps({
-            "tipo_objetivo": a.tipo_objetivo,
-            "horizonte": a.horizonte,
-            "unidad_analisis": "proyecto-semana",
-            "evento": "al menos un evento del tipo objetivo dentro del horizonte",
-            "validacion": validacion,
-            "predicciones": predicciones,
-        }))
-        return
-
-    df, feats, cats = armar_panel(*cargar(engine), a.tipo_objetivo, a.horizonte)
-
-    obs = filas_observadas(df, a.horizonte)
-    print(f"Filas proyecto-semana: {len(obs)} | proyectos: {obs['id_proyecto'].nunique()}"
-          f" | prevalencia de y=1: {obs['y'].mean():.3f}")
-    verificar_datos(obs)
-
-    tr, te, corte = dividir_temporal(obs, a.horizonte)
-    print(f"Train hasta {corte.date()} ({len(tr)} filas) | Test desde {corte.date()} ({len(te)} filas)")
-
-    num = [f for f in feats if f not in cats]
-    evaluar("Regresion logistica (base)",
-            make_pipeline(SimpleImputer(strategy="median"), StandardScaler(),
-                          LogisticRegression(max_iter=1000, class_weight="balanced")),
-            tr[num], tr["y"], te[num], te["y"])
-
-    evaluar("Gradient boosting", nuevo_clasificador(), tr[num + cats], tr["y"], te[num + cats], te["y"])
-
-    predicciones, _ = generar_predicciones(engine, a.tipo_objetivo, a.horizonte)
-    pd.DataFrame(predicciones, columns=["id_proyecto", "semana", "prob_evento"]).to_csv(a.salida, index=False)
-    print(f"\nPredicciones ({a.horizonte} semanas) guardadas en {a.salida}")
-
-
-if __name__ == "__main__":
-    try:
-        main()
-    except DatosInsuficientes as exc:
-        raise SystemExit(str(exc)) from exc

@@ -34,7 +34,37 @@ php artisan modelo:servir
 
 El comando usa la conexión de Laravel, por lo que ambos leen la misma base, y toma el puerto de `PREDICTIVE_MODEL_URL`. Fuera de Docker, `DB_HOST` en `app/.env` debe ser `127.0.0.1`. Si `PREDICTIVE_MODEL_URL` apunta a otro host, como en Docker, el comando no levanta nada.
 
+## Cómo funciona
+
+`motor_riesgo.py` entrena un modelo por cada tipo de entidad: proyecto, área, cuadrilla, trabajador y actividad. Con el historial real también entrena uno por cliente.
+
+- **Datos:** une `eventos`, Reporte Previene, Reportes Flash y Hallazgos. Los informes de investigación no suman porque documentan un incidente ya contado.
+- **Variables (más de 50 por entidad):** incidentes y reportes en ventanas de 1 a 26 semanas, tendencia, semanas desde el último incidente, tasa histórica, pendientes de cierre, razón preventivo/reactivo, severidad, condiciones PARE y su repetición, turno noche, riesgos detectados en el texto, personas expuestas, época del año, incidentes del proyecto y de la empresa, y los datos de la ampliación cuando existen (horas, clima, avance). Todas usan solo semanas anteriores a la predicción.
+- **Selección:** compara regresión logística, gradient boosting y bosque aleatorio con validación temporal en tres tramos, y elige el de menor log-loss. Si ninguno supera a la tasa histórica de cada entidad, publica esa tasa.
+- **Requisitos:** al menos 20 filas positivas, 20 negativas y 3 entidades. Sin ellos, el nivel usa el estimador suavizado de `modelo_predictivo.py` e informa el motivo.
+- **Calibración y explicación:** calibra las probabilidades con predicciones fuera de muestra y entrega los factores que más mueven cada predicción.
+- **Caché:** reutiliza lo entrenado mientras no cambien los datos ni la semana. El objetivo y horizonte predeterminados se entrenan al arrancar. El primer entrenamiento de otra combinación puede tardar varios minutos.
+
+Para ver la comparación por consola o exportar los datasets en CSV:
+
+```powershell
+python motor_riesgo.py --db postgresql+psycopg2://usuario:clave@localhost:5432/postgres --horizonte 4
+python motor_riesgo.py --db postgresql+psycopg2://usuario:clave@localhost:5432/postgres --exportar datasets
+```
+
+## Historial real de AVA
+
+`data/importar_logs.py` lee los logs Excel de incidentes (formatos 2021-2024, 2025 y 2026), une los archivos sin duplicar y crea `public.incidentes_historicos`. No guarda RUT, nombres ni descripciones: del texto solo extrae etiquetas de riesgo. Volver a ejecutarlo reemplaza la tabla.
+
+```powershell
+python data\importar_logs.py log2024.xlsx log2025.xlsx log2026.xlsx --db postgresql+psycopg2://usuario:clave@localhost:5432/postgres
+```
+
+No versiones los Excel originales.
+
 ## Contrato HTTP
+
+- `POST /modelo/entrenar`: reentrena aunque los datos no hayan cambiado.
 
 - `GET /health`: comprueba conexión con PostgreSQL.
 - `GET /tipos`: devuelve `incidentes_reales`, `todos` y los tipos encontrados en los datos.
@@ -48,8 +78,8 @@ La misma respuesta incluye `analisis_global.cuadrillas` con la probabilidad de c
 
 Laravel expone las rutas autenticadas `GET /api/v1/modelo-predictivo/tipos`, `GET /api/v1/modelo-predictivo/predicciones` para todos los proyectos y `GET /api/v1/proyectos/{id}/predicciones` para un proyecto. La página `/modelo-predictivo` genera una tabla ordenada; el detalle de cada proyecto también muestra su probabilidad. Ambas vistas permiten elegir el tipo de evento y el horizonte.
 
-El servicio vuelve a entrenar al calcular una solicitud. Solo entrena con semanas cuyo horizonte ya terminó, y exige al menos 20 filas positivas, 20 negativas y 3 proyectos. Antes de publicar, valida con el tramo temporal más reciente: exige AUC-ROC de 0,6 o más, calibra las probabilidades con ese tramo y devuelve las métricas en `validacion`.
+La respuesta de `/predicciones` incluye `modelos`, con la calidad de cada nivel (candidatos, métricas, referencia y variables importantes), y `historial`, con los patrones y el riesgo por cliente si se importaron los logs.
 
-Las probabilidades por entidad usan suavizado jerárquico hacia la probabilidad del proyecto. La respuesta detalla el método, recuentos históricos, horizonte, exposición estimada, variables asociadas y nivel de evidencia. La configuración de cuadrilla combina los riesgos de sus miembros bajo una aproximación de independencia. Cuando no se registra asistencia/exposición histórica por entidad, se aproxima a partir de la duración de asignación/proyecto y se indica en `analisis_entidades.contexto.nota_evidencia`; estas estimaciones requieren más cautela que la probabilidad del modelo por proyecto.
+Cuando un nivel no tiene modelo, sus probabilidades usan suavizado jerárquico hacia la probabilidad del proyecto. En todos los casos, la suma de las entidades no supera el riesgo de su proyecto. La respuesta detalla el método, recuentos históricos, horizonte, exposición estimada, variables asociadas y nivel de evidencia. La configuración de cuadrilla combina los riesgos de sus miembros bajo una aproximación de independencia. Cuando no se registra asistencia/exposición histórica por entidad, se aproxima a partir de la duración de asignación/proyecto y se indica en `analisis_entidades.contexto.nota_evidencia`; estas estimaciones requieren más cautela que la probabilidad del modelo por proyecto.
 
 Si el clasificador no cumple esos mínimos, la API devuelve estimaciones históricas suavizadas para los proyectos vigentes en vez de dejar el panel vacío, e informa el método de respaldo en `modelo` y `advertencia_modelo`, con `validacion` en `null`.

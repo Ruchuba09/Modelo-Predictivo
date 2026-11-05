@@ -4,6 +4,7 @@ import { Activity, RefreshCw, Sparkles } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { api } from '@/lib/api';
 import { etiquetaTipo } from '@/lib/utils';
+import { CalidadModelos, HistorialReal, type CalidadNivel, type Historial } from '@/components/CalidadModelos';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 type Proyecto = { id_proyecto: number; nombre: string };
@@ -28,6 +29,7 @@ type Prediccion = {
     semana: string;
     prob_evento: number;
     variables?: Record<string, string | number | boolean | null>;
+    factores_principales?: Array<{ variable: string; etiqueta: string; efecto: number }>;
 };
 type RespuestaPredicciones = {
     tipo_objetivo: string;
@@ -35,7 +37,9 @@ type RespuestaPredicciones = {
     unidad_analisis: string;
     evento: string;
     modelo: string;
-    validacion?: { auc_roc: number; prevalencia: number; filas_validacion: number } | null;
+    validacion?: { auc_roc: number; prevalencia: number; filas_validacion: number; discriminacion?: string } | null;
+    modelos?: Record<string, CalidadNivel>;
+    historial?: Historial | null;
     predicciones: Prediccion[];
     advertencia_modelo?: string | null;
     analisis_entidades?: {
@@ -217,13 +221,16 @@ export default function Index() {
                         </p>
                     )}
                     {error && <p className="mt-5 rounded-lg border border-rojo-1/30 bg-red-50 p-3 text-sm text-rojo-1" role="alert">{error}</p>}
-                    {advertenciaModelo && <p className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="status">{advertenciaModelo} Se muestran estimaciones históricas suavizadas para que el análisis por entidad siga disponible.</p>}
+                    {advertenciaModelo && <p className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="status">{advertenciaModelo}</p>}
                     {metadatos?.validacion && (
                         <p className="mt-5 rounded-lg border border-verde-3 bg-verde-1 p-3 text-sm text-gris-2" role="status">
-                            Validado con las semanas más recientes: AUC-ROC {metadatos.validacion.auc_roc.toFixed(2)} en {metadatos.validacion.filas_validacion} semanas-proyecto (prevalencia {Math.round(metadatos.validacion.prevalencia * 100)}%).
+                            Validado con las semanas más recientes: AUC-ROC {metadatos.validacion.auc_roc.toFixed(2)} (capacidad {metadatos.validacion.discriminacion ?? 'sin evaluar'}) en {metadatos.validacion.filas_validacion} semanas-proyecto (prevalencia {Math.round(metadatos.validacion.prevalencia * 100)}%).
                         </p>
                     )}
                 </section>
+
+                {generada && metadatos?.modelos && <CalidadModelos modelos={metadatos.modelos} />}
+                {generada && metadatos?.historial && <HistorialReal historial={metadatos.historial} horizonte={horizonte} />}
 
                 {generada && resultados.length > 0 && (
                     <>
@@ -311,6 +318,15 @@ export default function Index() {
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col items-start gap-1">
                                                             <Link href={`/proyectos/${item.id_proyecto}`} className="text-sm font-bold text-verde-6 hover:underline">Ver proyecto</Link>
+                                                            {item.factores_principales && item.factores_principales.length > 0 && (
+                                                                <ul className="text-xs text-gris-1">
+                                                                    {item.factores_principales.map((factor) => (
+                                                                        <li key={factor.variable}>
+                                                                            {factor.efecto > 0 ? '▲' : '▼'} {factor.etiqueta} ({factor.efecto > 0 ? '+' : ''}{Math.round(factor.efecto * 100)} pts.)
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
                                                             <details className="text-xs text-gris-1">
                                                                 <summary className="cursor-pointer font-semibold">Variables del modelo</summary>
                                                                 {item.variables && <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
