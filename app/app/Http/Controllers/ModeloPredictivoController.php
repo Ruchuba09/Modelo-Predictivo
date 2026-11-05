@@ -75,6 +75,11 @@ class ModeloPredictivoController extends Controller
         return $this->solicitarModelo('/red-neuronal', $this->horizonteValidado($request));
     }
 
+    public function pruebaRedNeuronal(Request $request): JsonResponse
+    {
+        return $this->solicitarModelo('/red-neuronal/prueba', $this->horizonteValidado($request));
+    }
+
     public function trazaRedNeuronal(Request $request): JsonResponse
     {
         $filtros = $request->validate([

@@ -40,7 +40,8 @@ from modelo_predictivo import (
     filtrar_objetivo,
     tasa_desde_probabilidad,
 )
-from horizontes import DIAS_POR_SEMANAS, SEMANAS_ENTRENABLES, factor, plazos_coherentes, probabilidad_de, riesgo_acumulado
+from horizontes import DIAS_POR_SEMANAS, SEMANAS_ENTRENABLES, es_derivado, factor, plazos_coherentes, probabilidad_de, riesgo_acumulado, semanas_modelo
+import prueba_red
 from traza_red import Traza
 from motor_riesgo import (
     DIRECTORIO_MODELOS,
@@ -365,7 +366,9 @@ def entrenar_red(X, Y, semanas, observadas, h, categoricas=(), max_filas=None, c
         "evaluacion": evaluacion, "por_grupo": por_grupo, "epocas": mejor_epoca, "curva_validacion": curva,
         "filas_entrenamiento": int(en_train.sum()), "filas_validacion": int(en_val.sum()), "filas_prueba": int(en_test.sum()),
         "variables": len(numericas) + len(categoricas),
-        "p_prueba": p_test, "indice_prueba": Yo.index[en_test],
+        "p_prueba": p_test, "indice_prueba": Yo.index[en_test], "p_logistica": p_logistica, "p_prevalencia": p_prevalencia,
+        "y_prueba": Yte, "y_val": Yva, "indice_val": Yo.index[en_val],
+        "p_val": _aplicar_calibracion(_calibracion(Yva, p_val, grupos_val), p_val, grupos_val),
     }
 
 
@@ -385,6 +388,46 @@ def _cargar_base_red(engine):
     areas = pd.read_sql(text("SELECT id_area, codigo_area FROM public.areas"), engine)
     base["codigos_area"] = dict(zip(areas["id_area"], areas["codigo_area"]))
     return base
+
+
+CLAVES_TEMPORALES = ("p_prueba", "indice_prueba", "p_logistica", "p_prevalencia", "y_prueba", "y_val", "indice_val", "p_val")
+PLAZOS_DIAS = (1, 2, 5)
+
+
+def _armar_prueba(base, meta, tabla, eventos, entidades, horizonte):
+    """Guarda lo necesario para probar la red despues: sus predicciones en semanas que no uso para aprender."""
+    def bloque(ajuste, filas, filas_val, extra=()):
+        return {
+            "salidas": ajuste["salidas"], "y": ajuste["y_prueba"].astype(np.int8), "p": ajuste["p_prueba"].astype(np.float32),
+            "logistica": ajuste["p_logistica"].astype(np.float32), "prevalencia": ajuste["p_prevalencia"].astype(np.float32),
+            "semana": filas["semana"].to_numpy(), "entidad": filas["entidad"].to_numpy(),
+            "y_val": ajuste["y_val"].astype(np.int8), "p_val": ajuste["p_val"].astype(np.float32),
+            **{columna: filas[columna].to_numpy() for columna in extra},
+            **{f"{columna}_val": filas_val[columna].to_numpy() for columna in extra},
+        }
+
+    resultado = {"eventos": bloque(eventos, meta.loc[eventos["indice_prueba"]], meta.loc[eventos["indice_val"]])}
+    if entidades:
+        resultado["entidades"] = bloque(entidades, tabla.loc[entidades["indice_prueba"]], tabla.loc[entidades["indice_val"]], ("nivel",))
+    if horizonte == 1:
+        # Lo ocurrido en los primeros dias de cada semana, para probar los plazos en dias.
+        niveles = construir_niveles(base, OBJETIVO_INCIDENTES, 1)
+        ocurridos = lambda nivel: niveles[nivel][1][niveles[nivel][1]["objetivo"]]
+        dias = {}
+        for dia in PLAZOS_DIAS:
+            prueba_d = {"proyecto": etiqueta_dias(meta.loc[eventos["indice_prueba"]], ocurridos("proyecto"), dia).to_numpy(dtype=np.int8),
+                        "proyecto_val": etiqueta_dias(meta.loc[eventos["indice_val"]], ocurridos("proyecto"), dia).to_numpy(dtype=np.int8)}
+            if entidades:
+                for sufijo, indice in (("", "indice_prueba"), ("_val", "indice_val")):
+                    filas = tabla.loc[entidades[indice]]
+                    salida = np.zeros(len(filas), dtype=np.int8)
+                    for nivel in filas["nivel"].unique():
+                        en_nivel = (filas["nivel"] == nivel).to_numpy()
+                        salida[en_nivel] = etiqueta_dias(filas[en_nivel], ocurridos(nivel), dia).to_numpy(dtype=np.int8)
+                    prueba_d[f"entidades{sufijo}"] = salida
+            dias[dia] = prueba_d
+        resultado["dias"] = dias
+    return resultado
 
 
 def _medir_conversiones(base, meta, tabla, eventos, entidades):
@@ -431,12 +474,14 @@ def entrenar(engine, horizonte=4, traza=None):
 
         conversion = _medir_conversiones(base, meta, tabla, eventos, entidades) if horizonte == 1 else None
 
+        prueba = _armar_prueba(base, meta, tabla, eventos, entidades, horizonte)
+
     for ajuste in (eventos, entidades):
         if ajuste:
-            ajuste.pop("p_prueba", None)
-            ajuste.pop("indice_prueba", None)
+            for clave in CLAVES_TEMPORALES:
+                ajuste.pop(clave, None)
     artefacto = {"horizonte": horizonte, "entrenado_en": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                 "eventos": eventos, "entidades": entidades, "conversion_dias": conversion}
+                 "eventos": eventos, "entidades": entidades, "conversion_dias": conversion, "prueba": prueba}
     DIRECTORIO_RED.mkdir(parents=True, exist_ok=True)
     joblib.dump(artefacto, DIRECTORIO_RED / f"h{horizonte}.joblib")
     joblib.dump(traza.para_guardar(), DIRECTORIO_RED / f"h{horizonte}.traza.joblib")
@@ -537,6 +582,72 @@ def predecir_proyecto(engine, id_proyecto, horizonte=4, hoy=None):
                 entidades[nivel] = sorted((f for f in filas if f["nombre"]), key=lambda f: f["prob_evento"], reverse=True)
     return {"id_proyecto": id_proyecto, "horizonte": horizonte, "semana": str(semana_actual(hoy).date()),
             "entrenado_en": artefacto["entrenado_en"], "eventos": eventos, "entidades": entidades, "coherencia": coherencia}
+
+
+# ------------------------------------------------------------------ pruebas de acierto
+
+_pruebas_hechas = {}
+
+
+def _nombres_prueba(engine):
+    """Nombres para los ejemplos: los proyectos terminados y las entidades sin nombre usan su numero."""
+    proyectos = pd.read_sql(text("SELECT id_proyecto, nombre FROM public.proyectos"), engine)
+    contexto = _contexto_entidades(engine)
+    nombres = {nivel: dict(zip(contexto[nivel]["id"].astype(int), contexto[nivel]["nombre"])) for nivel in NIVELES_ENTIDAD if nivel in contexto}
+    nombres["proyecto"] = dict(zip(proyectos["id_proyecto"].astype(int), proyectos["nombre"]))
+    return nombres
+
+
+def ejecutar_pruebas(engine, dias):
+    """Aplica las pruebas de acierto a la red que atiende este plazo."""
+    semanas = semanas_modelo(dias)
+    artefacto = _cargar_artefacto(semanas)
+    if artefacto is None or not artefacto.get("prueba"):
+        return None
+    clave = (semanas, dias, artefacto["entrenado_en"])
+    if clave in _pruebas_hechas:
+        return _pruebas_hechas[clave]
+
+    datos = artefacto["prueba"]
+    derivado = es_derivado(dias)
+    proporcion = dias / 7
+    convertir = (lambda p: 1 - (1 - np.clip(p.astype(float), 0, 0.999999)) ** proporcion) if derivado else (lambda p: p.astype(float))
+    nombres = _nombres_prueba(engine)
+    titulo = {"area": "Área", "cuadrilla": "Cuadrilla", "trabajador": "Trabajador", "actividad": "Actividad", "proyecto": "Proyecto"}
+    nombre_de = lambda nivel: lambda i: nombres.get(nivel, {}).get(i) or f"{titulo[nivel]} {i}"
+
+    salidas = []
+    bloque = datos["eventos"]
+    for j, nombre in enumerate(bloque["salidas"]):
+        if derivado and nombre != OBJETIVO_INCIDENTES:
+            continue
+        y = datos["dias"][dias]["proyecto"] if derivado else bloque["y"][:, j]
+        y_val = datos["dias"][dias]["proyecto_val"] if derivado else bloque["y_val"][:, j]
+        p = convertir(bloque["p"][:, j])
+        salida = prueba_red.evaluar_salida(y, p, convertir(bloque["logistica"][:, j]), convertir(bloque["prevalencia"][:, j]), bloque["semana"], y_val, convertir(bloque["p_val"][:, j]))
+        salida.update(clave=nombre, grupo="eventos", ejemplos=prueba_red.ejemplos(np.asarray(y), p, bloque["semana"], bloque["entidad"], nombre_de("proyecto")))
+        salidas.append(salida)
+
+    bloque = datos.get("entidades")
+    if bloque:
+        for nivel in sorted(set(bloque["nivel"])):
+            m, m_val = bloque["nivel"] == nivel, bloque["nivel_val"] == nivel
+            y = datos["dias"][dias]["entidades"][m] if derivado else bloque["y"][m, 0]
+            y_val = datos["dias"][dias]["entidades_val"][m_val] if derivado else bloque["y_val"][m_val, 0]
+            p = convertir(bloque["p"][m, 0])
+            salida = prueba_red.evaluar_salida(y, p, convertir(bloque["logistica"][m, 0]), convertir(bloque["prevalencia"][m, 0]), bloque["semana"][m], y_val, convertir(bloque["p_val"][m_val, 0]))
+            salida.update(clave=str(nivel), grupo="entidades", ejemplos=prueba_red.ejemplos(np.asarray(y), p, bloque["semana"][m], bloque["entidad"][m], nombre_de(str(nivel))))
+            salidas.append(salida)
+
+    fechas = datos["eventos"]["semana"]
+    resultado = {
+        "entrenado_en": artefacto["entrenado_en"], "semanas_modelo": semanas, "horizonte_dias": dias,
+        "desde": str(np.datetime_as_string(fechas.min(), unit="D")), "hasta": str(np.datetime_as_string(fechas.max(), unit="D")), "salidas": salidas,
+    }
+    if len(_pruebas_hechas) > 20:
+        _pruebas_hechas.clear()
+    _pruebas_hechas[clave] = resultado
+    return resultado
 
 
 # ------------------------------------------------------------------ entrenamiento en segundo plano

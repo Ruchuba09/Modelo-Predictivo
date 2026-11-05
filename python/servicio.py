@@ -128,6 +128,16 @@ def traza_red_neuronal(
     return sin_nulos(red_neuronal.consultar_traza(semanas_de(horizonte_dias), desde, limite))
 
 
+@app.get("/red-neuronal/prueba")
+def prueba_red_neuronal(horizonte_dias: int = Query(default=horizontes.DIAS_PREDETERMINADOS, ge=1, le=90)):
+    """Pruebas de acierto de la red con las semanas que no usó para aprender."""
+    semanas_de(horizonte_dias)
+    resultado = red_neuronal.ejecutar_pruebas(db(), horizonte_dias)
+    if resultado is None:
+        raise HTTPException(status_code=409, detail="Entrena la red para este horizonte antes de ejecutar las pruebas.")
+    return sin_nulos(resultado)
+
+
 @app.post("/red-neuronal/entrenar", status_code=202)
 def entrenar_red_neuronal(horizonte_dias: int = Query(default=horizontes.DIAS_PREDETERMINADOS, ge=1, le=90)):
     """Inicia el entrenamiento en segundo plano; su avance se consulta con GET /red-neuronal."""

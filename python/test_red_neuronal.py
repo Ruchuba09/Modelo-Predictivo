@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 import horizontes
+import prueba_red
 from red_neuronal import _etiquetas_futuras, _probabilidades, dividir_temporal, entrenar_red, etiqueta_dias, medir_conversion, predecir_red
 from traza_red import MAX_ENTRADAS, MAX_NEURONAS, Traza, elegir_entradas, nombre_entrada, propagar
 
@@ -180,6 +181,83 @@ class PlazosCoherentes(unittest.TestCase):
         self.assertGreater(mes, dos)
         final = horizontes.plazos_coherentes([{"a": mes}, {"a": dos}])[-1]["a"]
         self.assertGreaterEqual(horizontes.probabilidad_de(final, horizontes.factor(60)), p9)
+
+
+def filas_prueba(semilla=0, semanas=40, por_semana=30):
+    rng = np.random.default_rng(semilla)
+    fechas = pd.date_range("2025-01-06", periods=semanas, freq="7D").to_numpy()
+    semana = np.repeat(fechas, por_semana)
+    return rng, semana, len(semana)
+
+
+class PruebasDeAcierto(unittest.TestCase):
+    def evaluar(self, y, p, semana, rng):
+        referencia = np.full(len(y), y.mean())
+        return prueba_red.evaluar_salida(y, p, referencia, referencia, semana, y, p)
+
+    def resultado(self, salida, clave):
+        return next(x for x in salida["pruebas"] if x["clave"] == clave)["aprobada"]
+
+    def test_un_modelo_con_senal_aprueba(self):
+        rng, semana, n = filas_prueba()
+        p = rng.beta(1, 3, n)
+        y = (rng.random(n) < p).astype(int)
+        salida = self.evaluar(y, p, semana, rng)
+        for clave in ("azar", "tasa", "calibracion", "prioriza", "estable"):
+            self.assertTrue(self.resultado(salida, clave), clave)
+
+    def test_un_modelo_sin_senal_no_aprueba(self):
+        rng, semana, n = filas_prueba(1)
+        p = rng.beta(1, 3, n)
+        y = (rng.random(n) < 0.25).astype(int)
+        salida = self.evaluar(y, p, semana, rng)
+        for clave in ("azar", "tasa", "prioriza"):
+            self.assertFalse(self.resultado(salida, clave), clave)
+
+    def test_detecta_probabilidades_descalibradas(self):
+        rng, semana, n = filas_prueba(2)
+        p = rng.beta(2, 2, n)
+        y = (rng.random(n) < p / 3).astype(int)
+        self.assertFalse(self.resultado(self.evaluar(y, p, semana, rng), "calibracion"))
+
+    def test_el_umbral_sale_de_validacion_y_no_de_la_prueba(self):
+        rng, semana, n = filas_prueba(3)
+        p = rng.random(n)
+        y = (p > 0.5).astype(int)
+        y_val = np.array([0, 0, 1, 1])
+        p_val = np.array([0.1, 0.15, 0.2, 0.25])
+        referencia = np.full(n, y.mean())
+        salida = prueba_red.evaluar_salida(y, p, referencia, referencia, semana, y_val, p_val)
+        self.assertLessEqual(salida["umbral_validacion"]["umbral"], 0.2)
+
+    def test_cada_criterio_elige_su_umbral(self):
+        # Pocos eventos: anticiparlos exige avisar antes de lo que conviene para acertar mas filas.
+        y = np.array([0] * 90 + [1] * 10)
+        p = np.concatenate([np.linspace(0.01, 0.4, 90), np.linspace(0.2, 0.5, 10)])
+        self.assertLess(prueba_red.elegir_umbral(y, p, "f1"), 0.42)
+        self.assertGreaterEqual(prueba_red.metricas_umbral(y, p, prueba_red.elegir_umbral(y, p, "exactitud"))["exactitud"], 0.9)
+
+    def test_la_matriz_suma_todas_las_filas(self):
+        rng, semana, n = filas_prueba(4)
+        p = rng.random(n)
+        y = rng.integers(0, 2, n)
+        for fila in prueba_red.curva_umbrales(y, p):
+            self.assertEqual(fila["vp"] + fila["fp"] + fila["fn"] + fila["vn"], n)
+        self.assertEqual(prueba_red.metricas_umbral(y, p, 0.5)["vp"], prueba_red.curva_umbrales(y, p)[49]["vp"])
+
+    def test_sin_eventos_no_falla_y_avisa_poca_evidencia(self):
+        rng, semana, n = filas_prueba(5)
+        y = np.zeros(n, dtype=int)
+        salida = self.evaluar(y, rng.random(n) * 0.1, semana, rng)
+        self.assertFalse(salida["evidencia_suficiente"])
+        self.assertIsNone(salida["auc"])
+        self.assertFalse(self.resultado(salida, "azar"))
+
+    def test_los_ejemplos_marcan_lo_ocurrido(self):
+        semana = pd.date_range("2025-01-06", periods=4, freq="7D").to_numpy()
+        salida = prueba_red.ejemplos(np.array([1, 0, 1, 0]), np.array([0.9, 0.8, 0.1, 0.2]), semana, np.array([1, 2, 3, 4]), lambda i: f"E{i}")
+        self.assertEqual(salida["mayor_riesgo"][0], {"entidad": "E1", "semana": "2025-01-06", "prob": 0.9, "ocurrio": True})
+        self.assertEqual(salida["sorpresas"][0]["entidad"], "E3")
 
 
 class TrazaDeEntrenamiento(unittest.TestCase):

@@ -87,6 +87,7 @@ Route::middleware('auth')->group(function () {
         Route::inertia('/modelo-predictivo/entidades', 'ModeloPredictivo/Entidades')->name('modelo-predictivo.entidades');
         Route::inertia('/modelo-predictivo/calidad', 'ModeloPredictivo/Calidad')->name('modelo-predictivo.calidad');
         Route::inertia('/modelo-predictivo/red-neuronal', 'ModeloPredictivo/RedNeuronal')->name('modelo-predictivo.red-neuronal');
+        Route::inertia('/modelo-predictivo/red-neuronal/pruebas', 'ModeloPredictivo/PruebaRed')->name('modelo-predictivo.red-neuronal.pruebas');
         Route::inertia('/modelo-predictivo/red-neuronal/entrenamiento', 'ModeloPredictivo/EntrenamientoRed')->name('modelo-predictivo.red-neuronal.entrenamiento');
         Route::inertia('/modelo-predictivo/historial', 'ModeloPredictivo/Historial')->name('modelo-predictivo.historial');
         Route::get('/modelo-predictivo/proyectos/{proyecto}/evento-estimado', [ModeloPredictivoPaginaController::class, 'eventoEstimado'])

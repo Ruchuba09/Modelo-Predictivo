@@ -104,6 +104,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($gestion, $admin, $
             Route::get('modelo-predictivo/entidades', [ModeloPredictivoController::class, 'entidades'])->name('modelo-predictivo.entidades');
             Route::get('modelo-predictivo/evaluacion', [ModeloPredictivoController::class, 'evaluacion'])->name('modelo-predictivo.evaluacion');
             Route::get('modelo-predictivo/red-neuronal', [ModeloPredictivoController::class, 'redNeuronal'])->name('modelo-predictivo.red-neuronal');
+            Route::get('modelo-predictivo/red-neuronal/prueba', [ModeloPredictivoController::class, 'pruebaRedNeuronal'])->name('modelo-predictivo.red-neuronal.prueba');
             Route::get('modelo-predictivo/red-neuronal/traza', [ModeloPredictivoController::class, 'trazaRedNeuronal'])->name('modelo-predictivo.red-neuronal.traza');
             Route::post('modelo-predictivo/red-neuronal/entrenar', [ModeloPredictivoController::class, 'entrenarRedNeuronal'])->name('modelo-predictivo.red-neuronal.entrenar');
             Route::get('proyectos/{proyecto}/red-neuronal', [ModeloPredictivoController::class, 'prediccionRedNeuronal'])->whereNumber('proyecto')->name('proyectos.red-neuronal');
