@@ -3,12 +3,15 @@
 namespace Database\Factories;
 
 use App\Models\Proyecto;
+use Database\Factories\Providers\SeguridadProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ReportePrevieneIntravaFactory extends Factory
 {
     public function definition(): array
     {
+        $this->faker->addProvider(new SeguridadProvider($this->faker));
+
         return [
             'id_intrava' => $this->faker->unique()->numberBetween(100000, 999999999),
             'id_proyecto' => Proyecto::factory(),
@@ -18,8 +21,8 @@ class ReportePrevieneIntravaFactory extends Factory
             'fecha' => $this->faker->date(),
             'hora' => $this->faker->time(),
             'area' => $this->faker->optional()->word(),
-            'descripcion' => $this->faker->paragraph(),
-            'acciones_inmediatas' => $this->faker->optional()->sentence(),
+            'descripcion' => $this->faker->descripcionCondicion(),
+            'acciones_inmediatas' => $this->faker->randomElement(SeguridadProvider::MEDIDAS),
             'urgencia' => $this->faker->numberBetween(1, 5),
             'aviso_jefatura' => $this->faker->randomElement(['SI', 'NO']),
             'estado' => $this->faker->randomElement(['Abierto', 'Cerrado', 'En proceso']),

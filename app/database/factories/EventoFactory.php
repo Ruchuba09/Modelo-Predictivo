@@ -8,6 +8,7 @@ use App\Models\Evento;
 use App\Models\Proyecto;
 use App\Models\Trabajador;
 use App\Models\TipoEvento;
+use Database\Factories\Providers\SeguridadProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class EventoFactory extends Factory
@@ -23,6 +24,8 @@ class EventoFactory extends Factory
 
     public function definition(): array
     {
+        $this->faker->addProvider(new SeguridadProvider($this->faker));
+
         // Por defecto un evento recién reportado: abierto y sin administrador ni área asignados
         return [
             'id_tipo_evento' => TipoEvento::factory(),
@@ -31,8 +34,8 @@ class EventoFactory extends Factory
             'id_proyecto' => Proyecto::factory(),
             'id_trabajador' => null,
             'id_supervisor' => null,
-            'descripcion' => $this->faker->paragraph(),
-            'referencia' => $this->faker->sentence(3),
+            'descripcion' => $this->faker->descripcionCondicion(),
+            'referencia' => strtoupper($this->faker->bothify('REF-#####')),
             'condicion' => $this->faker->numberBetween(1, 10),
             'estado' => 'abierto',
             'severidad' => $this->faker->randomElement(['Baja', 'Media', 'Alta']),

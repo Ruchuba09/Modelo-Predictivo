@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\ActividadController;
 use App\Http\Controllers\Api\V1\AreaController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ClienteController;
+use App\Http\Controllers\Api\V1\DatosPruebaController;
 use App\Http\Controllers\Api\V1\DepartamentoController;
 use App\Http\Controllers\Api\V1\EventoController;
 use App\Http\Controllers\Api\V1\FaenaController;
@@ -119,6 +120,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($gestion, $admin, $
             Route::apiResource('usuarios', UsuarioController::class)->parameters(['usuarios' => 'usuario']);
             Route::apiResource('roles', RolController::class)->parameters(['roles' => 'rol']);
             Route::apiResource('permisos', PermisoController::class)->parameters(['permisos' => 'permiso']);
+            Route::get('datos-prueba', [DatosPruebaController::class, 'index'])->name('datos-prueba.index');
+            Route::post('datos-prueba/poblar', [DatosPruebaController::class, 'poblar'])->name('datos-prueba.poblar');
+            Route::post('datos-prueba/limpiar', [DatosPruebaController::class, 'limpiar'])->name('datos-prueba.limpiar');
         });
     });
 });

@@ -53,6 +53,8 @@ Route::middleware('auth')->group(function () {
         // El CRUD de faenas y áreas lo consume el frontend desde /api/v1.
         Route::inertia('/faenas', 'Faenas/Index')->name('faenas.index');
 
+        Route::inertia('/sistema/datos-prueba', 'Sistema/DatosPrueba')->name('sistema.datos-prueba');
+
         Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
         Route::get('/situacion-criticas/crear', [SituacionCriticaController::class, 'create'])->name('situacion-criticas.crear');
         Route::post('/situacion-criticas', [SituacionCriticaController::class, 'store'])->name('situacion-criticas.store');

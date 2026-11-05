@@ -48,6 +48,7 @@ const NAV_ITEMS: NavItem[] = [
             { href: '/roles', label: 'Roles', roles: ['Administrador'] },
             { href: '/permisos', label: 'Permisos', roles: ['Administrador'] },
             { href: '/departamentos', label: 'Departamentos', roles: ['Administrador'] },
+            { href: '/sistema/datos-prueba', label: 'Datos de prueba', roles: ['Administrador'] },
         ],
     },
 ];
@@ -70,6 +71,7 @@ const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
     '/roles': { title: 'Roles', subtitle: 'Roles del sistema' },
     '/permisos': { title: 'Permisos', subtitle: 'Permisos de seguridad' },
     '/departamentos': { title: 'Departamentos', subtitle: 'Estructura organizativa de la empresa' },
+    '/sistema/datos-prueba': { title: 'Datos de prueba', subtitle: 'Poblar o limpiar la base de datos de desarrollo' },
 };
 
 function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {

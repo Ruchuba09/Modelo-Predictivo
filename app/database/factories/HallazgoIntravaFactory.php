@@ -3,12 +3,15 @@
 namespace Database\Factories;
 
 use App\Models\Proyecto;
+use Database\Factories\Providers\SeguridadProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class HallazgoIntravaFactory extends Factory
 {
     public function definition(): array
     {
+        $this->faker->addProvider(new SeguridadProvider($this->faker));
+
         return [
             'id_intrava' => $this->faker->unique()->uuid(),
             'id_proyecto' => Proyecto::factory(),
@@ -20,9 +23,9 @@ class HallazgoIntravaFactory extends Factory
             'id_administrador_intrava' => null,
             'correlativo' => $this->faker->numberBetween(1, 99999),
             'correlativo_corporativo' => $this->faker->optional()->numberBetween(1, 999999),
-            'tipo' => $this->faker->word(),
+            'tipo' => $this->faker->randomElement(['Condición subestándar', 'Acción subestándar', 'No conformidad de seguridad', 'Oportunidad de mejora']),
             'origen' => $this->faker->randomElement(['Auditoría', 'Inspección', 'Reporte']),
-            'requisito_incumplido' => $this->faker->sentence(),
+            'requisito_incumplido' => $this->faker->descripcionCondicion(),
             'fecha_creacion' => $this->faker->date(),
             'fecha_deteccion' => $this->faker->date(),
             'fecha_cierre' => null,

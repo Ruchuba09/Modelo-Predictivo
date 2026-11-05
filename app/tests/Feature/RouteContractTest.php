@@ -21,6 +21,16 @@ class RouteContractTest extends TestCase
         $this->assertContains('role:Administrador,Supervisor', $route->gatherMiddleware());
     }
 
+    public function test_test_data_routes_are_admin_only(): void
+    {
+        foreach (['index', 'poblar', 'limpiar'] as $accion) {
+            $ruta = Route::getRoutes()->getByName("api.v1.datos-prueba.{$accion}");
+
+            $this->assertNotNull($ruta);
+            $this->assertContains('role:Administrador', $ruta->gatherMiddleware());
+        }
+    }
+
     public function test_catalog_writes_are_admin_only(): void
     {
         $lectura = Route::getRoutes()->getByName('api.v1.personas.index');
