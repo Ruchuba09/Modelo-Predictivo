@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import MainLayout from '@/layouts/MainLayout';
 import { CalidadModelos, EvaluacionPredicciones } from '@/components/CalidadModelos';
-import { SelectoresModelo } from '@/components/modelo/Elementos';
+import { AvisoHorizonte, SelectoresModelo } from '@/components/modelo/Elementos';
 import { NIVELES_ENTIDAD, useEntidades, useFiltrosModelo } from '@/lib/modeloPredictivo';
 
 export default function Calidad() {
@@ -26,6 +26,8 @@ export default function Calidad() {
                     </div>
                     <SelectoresModelo tipo={tipo} horizonte={horizonte} tipos={tipos} cambiar={cambiar} />
                 </section>
+
+                <AvisoHorizonte dias={horizonte} />
 
                 {error && <p className="rounded-lg border border-rojo-1/30 bg-red-50 p-3 text-sm text-rojo-1" role="alert">{error}</p>}
                 {cargando && <p className="text-sm text-gris-1" role="status">Calculando. La primera vez puede tardar un par de minutos.</p>}

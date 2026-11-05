@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import MainLayout from '@/layouts/MainLayout';
-import { BarraRiesgo } from '@/components/modelo/Elementos';
+import { AvisoCoherencia, AvisoHorizonte, BarraRiesgo, OpcionesHorizonte } from '@/components/modelo/Elementos';
 import { api } from '@/lib/api';
-import { HORIZONTES_MODELO, NIVELES_ENTIDAD, useEntidades } from '@/lib/modeloPredictivo';
+import { HORIZONTE_PREDETERMINADO, etiquetaHorizonte, horizonteDerivado, NIVELES_ENTIDAD, useEntidades } from '@/lib/modeloPredictivo';
 import { etiquetaTipo } from '@/lib/utils';
 
 type Metricas = { auc_roc?: number; log_loss: number; brier: number };
@@ -33,10 +33,23 @@ type EstadoRed = {
     entrenado_en?: string;
     eventos?: ResumenRed;
     entidades?: ResumenRed | null;
+    conversion_dias?: Record<string, Record<string, MedidaDias>> | null;
+};
+
+type MedidaDias = {
+    filas: number;
+    positivos: number;
+    riesgo_predicho: number;
+    tasa_real: number;
+    auc_roc?: number;
+    log_loss: number;
+    log_loss_referencia: number;
+    supera_referencia: boolean;
 };
 
 type PrediccionRed = {
     mensaje?: string;
+    coherencia?: { completa: boolean; plazos_pendientes: number[] };
     eventos: Array<{ objetivo: string; prob_evento: number; calidad: Comparacion }>;
     entidades: Record<string, Array<{ id: number; nombre: string; detalle?: string | null; prob_evento: number }>>;
 };
@@ -88,7 +101,7 @@ function TablaEvaluacion({ titulo, filas, nombre }: { titulo: string; filas: Rec
 }
 
 export default function RedNeuronal() {
-    const [horizonte, setHorizonte] = useState(4);
+    const [horizonte, setHorizonte] = useState(HORIZONTE_PREDETERMINADO);
     const [estado, setEstado] = useState<EstadoRed | null>(null);
     const [errorEstado, setErrorEstado] = useState('');
     const [idProyecto, setIdProyecto] = useState<number | null>(null);
@@ -101,7 +114,7 @@ export default function RedNeuronal() {
     const entrenadoEn = estado?.entrenado_en;
 
     const consultarEstado = useCallback(() => {
-        api.get<EstadoRed>('/modelo-predictivo/red-neuronal', { params: { horizonte } })
+        api.get<EstadoRed>('/modelo-predictivo/red-neuronal', { params: { horizonte_dias: horizonte } })
             .then(({ data }) => { setEstado(data); setErrorEstado(''); })
             .catch((err) => setErrorEstado(mensajeDeError(err, 'No fue posible consultar la red neuronal.')));
     }, [horizonte]);
@@ -124,7 +137,7 @@ export default function RedNeuronal() {
         if (idProyecto === null || !entrenadoEn) return undefined;
         let vigente = true;
         setCargandoPrediccion(true);
-        api.get<PrediccionRed>(`/proyectos/${idProyecto}/red-neuronal`, { params: { horizonte } })
+        api.get<PrediccionRed>(`/proyectos/${idProyecto}/red-neuronal`, { params: { horizonte_dias: horizonte } })
             .then(({ data }) => vigente && setPrediccion(data))
             .catch((err) => vigente && setErrorPrediccion(mensajeDeError(err, 'No fue posible calcular la predicción.')))
             .finally(() => vigente && setCargandoPrediccion(false));
@@ -133,7 +146,7 @@ export default function RedNeuronal() {
 
     const entrenar = () => {
         setErrorEstado('');
-        api.post<EstadoRed>('/modelo-predictivo/red-neuronal/entrenar', null, { params: { horizonte } })
+        api.post<EstadoRed>('/modelo-predictivo/red-neuronal/entrenar', null, { params: { horizonte_dias: horizonte } })
             .then(({ data }) => setEstado(data))
             .catch((err) => setErrorEstado(mensajeDeError(err, 'No fue posible iniciar el entrenamiento.')));
     };
@@ -151,9 +164,9 @@ export default function RedNeuronal() {
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-end gap-3">
                         <label className="text-xs font-semibold text-gris-1">
-                            Próximas
+                            Horizonte
                             <select value={horizonte} onChange={(e) => setHorizonte(Number(e.target.value))} className="mt-1 block min-w-32 rounded-lg border-verde-3 text-sm text-gris-2">
-                                {HORIZONTES_MODELO.map((s) => <option key={s} value={s}>{s} {s === 1 ? 'semana' : 'semanas'}</option>)}
+                                <OpcionesHorizonte />
                             </select>
                         </label>
                         <button type="button" onClick={entrenar} disabled={entrenando} className="rounded-lg bg-verde-6 px-4 py-2 text-sm font-bold text-gris-2 hover:opacity-90 disabled:opacity-60">
@@ -161,6 +174,8 @@ export default function RedNeuronal() {
                         </button>
                     </div>
                 </section>
+
+                <AvisoHorizonte dias={horizonte} />
 
                 {errorEstado && <p className="rounded-lg border border-rojo-1/30 bg-red-50 p-3 text-sm text-rojo-1" role="alert">{errorEstado}</p>}
                 {estado?.estado === 'error' && <p className="rounded-lg border border-rojo-1/30 bg-red-50 p-3 text-sm text-rojo-1" role="alert">El último entrenamiento falló: {estado.mensaje}</p>}
@@ -181,6 +196,7 @@ export default function RedNeuronal() {
                         {errorPrediccion && <p className="text-sm text-rojo-1" role="alert">{errorPrediccion}</p>}
                         {cargandoPrediccion && <p className="text-sm text-gris-1" role="status">Calculando la predicción…</p>}
                         {prediccion?.mensaje && <p className="text-sm text-gris-1">{prediccion.mensaje}</p>}
+                        <AvisoCoherencia coherencia={prediccion?.coherencia} />
                         {prediccion && prediccion.eventos.length > 0 && (
                             <div className="grid gap-6 lg:grid-cols-2">
                                 <div>
@@ -219,6 +235,52 @@ export default function RedNeuronal() {
                                 </div>
                             </div>
                         )}
+                    </section>
+                )}
+
+                {horizonteDerivado(horizonte) && estado?.conversion_dias && (
+                    <section className="bg-white border border-verde-3 rounded-2xl shadow-md p-6 space-y-3">
+                        <div>
+                            <h2 className="text-lg font-bold text-gris-2">Calidad de la estimación a {etiquetaHorizonte(horizonte)}</h2>
+                            <p className="text-xs text-gris-1 mt-1">
+                                Comparación con lo ocurrido en semanas no vistas, contando desde el lunes. Si el riesgo predicho se aleja de la tasa real, el supuesto de riesgo parejo no se cumple.
+                            </p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="text-xs uppercase tracking-wider text-gris-1 border-b border-verde-3 text-left">
+                                    <tr>
+                                        <th scope="col" className="py-2 pr-3">Entidad</th>
+                                        <th scope="col" className="py-2 pr-3">Riesgo predicho</th>
+                                        <th scope="col" className="py-2 pr-3">Tasa real</th>
+                                        <th scope="col" className="py-2 pr-3">AUC</th>
+                                        <th scope="col" className="py-2 pr-3">Log-loss</th>
+                                        <th scope="col" className="py-2 pr-3">Log-loss referencia</th>
+                                        <th scope="col" className="py-2">Resultado</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-verde-3 text-gris-2">
+                                    {Object.entries(estado.conversion_dias).map(([nivel, medidas]) => {
+                                        const medida = medidas[String(horizonte)];
+                                        if (!medida) return null;
+                                        return (
+                                            <tr key={nivel}>
+                                                <th scope="row" className="py-2 pr-3 text-left font-semibold">
+                                                    {singular(nivel)}
+                                                    <span className="block text-[11px] font-normal text-gris-1">{medida.positivos} positivos en {medida.filas} filas</span>
+                                                </th>
+                                                <td className="py-2 pr-3">{(medida.riesgo_predicho * 100).toFixed(1)}%</td>
+                                                <td className="py-2 pr-3">{(medida.tasa_real * 100).toFixed(1)}%</td>
+                                                <td className="py-2 pr-3">{decimal(medida.auc_roc)}</td>
+                                                <td className="py-2 pr-3">{decimal(medida.log_loss)}</td>
+                                                <td className="py-2 pr-3">{decimal(medida.log_loss_referencia)}</td>
+                                                <td className="py-2"><Respaldo supera={medida.supera_referencia} /></td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </section>
                 )}
 

@@ -1,5 +1,33 @@
-import { bandaRiesgo, ESTILO_BANDA, porcentaje, type Factor } from '@/lib/modeloPredictivo';
+import { bandaRiesgo, ESTILO_BANDA, etiquetaHorizonte, HORIZONTES_MODELO, horizonteDerivado, porcentaje, type Factor } from '@/lib/modeloPredictivo';
 import { etiquetaTipo } from '@/lib/utils';
+
+export function OpcionesHorizonte({ desdeSemana = false }: { desdeSemana?: boolean }) {
+    return (
+        <>
+            {HORIZONTES_MODELO.filter((h) => !desdeSemana || h.dias >= 7).map((h) => <option key={h.dias} value={h.dias}>{h.etiqueta}</option>)}
+        </>
+    );
+}
+
+/** Aclara que los plazos en días no tienen un modelo propio. */
+export function AvisoHorizonte({ dias }: { dias: number }) {
+    if (!horizonteDerivado(dias)) return null;
+    return (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            Estimación derivada del modelo de 1 semana, suponiendo un riesgo parejo en la semana. La calidad mostrada corresponde a ese modelo semanal.
+        </p>
+    );
+}
+
+/** Mientras se entrenan plazos menores, un plazo largo aún podría dar menos riesgo que uno corto. */
+export function AvisoCoherencia({ coherencia }: { coherencia?: { completa: boolean; plazos_pendientes: number[] } }) {
+    if (!coherencia || coherencia.completa) return null;
+    return (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900" role="status">
+            Faltan por entrenar {coherencia.plazos_pendientes.map(etiquetaHorizonte).join(', ')}. Hasta entonces, este riesgo podría no ser coherente con esos plazos. Vuelve a consultar en unos minutos.
+        </p>
+    );
+}
 
 export function SelectoresModelo({ tipo, horizonte, tipos, cambiar }: {
     tipo: string;
@@ -16,9 +44,9 @@ export function SelectoresModelo({ tipo, horizonte, tipos, cambiar }: {
                 </select>
             </label>
             <label className="text-xs font-semibold text-gris-1">
-                Próximas
+                Horizonte
                 <select value={horizonte} onChange={(e) => cambiar({ horizonte: Number(e.target.value) })} className="mt-1 block min-w-32 rounded-lg border-verde-3 text-sm text-gris-2">
-                    {[1, 4, 12].map((s) => <option key={s} value={s}>{s} {s === 1 ? 'semana' : 'semanas'}</option>)}
+                    <OpcionesHorizonte />
                 </select>
             </label>
         </div>
@@ -103,7 +131,7 @@ const ETIQUETAS_DATO: Record<string, string> = {
 const OCULTOS = new Set([
     'id_trabajador', 'id_actividad', 'id_cuadrilla', 'id_area', 'id_cliente', 'id_faena', 'id_proyecto', 'id', 'nombre', 'nombre_trabajador',
     'prob_evento', 'factores', 'factores_principales', 'miembros', 'miembros_detalle', 'valor',
-    'probabilidades_individuales_combinadas', 'combinacion_independiente_aproximada', 'id_asignaciones_activas',
+    'probabilidades_individuales_combinadas', 'combinacion_independiente_aproximada', 'id_asignaciones_activas', 'horizonte_semanas',
 ]);
 
 const ES_PROBABILIDAD = new Set(['probabilidad_base_proyecto', 'suma_probabilidades_individuales']);

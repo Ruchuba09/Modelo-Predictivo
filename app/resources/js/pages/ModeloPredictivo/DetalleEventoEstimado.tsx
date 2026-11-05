@@ -1,3 +1,4 @@
+import { etiquetaHorizonte, plazoHorizonte } from '@/lib/modeloPredictivo';
 import { useEffect, useState } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, CalendarClock, MapPin, ShieldAlert } from 'lucide-react';
@@ -57,7 +58,7 @@ export default function DetalleEventoEstimado() {
     useEffect(() => {
         let vigente = true;
         api.get<Respuesta>(`/proyectos/${proyecto.id_proyecto}/predicciones`, {
-            params: { tipo_objetivo: tipoObjetivo, horizonte },
+            params: { tipo_objetivo: tipoObjetivo, horizonte_dias: horizonte },
         })
             .then(({ data }) => {
                 if (!vigente) return;
@@ -83,7 +84,7 @@ export default function DetalleEventoEstimado() {
                 <header className="rounded-2xl border border-verde-3 bg-white p-6 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wider text-verde-6">Detalle del evento estimado</p>
                     <h1 className="mt-1 text-2xl font-black text-gris-2">{proyecto.nombre}</h1>
-                    <p className="mt-2 text-sm text-gris-1">Tipo consultado: {etiquetaTipo(tipoObjetivo).toLowerCase()} · horizonte de {horizonte} {horizonte === 1 ? 'semana' : 'semanas'}.</p>
+                    <p className="mt-2 text-sm text-gris-1">Tipo consultado: {etiquetaTipo(tipoObjetivo).toLowerCase()} · riesgo en {plazoHorizonte(horizonte)}.</p>
                 </header>
 
                 {cargando ? <section className="rounded-2xl border border-verde-3 bg-white p-8 text-gris-1">Calculando tiempo y contexto probable…</section>
@@ -99,7 +100,7 @@ export default function DetalleEventoEstimado() {
                                     <div className="rounded-2xl border border-verde-3 bg-white p-5 shadow-sm">
                                         <p className="text-xs font-bold uppercase text-gris-1">Probabilidad en el horizonte</p>
                                         <p className="mt-2 text-3xl font-black text-gris-2">{porcentaje(evento.prob_evento_horizonte)}</p>
-                                        <p className="mt-1 text-xs text-gris-1">{horizonte} semanas · evidencia {evento.evidencia}</p>
+                                        <p className="mt-1 text-xs text-gris-1">{etiquetaHorizonte(horizonte)} · evidencia {evento.evidencia}</p>
                                     </div>
                                     <div className="rounded-2xl border border-verde-3 bg-white p-5 shadow-sm">
                                         <p className="text-xs font-bold uppercase text-gris-1">Probabilidad a 30 días</p>

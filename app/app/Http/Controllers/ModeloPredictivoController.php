@@ -8,20 +8,23 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\Rule;
 
 class ModeloPredictivoController extends Controller
 {
+    public const HORIZONTES_DIAS = [1, 2, 5, 7, 14, 21, 30, 60, 90];
+
     public function index(Request $request): JsonResponse
     {
         $filtros = $request->validate([
             'tipo_objetivo' => ['sometimes', 'string', 'max:100'],
-            'horizonte' => ['sometimes', 'integer', 'between:1,52'],
+            'horizonte_dias' => ['sometimes', 'integer', Rule::in(self::HORIZONTES_DIAS)],
             'id_proyecto' => ['sometimes', 'integer', 'min:1'],
         ]);
 
         $parametros = [
             'tipo_objetivo' => $filtros['tipo_objetivo'] ?? 'incidentes_reales',
-            'horizonte' => $filtros['horizonte'] ?? 4,
+            'horizonte_dias' => $filtros['horizonte_dias'] ?? 30,
         ];
         if (isset($filtros['id_proyecto'])) {
             $parametros['id_proyecto'] = $filtros['id_proyecto'];
@@ -34,12 +37,12 @@ class ModeloPredictivoController extends Controller
     {
         $filtros = $request->validate([
             'tipo_objetivo' => ['sometimes', 'string', 'max:100'],
-            'horizonte' => ['sometimes', 'integer', 'between:1,52'],
+            'horizonte_dias' => ['sometimes', 'integer', Rule::in(self::HORIZONTES_DIAS)],
         ]);
 
         return $this->solicitarModelo('/predicciones/entidades', [
             'tipo_objetivo' => $filtros['tipo_objetivo'] ?? 'incidentes_reales',
-            'horizonte' => $filtros['horizonte'] ?? 4,
+            'horizonte_dias' => $filtros['horizonte_dias'] ?? 30,
         ]);
     }
 
@@ -57,19 +60,34 @@ class ModeloPredictivoController extends Controller
     {
         $filtros = $request->validate([
             'tipo_objetivo' => ['sometimes', 'string', 'max:100'],
-            'horizonte' => ['sometimes', 'integer', 'between:1,52'],
+            'horizonte_dias' => ['sometimes', 'integer', Rule::in(self::HORIZONTES_DIAS)],
         ]);
 
         return $this->solicitarModelo('/predicciones', [
             'id_proyecto' => $proyecto->getKey(),
             'tipo_objetivo' => $filtros['tipo_objetivo'] ?? 'incidentes_reales',
-            'horizonte' => $filtros['horizonte'] ?? 4,
+            'horizonte_dias' => $filtros['horizonte_dias'] ?? 30,
         ]);
     }
 
     public function redNeuronal(Request $request): JsonResponse
     {
         return $this->solicitarModelo('/red-neuronal', $this->horizonteValidado($request));
+    }
+
+    public function trazaRedNeuronal(Request $request): JsonResponse
+    {
+        $filtros = $request->validate([
+            'horizonte_dias' => ['sometimes', 'integer', Rule::in(self::HORIZONTES_DIAS)],
+            'desde' => ['sometimes', 'integer', 'min:0'],
+            'limite' => ['sometimes', 'integer', 'between:1,500'],
+        ]);
+
+        return $this->solicitarModelo('/red-neuronal/traza', [
+            'horizonte_dias' => $filtros['horizonte_dias'] ?? 30,
+            'desde' => $filtros['desde'] ?? 0,
+            'limite' => $filtros['limite'] ?? 200,
+        ]);
     }
 
     public function entrenarRedNeuronal(Request $request): JsonResponse
@@ -99,9 +117,9 @@ class ModeloPredictivoController extends Controller
 
     private function horizonteValidado(Request $request): array
     {
-        $filtros = $request->validate(['horizonte' => ['sometimes', 'integer', 'between:1,52']]);
+        $filtros = $request->validate(['horizonte_dias' => ['sometimes', 'integer', Rule::in(self::HORIZONTES_DIAS)]]);
 
-        return ['horizonte' => $filtros['horizonte'] ?? 4];
+        return ['horizonte_dias' => $filtros['horizonte_dias'] ?? 30];
     }
 
     private function solicitarModelo(string $ruta, array $parametros = []): JsonResponse

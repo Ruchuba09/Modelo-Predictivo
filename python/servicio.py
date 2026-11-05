@@ -17,8 +17,9 @@ from modelo_predictivo import (
     sin_nulos,
     tipos_disponibles,
 )
+import horizontes
 import red_neuronal
-from motor_riesgo import evaluar_predicciones, obtener_modelos, predicciones_por_entidad, semana_actual
+from motor_riesgo import entrenar_en_fondo, evaluar_predicciones, obtener_coherentes, obtener_modelos, predicciones_por_entidad, semana_actual
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -27,7 +28,8 @@ engine = create_engine(DATABASE_URL, pool_pre_ping=True) if DATABASE_URL else No
 
 def _preentrenar():
     try:
-        obtener_modelos(engine)
+        obtener_modelos(engine, OBJETIVO_INCIDENTES, horizontes.semanas_modelo(horizontes.DIAS_PREDETERMINADOS))
+        entrenar_en_fondo(engine, OBJETIVO_INCIDENTES, horizontes.SEMANAS_ENTRENABLES)
     except Exception:
         logging.getLogger(__name__).exception("No se pudo preentrenar el modelo predictivo.")
 
@@ -41,6 +43,12 @@ async def ciclo_de_vida(_app):
 
 
 app = FastAPI(title="Modelo predictivo de eventos", version="2.0.0", lifespan=ciclo_de_vida)
+
+
+def semanas_de(horizonte_dias):
+    if horizonte_dias not in horizontes.SEMANAS_POR_DIAS:
+        raise HTTPException(status_code=422, detail="El horizonte seleccionado no está disponible.")
+    return horizontes.semanas_modelo(horizonte_dias)
 
 
 def db():
@@ -75,14 +83,15 @@ def listar_tipos():
 @app.get("/predicciones/entidades")
 def predicciones_entidades(
     tipo_objetivo: str = Query(default=OBJETIVO_INCIDENTES, min_length=1, max_length=100),
-    horizonte: int = Query(default=4, ge=1, le=52),
+    horizonte_dias: int = Query(default=horizontes.DIAS_PREDETERMINADOS, ge=1, le=90),
 ):
     """Todas las entidades vigentes con su riesgo, sus factores y la calidad de cada modelo."""
+    horizonte = semanas_de(horizonte_dias)
     try:
         conexion = db()
         if tipo_objetivo not in (OBJETIVO_INCIDENTES, OBJETIVO_LESIONES, "todos") and tipo_objetivo not in tipos_disponibles(conexion):
             raise HTTPException(status_code=422, detail="El tipo de evento seleccionado no existe.")
-        return sin_nulos(predicciones_por_entidad(conexion, tipo_objetivo, horizonte))
+        return horizontes.convertir_respuesta(sin_nulos(predicciones_por_entidad(conexion, tipo_objetivo, horizonte)), horizonte_dias)
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="No se pudieron calcular las predicciones por entidad.") from exc
 
@@ -96,44 +105,56 @@ def evaluacion():
 @app.post("/modelo/entrenar")
 def entrenar_modelos(
     tipo_objetivo: str = Query(default=OBJETIVO_INCIDENTES, min_length=1, max_length=100),
-    horizonte: int = Query(default=4, ge=1, le=52),
+    horizonte_dias: int = Query(default=horizontes.DIAS_PREDETERMINADOS, ge=1, le=90),
 ):
     """Reentrena aunque los datos no hayan cambiado y devuelve la calidad de cada nivel."""
-    motor = obtener_modelos(db(), tipo_objetivo, horizonte, forzar=True)
+    motor = obtener_modelos(db(), tipo_objetivo, semanas_de(horizonte_dias), forzar=True)
     return sin_nulos({"modelos": motor["niveles"], "historial": motor.get("historial")})
 
 
 @app.get("/red-neuronal")
-def estado_red_neuronal(horizonte: int = Query(default=4, ge=1, le=52)):
+def estado_red_neuronal(horizonte_dias: int = Query(default=horizontes.DIAS_PREDETERMINADOS, ge=1, le=90)):
     """Estado del entrenamiento y evaluación de la red, comparada con sus referencias."""
-    return sin_nulos(red_neuronal.estado(horizonte))
+    return horizontes.convertir_respuesta(sin_nulos(red_neuronal.estado(semanas_de(horizonte_dias))), horizonte_dias)
+
+
+@app.get("/red-neuronal/traza")
+def traza_red_neuronal(
+    horizonte_dias: int = Query(default=horizontes.DIAS_PREDETERMINADOS, ge=1, le=90),
+    desde: int = Query(default=0, ge=0),
+    limite: int = Query(default=200, ge=1, le=500),
+):
+    """Pesos, activaciones y pérdida por época del entrenamiento en curso o del último guardado."""
+    return sin_nulos(red_neuronal.consultar_traza(semanas_de(horizonte_dias), desde, limite))
 
 
 @app.post("/red-neuronal/entrenar", status_code=202)
-def entrenar_red_neuronal(horizonte: int = Query(default=4, ge=1, le=52)):
+def entrenar_red_neuronal(horizonte_dias: int = Query(default=horizontes.DIAS_PREDETERMINADOS, ge=1, le=90)):
     """Inicia el entrenamiento en segundo plano; su avance se consulta con GET /red-neuronal."""
+    horizonte = semanas_de(horizonte_dias)
     red_neuronal.iniciar_entrenamiento(db(), horizonte)
-    return sin_nulos(red_neuronal.estado(horizonte))
+    return horizontes.convertir_respuesta(sin_nulos(red_neuronal.estado(horizonte)), horizonte_dias)
 
 
 @app.get("/red-neuronal/proyectos/{id_proyecto}")
-def prediccion_red_neuronal(id_proyecto: int, horizonte: int = Query(default=4, ge=1, le=52)):
+def prediccion_red_neuronal(id_proyecto: int, horizonte_dias: int = Query(default=horizontes.DIAS_PREDETERMINADOS, ge=1, le=90)):
     """Probabilidad de cada tipo de evento y de cada entidad, usando solo datos a nivel de proyecto."""
     try:
-        resultado = red_neuronal.predecir_proyecto(db(), id_proyecto, horizonte)
+        resultado = red_neuronal.predecir_proyecto(db(), id_proyecto, semanas_de(horizonte_dias))
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="No se pudo calcular la predicción de la red neuronal.") from exc
     if resultado is None:
         raise HTTPException(status_code=409, detail="La red neuronal aún no está entrenada para este horizonte.")
-    return sin_nulos(resultado)
+    return horizontes.convertir_respuesta(sin_nulos(resultado), horizonte_dias)
 
 
 @app.get("/predicciones")
 def predicciones(
     tipo_objetivo: str = Query(default=OBJETIVO_INCIDENTES, min_length=1, max_length=100),
-    horizonte: int = Query(default=4, ge=1, le=52),
+    horizonte_dias: int = Query(default=horizontes.DIAS_PREDETERMINADOS, ge=1, le=90),
     id_proyecto: int | None = Query(default=None, ge=1),
 ):
+    horizonte = semanas_de(horizonte_dias)
     try:
         conexion = db()
         # Diagnóstico incluido en la respuesta: permite distinguir una tabla
@@ -148,7 +169,7 @@ def predicciones(
         disponibles = tipos_disponibles(conexion)
         if tipo_objetivo not in (OBJETIVO_INCIDENTES, OBJETIVO_LESIONES, "todos") and tipo_objetivo not in disponibles:
             raise HTTPException(status_code=422, detail="El tipo de evento seleccionado no existe.")
-        motor = obtener_modelos(conexion, tipo_objetivo, horizonte)
+        motor = obtener_coherentes(conexion, tipo_objetivo, horizonte)
         calidad_proyecto = motor["niveles"].get("proyecto", {})
         predicciones_proyecto = motor["predicciones"].get("proyecto", {})
         advertencia_modelo = calidad_proyecto.get("motivo")
@@ -209,7 +230,7 @@ def predicciones(
             status_code=503,
             detail="No se pudo generar la predicción. Revisa las vistas, los datos y el tipo seleccionado.",
         ) from exc
-    return sin_nulos({
+    return horizontes.convertir_respuesta(sin_nulos({
         "tipo_objetivo": tipo_objetivo,
         "horizonte_semanas": horizonte,
         "unidad_analisis": "proyecto-semana",
@@ -228,4 +249,5 @@ def predicciones(
             "cuadrillas_predichas": len(cuadrillas),
         },
         "advertencia_modelo": advertencia_modelo,
-    })
+        "coherencia": motor["coherencia"],
+    }), horizonte_dias)

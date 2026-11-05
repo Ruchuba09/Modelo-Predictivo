@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import threading
+import time
 import warnings
 from pathlib import Path
 
@@ -35,6 +36,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 from threadpoolctl import threadpool_limits
 
+from horizontes import DIAS_POR_SEMANAS, SEMANAS_ENTRENABLES, factor, plazos_coherentes, probabilidad_de, riesgo_acumulado
 from modelo_predictivo import (
     OBJETIVO_INCIDENTES,
     acotar_al_proyecto,
@@ -791,6 +793,9 @@ _memoria = {}
 def obtener_modelos(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4, forzar=False):
     """Devuelve lo entrenado para estos datos; solo reentrena si cambiaron o cambia la semana."""
     huella = huella_datos(engine, tipo_obj, horizonte)
+    # Lo ya entrenado se responde sin esperar a un entrenamiento en curso.
+    if not forzar and huella in _memoria:
+        return _memoria[huella]
     with _bloqueo:
         if not forzar and huella in _memoria:
             return _memoria[huella]
@@ -817,6 +822,102 @@ def obtener_modelos(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4, forzar=Fa
         except OSError:
             pass  # Sin disco disponible, el resultado sigue en memoria.
         return resultado
+
+
+_en_fondo = set()
+_coherentes = {}
+
+
+def _modelo_disponible(engine, tipo_obj, horizonte):
+    """Lo entrenado para los datos actuales, sin entrenar si no existe."""
+    huella = huella_datos(engine, tipo_obj, horizonte)
+    if huella in _memoria:
+        return _memoria[huella]
+    archivo = DIRECTORIO_MODELOS / f"{huella}.joblib"
+    if archivo.exists():
+        _memoria[huella] = joblib.load(archivo)
+        return _memoria[huella]
+    return None
+
+
+def entrenar_en_fondo(engine, tipo_obj, semanas):
+    """Entrena los plazos indicados sin bloquear la respuesta; las pausas dejan pasar a otras consultas."""
+    pendientes = [h for h in semanas if (tipo_obj, h) not in _en_fondo]
+    if not pendientes:
+        return
+    _en_fondo.update((tipo_obj, h) for h in pendientes)
+
+    def tarea():
+        for horizonte in pendientes:
+            try:
+                obtener_modelos(engine, tipo_obj, horizonte)
+            except Exception:
+                logging.getLogger(__name__).exception("No se pudo entrenar el plazo de %s semanas.", horizonte)
+            finally:
+                _en_fondo.discard((tipo_obj, horizonte))
+            time.sleep(0.5)
+
+    threading.Thread(target=tarea, daemon=True).start()
+
+
+def _ajustar_nivel(pasos, predicciones_por_paso, padres=None, topes=None):
+    """Devuelve la historia ajustada de un nivel, en riesgo acumulado sobre los dias de cada plazo."""
+    series = [
+        {entidad: riesgo_acumulado(p["prob"], factor(dias)) for entidad, p in predicciones.items()}
+        for dias, predicciones in zip(pasos, predicciones_por_paso)
+    ]
+    return plazos_coherentes(series, padres, topes)
+
+
+def obtener_coherentes(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4):
+    """Modelos del plazo con riesgos ajustados: un plazo mayor nunca da menos riesgo que uno menor."""
+    motor = obtener_modelos(engine, tipo_obj, horizonte)
+    menores = [h for h in SEMANAS_ENTRENABLES if h < horizonte]
+    disponibles = {h: _modelo_disponible(engine, tipo_obj, h) for h in menores}
+    faltan = [h for h, modelo in disponibles.items() if modelo is None]
+    if faltan:
+        entrenar_en_fondo(engine, tipo_obj, faltan)
+    usados = [h for h in menores if disponibles[h] is not None]
+    clave = (motor["huella"], tuple(usados))
+    coherencia = {"completa": not faltan, "plazos_pendientes": [DIAS_POR_SEMANAS[h] for h in faltan]}
+    if clave in _coherentes:
+        return {**_coherentes[clave], "coherencia": coherencia}
+
+    modelos = [disponibles[h] for h in usados] + [motor]
+    pasos = [DIAS_POR_SEMANAS[h] for h in usados + [horizonte]]
+    contexto = _contexto_entidades(engine)
+    del_paso = lambda nivel: [m["predicciones"].get(nivel, {}) for m in modelos]
+
+    historia_proyecto = _ajustar_nivel(pasos, del_paso("proyecto"))
+    ajustadas = {}
+    for nivel, predicciones in motor["predicciones"].items():
+        if nivel == "proyecto":
+            historia = historia_proyecto
+        elif nivel in contexto:
+            padres = dict(zip(contexto[nivel]["id"].astype(int), contexto[nivel]["id_proyecto"].astype(int)))
+            historia = _ajustar_nivel(pasos, del_paso(nivel), padres, historia_proyecto)
+        else:
+            historia = _ajustar_nivel(pasos, del_paso(nivel))
+        proporcion = factor(pasos[-1])
+        ajustadas[nivel] = {}
+        for entidad, prediccion in predicciones.items():
+            prob = round(probabilidad_de(historia[-1].get(entidad, riesgo_acumulado(prediccion["prob"], proporcion)), proporcion), 6)
+            ajustadas[nivel][entidad] = {**prediccion, "prob": prob, "ajuste_plazo": abs(prob - prediccion["prob"]) > 1e-4}
+
+    resultado = {**motor, "predicciones": ajustadas}
+    clientes = ajustadas.get("cliente_historico")
+    if clientes and motor.get("historial"):
+        historial = {**motor["historial"]}
+        contenedor = "lesiones" if tipo_obj == "lesiones" else None
+        destino = dict(historial[contenedor]) if contenedor else historial
+        destino["predicciones"] = [{**p, "prob": clientes[p["cliente"]]["prob"]} if p.get("cliente") in clientes else p for p in destino["predicciones"]]
+        if contenedor:
+            historial[contenedor] = destino
+        resultado["historial"] = historial
+    if len(_coherentes) > 50:
+        _coherentes.clear()
+    _coherentes[clave] = resultado
+    return {**resultado, "coherencia": coherencia}
 
 
 SQL_NOMBRE_PERSONA = "trim(concat_ws(' ', pe.nombre_1, pe.apellido_1))"
@@ -908,7 +1009,7 @@ def _combinar(filas, campo):
 
 def predicciones_por_entidad(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4):
     """Todas las predicciones vigentes con nombre y contexto, listas para mostrar y filtrar."""
-    motor = obtener_modelos(engine, tipo_obj, horizonte)
+    motor = obtener_coherentes(engine, tipo_obj, horizonte)
     contexto = _contexto_entidades(engine)
     proyectos = motor["predicciones"].get("proyecto", {})
     niveles = {}
@@ -936,6 +1037,7 @@ def predicciones_por_entidad(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4):
     return {
         "tipo_objetivo": tipo_obj, "horizonte_semanas": horizonte, "semana": str(semana_actual().date()),
         "niveles": niveles, "modelos": motor["niveles"], "historial": motor.get("historial"),
+        "coherencia": motor["coherencia"],
     }
 
 

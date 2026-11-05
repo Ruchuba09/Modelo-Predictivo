@@ -38,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
             { href: '/modelo-predictivo/entidades', label: 'Riesgo por entidad', roles: ['Administrador', 'Supervisor'] },
             { href: '/modelo-predictivo/calidad', label: 'Calidad del modelo', roles: ['Administrador', 'Supervisor'] },
             { href: '/modelo-predictivo/red-neuronal', label: 'Red neuronal', roles: ['Administrador', 'Supervisor'] },
+            { href: '/modelo-predictivo/red-neuronal/entrenamiento', label: 'Entrenamiento de la red', roles: ['Administrador', 'Supervisor'] },
             { href: '/modelo-predictivo/historial', label: 'Historial de incidentes', roles: ['Administrador', 'Supervisor'] },
             { href: '/cuadrillas', label: 'Cuadrillas', roles: ['Administrador', 'Supervisor'] },
             { href: '/actividades', label: 'Actividades', roles: ['Administrador', 'Supervisor'] },
@@ -69,6 +70,7 @@ const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
     '/proyectos': { title: 'Proyectos', subtitle: 'Gestión y control de proyectos' },
     '/modelo-predictivo/entidades': { title: 'Riesgo por entidad', subtitle: 'Todas las predicciones, con filtros y factores' },
     '/modelo-predictivo/calidad': { title: 'Calidad del modelo', subtitle: 'Qué tan confiables son las predicciones' },
+    '/modelo-predictivo/red-neuronal/entrenamiento': { title: 'Entrenamiento de la red', subtitle: 'Entradas, pesos y capas de la red, época a época' },
     '/modelo-predictivo/red-neuronal': { title: 'Red neuronal', subtitle: 'Eventos y entidades, solo con información del proyecto' },
     '/modelo-predictivo/historial': { title: 'Historial de incidentes', subtitle: 'Patrones de los logs reales de AVA' },
     '/modelo-predictivo': { title: 'Modelo Predictivo', subtitle: 'Predicciones de eventos para los proyectos vigentes' },
@@ -101,6 +103,9 @@ function isRutaActiva(href: string, rutaActual: string): boolean {
                 !rutaActual.startsWith('/eventos/mis-reportes') &&
                 !rutaActual.startsWith('/eventos/estadisticas'))
         );
+    }
+    if (href === '/modelo-predictivo/red-neuronal') {
+        return rutaActual === href;
     }
     if (href === '/portal') {
         return rutaActual === '/portal';

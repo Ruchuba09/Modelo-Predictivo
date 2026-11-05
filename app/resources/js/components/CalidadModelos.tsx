@@ -1,3 +1,4 @@
+import { plazoHorizonte } from '@/lib/modeloPredictivo';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 
@@ -169,7 +170,7 @@ export function EvaluacionPredicciones() {
                                 <tr key={`${f.nivel}-${f.tipo_objetivo}-${f.horizonte}`}>
                                     <th scope="row" className="px-3 py-2 text-left font-bold">{NIVELES[f.nivel] ?? f.nivel}</th>
                                     <td className="px-3 py-2">{texto(f.tipo_objetivo)}</td>
-                                    <td className="px-3 py-2">{f.horizonte}</td>
+                                    <td className="px-3 py-2">{f.horizonte} sem.</td>
                                     <td className="px-3 py-2">{f.predicciones}</td>
                                     <td className="px-3 py-2">{porcentaje(f.riesgo_predicho)}</td>
                                     <td className="px-3 py-2">{porcentaje(f.tasa_real)}</td>
@@ -200,7 +201,7 @@ export function HistorialReal({ historial, horizonte }: { historial: Historial; 
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <caption className="text-left text-xs text-gris-1 mb-2">
-                            Riesgo en las próximas {horizonte} {horizonte === 1 ? 'semana' : 'semanas'} por cliente · {calidad.modelo}
+                            Riesgo en {plazoHorizonte(horizonte)} por cliente · {calidad.modelo}
                             {calidad.metricas ? ` · AUC-ROC ${calidad.metricas.auc_roc.toFixed(2)} (${calidad.discriminacion})` : ''}
                         </caption>
                         <thead className="text-xs uppercase tracking-wider text-gris-1 border-b border-verde-3 text-left">

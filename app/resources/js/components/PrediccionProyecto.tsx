@@ -1,3 +1,5 @@
+import { AvisoHorizonte, OpcionesHorizonte } from '@/components/modelo/Elementos';
+import { HORIZONTE_PREDETERMINADO, plazoHorizonte } from '@/lib/modeloPredictivo';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { Link } from '@inertiajs/react';
@@ -14,12 +16,10 @@ type Prediction = {
 };
 type EntityAnalysis = { entidades: Record<string, unknown>; contexto: Record<string, unknown> };
 
-const HORIZONTES = [1, 4, 12];
-
 export default function PrediccionProyecto({ idProyecto }: { idProyecto: number }) {
     const [tipos, setTipos] = useState<string[]>(['incidentes_reales', 'todos']);
     const [tipo, setTipo] = useState('incidentes_reales');
-    const [horizonte, setHorizonte] = useState(4);
+    const [horizonte, setHorizonte] = useState(HORIZONTE_PREDETERMINADO);
     const [prediccion, setPrediccion] = useState<Prediction | null>(null);
     const [analisis, setAnalisis] = useState<EntityAnalysis | null>(null);
     const [cargando, setCargando] = useState(true);
@@ -36,7 +36,7 @@ export default function PrediccionProyecto({ idProyecto }: { idProyecto: number 
         setCargando(true);
         setError('');
         api.get<{ predicciones?: Prediction[]; analisis_entidades?: EntityAnalysis }>(`/proyectos/${idProyecto}/predicciones`, {
-            params: { tipo_objetivo: tipo, horizonte },
+            params: { tipo_objetivo: tipo, horizonte_dias: horizonte },
         })
             .then(({ data }) => {
                 if (vigente) setPrediccion(data.predicciones?.find((p) => p.id_proyecto === idProyecto) ?? null);
@@ -71,11 +71,13 @@ export default function PrediccionProyecto({ idProyecto }: { idProyecto: number 
                     <label className="text-xs font-semibold text-gris-1">
                         Horizonte
                         <select value={horizonte} onChange={(event) => setHorizonte(Number(event.target.value))} className="mt-1 block w-full rounded-lg border-verde-3 text-sm text-gris-2">
-                            {HORIZONTES.map((semanas) => <option key={semanas} value={semanas}>{semanas} {semanas === 1 ? 'semana' : 'semanas'}</option>)}
+                            <OpcionesHorizonte />
                         </select>
                     </label>
                 </div>
             </div>
+
+            <div className="mt-4"><AvisoHorizonte dias={horizonte} /></div>
 
             <div className="mt-6 min-h-24 flex items-center">
                 {cargando ? (
@@ -92,7 +94,7 @@ export default function PrediccionProyecto({ idProyecto }: { idProyecto: number 
                             <div className="h-full rounded-full bg-verde-5 transition-all" style={{ width: `${probabilidad}%` }} />
                         </div>
                         <div className="text-sm text-gris-1">
-                            <span className="font-bold text-gris-2">Dentro de {horizonte} {horizonte === 1 ? 'semana' : 'semanas'}</span>
+                            <span className="font-bold text-gris-2">En {plazoHorizonte(horizonte)}</span>
                             <p className="text-xs mt-1">Semana base: {prediccion.semana}</p>
                         </div>
                         {prediccion.factores_principales && prediccion.factores_principales.length > 0 && (

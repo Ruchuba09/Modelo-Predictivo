@@ -2,11 +2,9 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Download } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
-import { BarraRiesgo, ListaFactores, SelectoresModelo, DetalleRiesgo } from '@/components/modelo/Elementos';
-import {
-    bandaRiesgo, ESTILO_BANDA, NIVELES_ENTIDAD, porcentaje, useEntidades, useFiltrosModelo,
-    type BandaRiesgo, type EntidadRiesgo,
-} from '@/lib/modeloPredictivo';
+import { BarraRiesgo, ListaFactores, SelectoresModelo, DetalleRiesgo, AvisoCoherencia, AvisoHorizonte } from '@/components/modelo/Elementos';
+import { bandaRiesgo, ESTILO_BANDA, NIVELES_ENTIDAD, porcentaje, useEntidades, useFiltrosModelo,
+    type BandaRiesgo, type EntidadRiesgo, plazoHorizonte } from '@/lib/modeloPredictivo';
 
 const POR_PAGINA = 25;
 const CAMPO = 'mt-1 block w-full rounded-lg border-verde-3 text-sm text-gris-2';
@@ -81,10 +79,13 @@ export default function Entidades() {
                 <section className="bg-white border border-verde-3 rounded-2xl p-5 shadow-sm flex flex-col lg:flex-row lg:items-end justify-between gap-4">
                     <div>
                         <h1 className="text-xl font-bold text-gris-2">Riesgo por entidad</h1>
-                        <p className="text-sm text-gris-1 mt-1">Probabilidad de al menos un evento en las próximas {horizonte} {horizonte === 1 ? 'semana' : 'semanas'}. Alto: 35% o más; medio: 15% a 34%; bajo: menos de 15%.</p>
+                        <p className="text-sm text-gris-1 mt-1">Probabilidad de al menos un evento en {plazoHorizonte(horizonte)}. Alto: 35% o más; medio: 15% a 34%; bajo: menos de 15%.</p>
                     </div>
                     <SelectoresModelo tipo={tipo} horizonte={horizonte} tipos={tipos} cambiar={cambiar} />
                 </section>
+
+                <AvisoHorizonte dias={horizonte} />
+                <AvisoCoherencia coherencia={datos?.coherencia} />
 
                 {error && <p className="rounded-lg border border-rojo-1/30 bg-red-50 p-3 text-sm text-rojo-1" role="alert">{error}</p>}
                 {cargando && <p className="text-sm text-gris-1" role="status">Calculando predicciones. La primera vez puede tardar un par de minutos.</p>}
@@ -207,7 +208,7 @@ export default function Entidades() {
                                                             <p className="text-xs font-bold text-gris-2 mb-2">Datos</p>
                                                             <DetalleRiesgo registro={{ ...fila.indicadores, modelo: fila.modelo, metodo: fila.metodo, faena: fila.faena }} />
                                                             {fila.id_proyecto && nivel === 'proyecto' && (
-                                                                <Link href={`/modelo-predictivo/proyectos/${fila.id_proyecto}/evento-estimado?tipo_objetivo=${encodeURIComponent(tipo)}&horizonte=${horizonte}`} className="inline-block mt-2 text-xs font-bold text-verde-6 hover:underline">
+                                                                <Link href={`/modelo-predictivo/proyectos/${fila.id_proyecto}/evento-estimado?tipo_objetivo=${encodeURIComponent(tipo)}&horizonte_dias=${horizonte}`} className="inline-block mt-2 text-xs font-bold text-verde-6 hover:underline">
                                                                     Ver próximo evento estimado
                                                                 </Link>
                                                             )}

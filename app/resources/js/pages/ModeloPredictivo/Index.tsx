@@ -1,3 +1,4 @@
+import { OpcionesHorizonte } from '@/components/modelo/Elementos';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Activity, RefreshCw, Sparkles } from 'lucide-react';
@@ -6,7 +7,7 @@ import { api } from '@/lib/api';
 import { etiquetaTipo } from '@/lib/utils';
 import type { CalidadNivel, Historial } from '@/components/CalidadModelos';
 import { BarraRiesgo, DetalleRiesgo } from '@/components/modelo/Elementos';
-import { NIVELES_ENTIDAD, porcentaje, useEntidades } from '@/lib/modeloPredictivo';
+import { NIVELES_ENTIDAD, porcentaje, useEntidades, HORIZONTE_PREDETERMINADO, horizonteDerivado, plazoHorizonte } from '@/lib/modeloPredictivo';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 type Proyecto = { id_proyecto: number; nombre: string };
@@ -53,7 +54,6 @@ type RespuestaPredicciones = {
 };
 type PageProps = { proyectos: Proyecto[]; [key: string]: unknown };
 
-const HORIZONTES = [1, 4, 12];
 
 function mensajeError(error: any): string {
     return error.response?.data?.detail
@@ -65,7 +65,7 @@ export default function Index() {
     const { proyectos = [] } = usePage<PageProps>().props;
     const [tipos, setTipos] = useState<string[]>(['incidentes_reales', 'todos']);
     const [tipo, setTipo] = useState('incidentes_reales');
-    const [horizonte, setHorizonte] = useState(4);
+    const [horizonte, setHorizonte] = useState(HORIZONTE_PREDETERMINADO);
     const [idProyecto, setIdProyecto] = useState('todos');
     const [analisis, setAnalisis] = useState<RespuestaPredicciones['analisis_entidades']>(null);
     const [cuadrillasGlobales, setCuadrillasGlobales] = useState<Array<Record<string, unknown>>>([]);
@@ -111,7 +111,7 @@ export default function Index() {
         setAdvertenciaModelo('');
         try {
             const { data } = await api.get<RespuestaPredicciones>('/modelo-predictivo/predicciones', {
-                params: { tipo_objetivo: tipo, horizonte, ...(idProyecto !== 'todos' ? { id_proyecto: Number(idProyecto) } : {}) },
+                params: { tipo_objetivo: tipo, horizonte_dias: horizonte, ...(idProyecto !== 'todos' ? { id_proyecto: Number(idProyecto) } : {}) },
             });
             setPredicciones(data.predicciones ?? []);
             setAnalisis(data.analisis_entidades ?? null);
@@ -202,9 +202,7 @@ export default function Index() {
                                     disabled={generando}
                                     className="mt-1 block min-w-36 rounded-lg border-verde-3 text-sm text-gris-2 disabled:opacity-60"
                                 >
-                                    {HORIZONTES.map((semanas) => (
-                                        <option key={semanas} value={semanas}>{semanas} {semanas === 1 ? 'semana' : 'semanas'}</option>
-                                    ))}
+                                    <OpcionesHorizonte />
                                 </select>
                             </label>
                             <button
@@ -267,8 +265,8 @@ export default function Index() {
                                 </div>
                                 <div className="flex flex-wrap items-center gap-6">
                                     <div><p className="text-xs font-semibold text-gris-1">Espera esperada</p><p className="text-2xl font-black text-verde-6">{eventoEstimado.espera_estimada_dias} días</p><p className="text-xs text-gris-1">Fecha estimada: {eventoEstimado.fecha_estimada}</p></div>
-                                    <div><p className="text-xs font-semibold text-gris-1">Riesgo dentro de {horizonte} sem.</p><p className="text-2xl font-black text-gris-2">{Math.round(eventoEstimado.prob_evento_horizonte * 100)}%</p><p className="text-xs text-gris-1">Evidencia {eventoEstimado.evidencia}</p></div>
-                                    <Link href={`/modelo-predictivo/proyectos/${maxima.id_proyecto}/evento-estimado?tipo_objetivo=${encodeURIComponent(tipo)}&horizonte=${horizonte}`} className="inline-flex h-11 items-center justify-center rounded-lg bg-verde-5 px-5 text-sm font-bold text-black hover:bg-verde-6">
+                                    <div><p className="text-xs font-semibold text-gris-1">Riesgo en {plazoHorizonte(horizonte)}</p><p className="text-2xl font-black text-gris-2">{Math.round(eventoEstimado.prob_evento_horizonte * 100)}%</p><p className="text-xs text-gris-1">Evidencia {eventoEstimado.evidencia}</p></div>
+                                    <Link href={`/modelo-predictivo/proyectos/${maxima.id_proyecto}/evento-estimado?tipo_objetivo=${encodeURIComponent(tipo)}&horizonte_dias=${horizonte}`} className="inline-flex h-11 items-center justify-center rounded-lg bg-verde-5 px-5 text-sm font-bold text-black hover:bg-verde-6">
                                         Ver detalle del evento
                                     </Link>
                                 </div>
@@ -296,7 +294,7 @@ export default function Index() {
                                 <div>
                                     <h2 className="text-lg font-bold text-gris-2">Resultados por proyecto</h2>
                                     <p className="text-xs text-gris-1 mt-1">
-                                        {etiquetaTipo(tipo)} · próximas {horizonte} {horizonte === 1 ? 'semana' : 'semanas'}
+                                        {etiquetaTipo(tipo)} · {plazoHorizonte(horizonte)}{horizonteDerivado(horizonte) ? ' · estimado desde el modelo de 1 semana' : ''}{entidades?.coherencia?.completa === false ? ' · ajuste entre plazos en cálculo' : ''}
                                     </p>
                                 </div>
                                 <span className="text-xs text-gris-1">Ordenados de mayor a menor probabilidad</span>
@@ -457,7 +455,7 @@ export default function Index() {
                                                     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-verde-3 pb-4">
                                                         <div><p className="text-xs font-bold uppercase tracking-wide text-gris-1">Detalle de riesgo</p><h3 className="mt-1 text-xl font-bold text-gris-2">{String(item.cuadrilla)} · {String(item.proyecto)}</h3><p className="mt-1 text-sm text-gris-1">Cuadrilla #{String(item.id_cuadrilla)}{item.id_proyecto ? ` · Proyecto #${String(item.id_proyecto)}` : ' · Sin proyecto activo'}</p></div>
                                                         <button type="button" onClick={(event) => event.currentTarget.closest('details')?.removeAttribute('open')} className="rounded-lg border border-verde-3 px-3 py-2 text-xs font-semibold text-gris-1 hover:bg-verde-1">Cerrar</button>
-                                                        <div className="rounded-xl bg-verde-1 px-4 py-3 text-center"><p className="text-xs text-gris-1">Riesgo en {String(item.horizonte_semanas ?? horizonte)} semanas</p><p className="text-2xl font-black text-verde-6">{Math.round(Number(item.prob_evento ?? 0) * 100)}%</p></div>
+                                                        <div className="rounded-xl bg-verde-1 px-4 py-3 text-center"><p className="text-xs text-gris-1">Riesgo en {plazoHorizonte(horizonte)}</p><p className="text-2xl font-black text-verde-6">{Math.round(Number(item.prob_evento ?? 0) * 100)}%</p></div>
                                                     </div>
                                                     <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                                                         <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gris-1">Tipo de evento</p><p className="mt-1 font-semibold">{String(item.tipo_objetivo ?? tipo)}</p></div>

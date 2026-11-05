@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Proyecto;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,13 +25,13 @@ class ModeloPredictivoPaginaController extends Controller
     {
         $filtros = $request->validate([
             'tipo_objetivo' => ['sometimes', 'string', 'max:100'],
-            'horizonte' => ['sometimes', 'integer', 'between:1,52'],
+            'horizonte_dias' => ['sometimes', 'integer', Rule::in(ModeloPredictivoController::HORIZONTES_DIAS)],
         ]);
 
         return Inertia::render('ModeloPredictivo/DetalleEventoEstimado', [
             'proyecto' => $proyecto->only(['id_proyecto', 'nombre']),
             'tipoObjetivo' => $filtros['tipo_objetivo'] ?? 'incidentes_reales',
-            'horizonte' => (int) ($filtros['horizonte'] ?? 4),
+            'horizonte' => (int) ($filtros['horizonte_dias'] ?? 30),
         ]);
     }
 }
