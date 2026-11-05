@@ -69,6 +69,13 @@ interface Evento {
     tipoEvento?: { id_tipo_evento: number; nombre: string };
     proyecto?: { id_proyecto: number; nombre: string };
     area?: { id_area: number; codigo_area: string; descripcion?: string | null } | null;
+    actividad?: { nombre: string } | null;
+    severidad?: string | null;
+    tipo_detencion?: string | null;
+    fecha_ocurrencia?: string | null;
+    fecha_detencion?: string | null;
+    fecha_reinicio?: string | null;
+    dia_ciclo?: number | null;
     administrador?: PersonaRel | null;
     administrativo?: PersonaRel | null;
     trabajador?: PersonaRel | null;
@@ -125,7 +132,17 @@ export default function Show() {
     const esTrabajadorPuro = !esAdmin && !esSupervisor;
     const rutaListado = esTrabajadorPuro ? route('eventos.mis-reportes') : route('eventos.index');
 
-    const { evento, puedeEditar } = usePage().props as unknown as { evento: Evento; puedeEditar?: boolean };
+    const { evento, puedeEditar, catalogos } = usePage().props as unknown as {
+        evento: Evento;
+        puedeEditar?: boolean;
+        catalogos?: {
+            clasificaciones: { id_clasificacion_incidente: number; codigo: string; nombre: string }[];
+            severidades: { id_severidad: number; nombre: string }[];
+            causas_inmediatas: { id_causa: number; codigo: string; nombre: string }[];
+            causas_basicas: { id_causa: number; codigo: string; nombre: string }[];
+        };
+    };
+    const requiereReinicio = evento.tipo_detencion === 'parcial' || evento.tipo_detencion === 'total';
     const estadoStyle = ESTADO_STYLES[evento.estado] ?? ESTADO_STYLES['abierta'];
     
     const estaCerrada = ['cerrado', 'cerrada'].includes(evento.estado);
@@ -179,6 +196,11 @@ export default function Show() {
     const { data, setData, post, processing, errors } = useForm({
         _method: 'patch', // Necesario en Laravel para enviar archivos en rutas PATCH
         justificacion: '',
+        fecha_reinicio: '',
+        id_clasificacion_incidente: '',
+        id_severidad: '',
+        id_causa_inmediata: '',
+        id_causa_basica: '',
         evidencia_cierre: [] as File[]
     });
 
@@ -259,6 +281,12 @@ export default function Show() {
                                 <InfoRow label="Área" value={evento.area.descripcion || evento.area.codigo_area} />
                             )}
                             <InfoRow label="Lugar exacto" value={evento.referencia} />
+                            {evento.fecha_ocurrencia && <InfoRow label="Ocurrió" value={evento.fecha_ocurrencia.slice(0, 16).replace('T', ' ')} />}
+                            {evento.actividad && <InfoRow label="Actividad" value={evento.actividad.nombre} />}
+                            {evento.severidad && <InfoRow label="Severidad" value={evento.severidad} />}
+                            {evento.dia_ciclo && <InfoRow label="Día del turno" value={String(evento.dia_ciclo)} />}
+                            {evento.tipo_detencion && <InfoRow label="Detención" value={evento.tipo_detencion.replace('_', ' ')} />}
+                            {evento.fecha_reinicio && <InfoRow label="Reinicio" value={evento.fecha_reinicio.slice(0, 16).replace('T', ' ')} />}
                             <InfoRow
                                 label={`Condición #${evento.condicion}`}
                                 value={CONDICIONES_PARE[evento.condicion]}
@@ -500,6 +528,49 @@ export default function Show() {
                                 <p className="text-gris-1 dark:text-gray-400 text-sm mb-6">Proporciona los detalles y la evidencia de la resolución para dar por cerrado este reporte.</p>
                                 
                                 <form onSubmit={handleCerrar} className="space-y-6">
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        {requiereReinicio && (
+                                            <label className="text-xs font-bold uppercase tracking-wider text-gris-1 sm:col-span-2">
+                                                Fecha y hora de reinicio del trabajo
+                                                <input
+                                                    type="datetime-local"
+                                                    required
+                                                    value={data.fecha_reinicio}
+                                                    onChange={(e) => setData('fecha_reinicio', e.target.value)}
+                                                    className="w-full bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-3 py-2 text-sm text-gris-2 dark:text-white mt-1"
+                                                />
+                                                {errors.fecha_reinicio && <span className="block text-red-400 normal-case mt-1">{errors.fecha_reinicio}</span>}
+                                            </label>
+                                        )}
+                                        <label className="text-xs font-bold uppercase tracking-wider text-gris-1">
+                                            Clasificación
+                                            <select value={data.id_clasificacion_incidente} onChange={(e) => setData('id_clasificacion_incidente', e.target.value)} className="w-full bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-3 py-2 text-sm text-gris-2 dark:text-white mt-1">
+                                                <option value="">Sin clasificar</option>
+                                                {catalogos?.clasificaciones.map((c) => <option key={c.id_clasificacion_incidente} value={c.id_clasificacion_incidente}>{c.codigo} · {c.nombre}</option>)}
+                                            </select>
+                                        </label>
+                                        <label className="text-xs font-bold uppercase tracking-wider text-gris-1">
+                                            Severidad confirmada
+                                            <select value={data.id_severidad} onChange={(e) => setData('id_severidad', e.target.value)} className="w-full bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-3 py-2 text-sm text-gris-2 dark:text-white mt-1">
+                                                <option value="">Mantener</option>
+                                                {catalogos?.severidades.map((s) => <option key={s.id_severidad} value={s.id_severidad}>{s.nombre}</option>)}
+                                            </select>
+                                        </label>
+                                        <label className="text-xs font-bold uppercase tracking-wider text-gris-1">
+                                            Causa inmediata
+                                            <select value={data.id_causa_inmediata} onChange={(e) => setData('id_causa_inmediata', e.target.value)} className="w-full bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-3 py-2 text-sm text-gris-2 dark:text-white mt-1">
+                                                <option value="">Sin indicar</option>
+                                                {catalogos?.causas_inmediatas.map((c) => <option key={c.id_causa} value={c.id_causa}>{c.codigo} · {c.nombre}</option>)}
+                                            </select>
+                                        </label>
+                                        <label className="text-xs font-bold uppercase tracking-wider text-gris-1">
+                                            Causa básica
+                                            <select value={data.id_causa_basica} onChange={(e) => setData('id_causa_basica', e.target.value)} className="w-full bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-3 py-2 text-sm text-gris-2 dark:text-white mt-1">
+                                                <option value="">Sin indicar</option>
+                                                {catalogos?.causas_basicas.map((c) => <option key={c.id_causa} value={c.id_causa}>{c.codigo} · {c.nombre}</option>)}
+                                            </select>
+                                        </label>
+                                    </div>
                                     <div>
                                         <label className="block text-[14px] uppercase tracking-wider text-gris-1 dark:text-gray-400 mb-2">
                                             Acción correctiva / Justificación

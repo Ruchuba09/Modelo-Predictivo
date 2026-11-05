@@ -5,6 +5,7 @@ namespace App\Services;
 
 use App\DataTransferObjects\TrabajadorData;
 use App\Models\Administrativo;
+use App\Models\JefeZona;
 use App\Models\Obrero;
 use App\Models\Persona;
 use App\Models\Supervisor;
@@ -21,7 +22,7 @@ class TrabajadorService
      */
     private const PASSWORD_DEFAULT = '12345678';
 
-    private const RELACIONES = ['persona', 'usuario', 'obrero', 'supervisor', 'administrativo'];
+    private const RELACIONES = ['persona', 'usuario', 'obrero', 'supervisor', 'administrativo', 'jefeZona'];
 
     public function listarFormateados(): Collection
     {
@@ -108,6 +109,7 @@ class TrabajadorService
             (bool) $trabajador->obrero => 'obrero',
             (bool) $trabajador->supervisor => 'supervisor',
             (bool) $trabajador->administrativo => 'administrativo',
+            (bool) $trabajador->jefeZona => 'jefe_zona',
             default => null,
         };
     }
@@ -119,6 +121,7 @@ class TrabajadorService
                 ['id_trabajador' => $trabajador->id_trabajador],
                 ['id_tipo_obrero' => $idTipoObrero]
             ),
+            'jefe_zona' => JefeZona::firstOrCreate(['id_trabajador' => $trabajador->id_trabajador]),
             'supervisor' => Supervisor::firstOrCreate(['id_trabajador' => $trabajador->id_trabajador]),
             'administrativo' => Administrativo::firstOrCreate(['id_trabajador' => $trabajador->id_trabajador]),
         };
@@ -128,6 +131,7 @@ class TrabajadorService
     {
         match ($tipo) {
             'obrero' => Obrero::where('id_trabajador', $trabajador->id_trabajador)->delete(),
+            'jefe_zona' => JefeZona::where('id_trabajador', $trabajador->id_trabajador)->delete(),
             'supervisor' => Supervisor::where('id_trabajador', $trabajador->id_trabajador)->delete(),
             'administrativo' => Administrativo::where('id_trabajador', $trabajador->id_trabajador)->delete(),
             default => null,

@@ -9,6 +9,7 @@ use App\Models\Asignacion;
 use App\Models\Cliente;
 use App\Models\Cuadrilla;
 use App\Models\Faena;
+use App\Models\JefeZona;
 use App\Models\Obrero;
 use App\Models\Proyecto;
 use App\Models\Supervisor;
@@ -43,12 +44,12 @@ class DatosPruebaService
 
     /** Se borran en este orden para respetar las claves foráneas. */
     private const TABLAS_OPERATIVAS = [
-        'situacion_criticas', 'evidencias', 'evento_lesion', 'evento_trabajador', 'medidas_correctivas', 'eventos',
+        'predicciones_registradas', 'actividad_trabajador', 'situacion_criticas', 'evidencias', 'evento_lesion', 'evento_trabajador', 'medidas_correctivas', 'eventos',
         'informes_investigacion_intrava', 'reportes_flash_intrava', 'reportes_previene_intrava', 'hallazgos_intrava',
         'intrava_trabajador_map', 'controles_riesgo', 'riesgos_proyecto', 'analisis_riesgo_trabajo', 'permisos_trabajo',
         'intervenciones_prevencion', 'comite_reuniones', 'hitos_reporte', 'asistencia_diaria', 'horas_hombre',
         'proyecto_avance_semanal', 'proyecto_fase', 'proyecto_equipo', 'mantenciones_equipo', 'equipos', 'clima_diario',
-        'trabajador_cuadrilla', 'trabajadores_cuadrillas', 'entrega_epp', 'trabajador_capacitacion', 'trabajador_aptitud',
+        'trabajadores_cuadrillas', 'entrega_epp', 'trabajador_capacitacion', 'trabajador_aptitud',
         'actividades', 'asignaciones',
     ];
 
@@ -123,6 +124,7 @@ class DatosPruebaService
             }
 
             $conCuenta = DB::table('users')->select('id_trabajador');
+            DB::table('jefes_zona')->whereNotIn('id_trabajador', $conCuenta)->delete();
             $this->vaciar('trabajador_departamento');
             foreach (['obreros', 'supervisores', 'administrativos'] as $tabla) {
                 DB::table($tabla)->whereNotIn('id_trabajador', $conCuenta)->delete();
@@ -227,6 +229,14 @@ class DatosPruebaService
 
         $idsProyecto = array_keys($proyectos);
         $membresias = [];
+        $asignacionesActividad = [];
+        $riesgosCriticos = DB::table('cat_riesgo_critico')->pluck('id_riesgo_critico')->all();
+        $jefes = [];
+        foreach (range(1, max(1, (int) ceil($config['cuadrillas'] / 4))) as $unused) {
+            $jefes[] = JefeZona::query()->create([
+                'id_trabajador' => Trabajador::factory()->create(['cargo' => 'Jefe de zona'])->id_trabajador,
+            ])->id_trabajador;
+        }
         foreach (range(1, $config['cuadrillas']) as $i) {
             $proyecto = &$proyectos[$idsProyecto[($i - 1) % count($idsProyecto)]];
             $supervisor = $supervisoresCuenta->shift() ?? Supervisor::query()->create([
@@ -235,19 +245,21 @@ class DatosPruebaService
             $cuadrilla = Cuadrilla::factory()->create([
                 'id_supervisor' => $supervisor,
                 'numero_cuadrilla' => sprintf('%s-C%03d', $lote, $i),
+                'id_jefe_zona' => $jefes[($i - 1) % count($jefes)],
             ]);
 
             $miembros = [];
             foreach (range(1, $config['por_cuadrilla']) as $unused) {
                 $trabajador = $obrerosLibres->shift();
+                // El historial se inserta aparte, con las fechas simuladas del proyecto.
                 if ($trabajador) {
                     Obrero::query()->whereKey($trabajador)->update(['id_cuadrilla' => $cuadrilla->id_cuadrilla]);
                 } else {
                     $trabajador = Trabajador::factory()->enTerreno()->create()->id_trabajador;
-                    Obrero::query()->create([
+                    Obrero::withoutEvents(fn () => Obrero::query()->create([
                         'id_trabajador' => $trabajador, 'id_tipo_obrero' => $tipoObrero->id_tipo_obrero,
                         'id_cuadrilla' => $cuadrilla->id_cuadrilla,
-                    ]);
+                    ]));
                 }
                 $miembros[] = $trabajador;
                 $membresias[] = [
@@ -274,8 +286,18 @@ class DatosPruebaService
                     'fecha_inicio' => $cursor->toDateString(),
                     'fecha_termino' => $abierta && $proyecto['hasta']->gte($hoy) ? null : $fin->min($proyecto['hasta'])->toDateString(),
                     'estado' => $abierta && $proyecto['hasta']->gte($hoy) ? 'en_progreso' : 'completada',
+                    'id_riesgo_critico' => $riesgosCriticos ? self::elegir($riesgosCriticos) : null,
                 ]);
                 $actividades[] = ['id' => $actividad->id_actividad, 'desde' => $cursor, 'hasta' => $fin];
+                $enCurso = $abierta && $proyecto['hasta']->gte($hoy);
+                foreach ($miembros as $miembro) {
+                    $asignacionesActividad[] = [
+                        'id_actividad' => $actividad->id_actividad, 'id_trabajador' => $miembro, 'id_asignado_por' => $supervisor,
+                        'fecha_inicio' => $cursor->toDateTimeString(),
+                        'fecha_fin' => $enCurso ? null : $fin->min($hoy)->toDateTimeString(),
+                        'motivo_fin' => $enCurso ? null : 'completada',
+                    ];
+                }
                 $cursor = $fin;
             }
 
@@ -286,6 +308,7 @@ class DatosPruebaService
             unset($proyecto);
         }
         $this->insertar('trabajadores_cuadrillas', $membresias);
+        $this->insertar('actividad_trabajador', $asignacionesActividad);
         if (Schema::hasColumn('cuadrillas', 'id_turno') && $turnos->isNotEmpty()) {
             DB::table('cuadrillas')->where('numero_cuadrilla', 'like', $lote.'-%')->update(['id_turno' => $turnos->first()]);
         }
@@ -295,6 +318,12 @@ class DatosPruebaService
             'administrador' => $administrador,
             'tipos' => TipoEvento::query()->pluck('id_tipo_evento', 'nombre'),
             'turnos' => $turnos,
+            'severidades' => DB::table('cat_severidad')->pluck('id_severidad', 'nivel')->all(),
+            'categorias' => DB::table('cat_categoria_evento')->pluck('id_categoria_evento')->all(),
+            'causas_inmediatas' => DB::table('cat_causa')->where('tipo', 'inmediata')->pluck('id_causa')->all(),
+            'causas_basicas' => DB::table('cat_causa')->where('tipo', 'basica')->pluck('id_causa')->all(),
+            'causas_raiz' => DB::table('cat_causa')->where('tipo', 'raiz')->pluck('id_causa')->all(),
+            'clasificaciones' => DB::table('cat_clasificacion_incidente')->pluck('id_clasificacion_incidente', 'codigo')->all(),
         ];
     }
 
@@ -350,7 +379,18 @@ class DatosPruebaService
                     $tipo = $this->ponderado($tiposProactivos);
                     $id = ++$numero;
                     $fila = $this->filaEvento($id, $idTipo($tipo), $proyecto, $semana, $base, $lote, $hoy, $pesosArea,
-                        Texto::CONDICIONES, ['Baja' => 55, 'Media' => 35, 'Alta' => 10]);
+                        Texto::CONDICIONES, ['Leve' => 20, 'Baja' => 45, 'Media' => 25, 'Alta' => 10]);
+                    if ($tipo === 'Tarjeta PARE') {
+                        $evento = &$fila['evento'];
+                        $evento['tipo_detencion'] = self::elegir(['total', 'total', 'parcial', 'sin_detencion']);
+                        if ($evento['tipo_detencion'] !== 'sin_detencion') {
+                            $evento['fecha_detencion'] = $evento['fecha_ocurrencia'];
+                            // Se reanuda antes del cierre, salvo que el cierre sea anterior a la media jornada.
+                            $evento['fecha_reinicio'] = $evento['fecha_cierre'];
+                            $evento['id_autoriza_reinicio'] = $evento['fecha_cierre'] ? $evento['id_supervisor'] : null;
+                        }
+                        unset($evento);
+                    }
                     $eventos[] = $fila['evento'];
                     $participantes[] = ['id_evento' => $id, 'id_trabajador' => $fila['evento']['id_trabajador'], 'rol' => 'reportante'];
                     if ($tipo === 'Tarjeta PARE') {
@@ -367,12 +407,14 @@ class DatosPruebaService
                     if (mt_rand(1, 100) <= 35) {
                         $fecha = $this->fechaEnSemana($semana, $proyecto['hasta']);
                         $idFuente++;
-                        $flash[] = $this->filaFlash($idFuente, $proyecto, $fecha, $pesosArea);
+                        $flash[] = $this->filaFlash($idFuente, $proyecto, $fecha, $pesosArea, $base);
                         if (mt_rand(1, 100) <= 60) {
                             $informes[] = [
                                 'id_intrava' => ++$idInforme, 'id_reporte_flash_intrava' => $idFuente, 'id_proyecto' => $proyecto['id'],
                                 'proyecto_alias' => $proyecto['nombre'], 'causa_raiz' => self::elegir(Texto::CAUSAS),
                                 'analisis_causal' => '[]', 'general' => json_encode(['fecha' => $fecha->toDateString()]),
+                                'probabilidad' => mt_rand(1, 5), 'consecuencia' => mt_rand(1, 5),
+                                'id_causa_raiz' => $base['causas_raiz'] ? self::elegir($base['causas_raiz']) : null,
                                 'payload' => '{"origen":"datos_prueba"}',
                             ];
                         }
@@ -381,6 +423,12 @@ class DatosPruebaService
                         $id = ++$numero;
                         $fila = $this->filaEvento($id, $idTipo($accidente ? 'Accidente' : 'Incidente'), $proyecto, $semana, $base, $lote, $hoy, $pesosArea,
                             Texto::INCIDENTES, $accidente ? ['Media' => 45, 'Alta' => 40, 'Crítica' => 15] : ['Baja' => 30, 'Media' => 50, 'Alta' => 20]);
+                        $codigo = $accidente
+                            ? $this->ponderado([['STP', 70], ['CTP', 15], ['AT', 15]])
+                            : $this->ponderado([['DMNS', 55], ['DMS', 10], ['FO', 20], ['CUASI', 15]]);
+                        $fila['evento']['id_clasificacion_incidente'] = $base['clasificaciones'][$codigo] ?? null;
+                        // Más incidentes hacia el final del turno, como efecto simulado de la fatiga.
+                        $fila['evento']['dia_ciclo'] = max(mt_rand(1, 14), mt_rand(1, 14));
                         $eventos[] = $fila['evento'];
                         $participantes[] = ['id_evento' => $id, 'id_trabajador' => $fila['evento']['id_trabajador'], 'rol' => 'afectado'];
                         foreach ($fila['testigos'] as $testigo) {
@@ -435,6 +483,8 @@ class DatosPruebaService
         $cierre = $this->fechaCierre($fecha, $hoy);
         $noche = $fecha->hour >= 20 || $fecha->hour < 6;
         $turno = $base['turnos'][$noche ? 'Noche' : 'Día'] ?? null;
+        $severidad = $this->ponderado(array_map(null, array_keys($severidades), array_values($severidades)));
+        $nivel = ['Leve' => 1, 'Baja' => 2, 'Media' => 3, 'Alta' => 4, 'Crítica' => 5][$severidad];
 
         return [
             'evento' => [
@@ -450,7 +500,17 @@ class DatosPruebaService
                 'condicion' => mt_rand(1, 10),
                 'referencia' => sprintf('%s-%06d', $lote, $id),
                 'estado' => $cierre ? 'cerrado' : (mt_rand(1, 100) <= 30 ? 'en_revision' : 'abierto'),
-                'severidad' => $this->ponderado(array_map(null, array_keys($severidades), array_values($severidades))),
+                'severidad' => $severidad,
+                'id_potencial_severidad' => $base['severidades'][min(5, $nivel + mt_rand(0, 2))] ?? null,
+                'id_categoria_evento' => $base['categorias'] ? self::elegir($base['categorias']) : null,
+                'id_causa_inmediata' => $cierre && $base['causas_inmediatas'] ? self::elegir($base['causas_inmediatas']) : null,
+                'id_causa_basica' => $cierre && $base['causas_basicas'] ? self::elegir($base['causas_basicas']) : null,
+                'id_clasificacion_incidente' => null,
+                'tipo_detencion' => null,
+                'fecha_detencion' => null,
+                'fecha_reinicio' => null,
+                'id_autoriza_reinicio' => null,
+                'dia_ciclo' => mt_rand(1, 14),
                 'fecha_ocurrencia' => $fecha->toDateTimeString(),
                 'fecha_creacion' => $fecha->addHours(mt_rand(0, 6))->toDateTimeString(),
                 'fecha_actualizacion' => ($cierre ?? $fecha)->toDateTimeString(),
@@ -476,13 +536,16 @@ class DatosPruebaService
         ];
     }
 
-    private function filaFlash(int $id, array $proyecto, CarbonImmutable $fecha, array $pesosArea): array
+    private function filaFlash(int $id, array $proyecto, CarbonImmutable $fecha, array $pesosArea, array $base): array
     {
+        $clasificacion = self::elegir([['Daño material', 'DMNS'], ['Lesión sin tiempo perdido', 'STP'], ['Falla operacional', 'FO'], ['Cuasi accidente', 'CUASI']]);
+
         return [
+            'id_clasificacion_incidente' => $base['clasificaciones'][$clasificacion[1]] ?? null,
             'id_intrava' => $id, 'id_proyecto' => $proyecto['id'], 'proyecto_alias' => $proyecto['nombre'],
             'id_area' => $proyecto['areas'][$this->indicePonderado($pesosArea)], 'fecha' => $fecha->toDateString(),
             'hora' => $fecha->format('H:i'), 'turno' => $fecha->hour >= 20 || $fecha->hour < 6 ? 'Noche' : 'Día',
-            'clasificacion' => self::elegir(['Daño material', 'Lesión sin tiempo perdido', 'Falla operacional', 'Cuasi accidente']),
+            'clasificacion' => $clasificacion[0],
             'descripcion' => self::elegir(Texto::INCIDENTES), 'reportado_por' => 'Supervisor de turno', 'cargo' => 'Supervisor',
             'payload' => '{"origen":"datos_prueba"}',
         ];
@@ -494,6 +557,7 @@ class DatosPruebaService
 
         return [
             'id_intrava' => (string) Str::uuid(), 'id_proyecto' => $proyecto['id'],
+            'id_area' => self::elegir($proyecto['areas']),
             'tipo' => self::elegir(['Condición subestándar', 'Acción subestándar', 'No conformidad de seguridad', 'Oportunidad de mejora']),
             'origen' => self::elegir(['Inspección planificada', 'Auditoría', 'Reportabilidad cliente']),
             'requisito_incumplido' => self::elegir(Texto::CONDICIONES), 'fecha_creacion' => $fecha->toDateString(),

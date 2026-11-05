@@ -4,6 +4,8 @@ El servicio estima la probabilidad de que un proyecto registre uno o más evento
 
 ## Preparar PostgreSQL
 
+Si la base ya tiene datos, ejecuta primero `php artisan migrate`: las vistas usan columnas de la migración `2026_11_05_000001`.
+
 En una base nueva basta con `docker/postgres/AVA_BaseDatos_unificada.sql`, que ya incluye el esquema base, las vistas, la ampliación y datos de prueba (ver `docker/README.md`).
 
 En una base existente, ejecuta los scripts en la base que usa Laravel, en este orden:
@@ -38,6 +40,7 @@ El comando usa la conexión de Laravel, por lo que ambos leen la misma base, y t
 
 `motor_riesgo.py` entrena un modelo por cada tipo de entidad: proyecto, área, cuadrilla, trabajador y actividad. Con el historial real también entrena uno por cliente.
 
+- **Objetivos:** `incidentes_reales` excluye clasificaciones no laborales (trayecto, común) y `lesiones` predice solo incidentes con lesión. Los tipos de incidente se toman de `tipo_eventos.es_incidente`.
 - **Datos:** une `eventos`, Reporte Previene, Reportes Flash y Hallazgos. Los informes de investigación no suman porque documentan un incidente ya contado.
 - **Variables (más de 50 por entidad):** incidentes y reportes en ventanas de 1 a 26 semanas, tendencia, semanas desde el último incidente, tasa histórica, pendientes de cierre, razón preventivo/reactivo, severidad, condiciones PARE y su repetición, turno noche, riesgos detectados en el texto, personas expuestas, época del año, incidentes del proyecto y de la empresa, y los datos de la ampliación cuando existen (horas, clima, avance). Todas usan solo semanas anteriores a la predicción.
 - **Selección:** compara regresión logística, gradient boosting y bosque aleatorio con validación temporal en tres tramos, y elige el de menor log-loss. Si ninguno supera a la tasa histórica de cada entidad, publica esa tasa.
@@ -65,6 +68,7 @@ No versiones los Excel originales.
 ## Contrato HTTP
 
 - `POST /modelo/entrenar`: reentrena aunque los datos no hayan cambiado.
+- `GET /modelo/evaluacion`: compara las predicciones registradas con lo ocurrido, cuando su plazo ya terminó.
 
 - `GET /health`: comprueba conexión con PostgreSQL.
 - `GET /tipos`: devuelve `incidentes_reales`, `todos` y los tipos encontrados en los datos.

@@ -17,6 +17,7 @@ class ActividadResource extends JsonResource
             'fecha_inicio' => $this->fecha_inicio?->toDateString(),
             'fecha_termino' => $this->fecha_termino?->toDateString(),
             'estado' => $this->estado,
+            'id_riesgo_critico' => $this->id_riesgo_critico,
             'fecha_creacion' => $this->fecha_creacion?->toISOString(),
             'fecha_actualizacion' => $this->fecha_actualizacion?->toISOString(),
             'asignacion' => $this->whenLoaded('asignacion'),

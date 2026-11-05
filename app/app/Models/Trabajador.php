@@ -57,6 +57,11 @@ class Trabajador extends Model
         return $this->hasOne(Supervisor::class, 'id_trabajador', 'id_trabajador');
     }
 
+    public function jefeZona(): HasOne
+    {
+        return $this->hasOne(JefeZona::class, 'id_trabajador', 'id_trabajador');
+    }
+
     public function departamentos(): BelongsToMany
     {
         return $this->belongsToMany(Departamento::class, 'trabajador_departamento', 'id_trabajador', 'id_departamento');

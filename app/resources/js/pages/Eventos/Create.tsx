@@ -36,6 +36,28 @@ interface CreatePageProps {
     proyectos?: ProyectoItem[];
     idTipoPare?: number | null;
     areasPorProyecto?: Record<number, AreaItem[]>;
+    actividadesPorProyecto?: Record<number, { id_actividad: number; nombre: string }[]>;
+    catalogos?: Catalogos;
+}
+
+interface Catalogos {
+    severidades: { id_severidad: number; nombre: string }[];
+    turnos: { id_turno: number; nombre: string }[];
+    categorias: { id_categoria_evento: number; nombre: string }[];
+    clasificaciones: { id_clasificacion_incidente: number; codigo: string; nombre: string }[];
+}
+
+const CAMPO_DETALLE = 'w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 transition-colors';
+const ETIQUETA_DETALLE = 'block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1';
+
+function ahoraLocal(): string {
+    const ahora = new Date();
+    return new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function esTurnoNoche(fecha: string): boolean {
+    const hora = Number(fecha.slice(11, 13));
+    return hora >= 20 || hora < 6;
 }
 
 export default function Create() {
@@ -46,11 +68,22 @@ export default function Create() {
         proyectos = [],
         idTipoPare = null,
         areasPorProyecto = {},
+        actividadesPorProyecto = {},
+        catalogos,
     } = usePage().props as unknown as CreatePageProps;
 
     const [esParaMi, setEsParaMi] = useState<boolean>(true);
 
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
+        fecha_ocurrencia: ahoraLocal(),
+        id_turno: '' as number | '',
+        id_actividad: '' as number | '',
+        id_severidad: '' as number | '',
+        id_potencial_severidad: '' as number | '',
+        tipo_detencion: 'total',
+        id_clasificacion_incidente: '' as number | '',
+        id_categoria_evento: '' as number | '',
+        dia_ciclo: '' as number | '',
         id_tipo_evento: idTipoPare ?? 0,
         condicion: 0,
         descripcion: '',
@@ -63,6 +96,17 @@ export default function Create() {
     });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const esPare = Number(data.id_tipo_evento) === Number(idTipoPare);
+    const tipoSeleccionado = tiposEvento.find((tipo) => tipo.id_tipo_evento === Number(data.id_tipo_evento));
+    const esIncidente = Boolean(tipoSeleccionado?.es_incidente);
+    const actividadesDisponibles = data.id_proyecto ? actividadesPorProyecto[Number(data.id_proyecto)] ?? [] : [];
+
+    // El turno se propone según la hora; quien reporta puede cambiarlo.
+    useEffect(() => {
+        const nombre = esTurnoNoche(data.fecha_ocurrencia) ? 'noche' : 'día';
+        const turno = catalogos?.turnos.find((t) => t.nombre.toLowerCase() === nombre);
+        if (turno) setData('id_turno', turno.id_turno);
+    }, [data.fecha_ocurrencia]);
 
     // Calcular proyectos disponibles según el trabajador activo
     const proyectosDisponibles: ProyectoItem[] = useMemo(() => {
@@ -199,11 +243,17 @@ export default function Create() {
             return;
         }
 
-        if (data.condicion === 0) {
+        if (esPare && data.condicion === 0) {
             alert('Por favor, seleccione una condición de uso (1 a 10).');
             return;
         }
 
+        transform((datos) => ({
+            ...datos,
+            condicion: esPare ? datos.condicion : '',
+            tipo_detencion: esPare ? datos.tipo_detencion : '',
+            id_clasificacion_incidente: esIncidente ? datos.id_clasificacion_incidente : '',
+        }));
         post('/eventos');
     };
 
@@ -261,6 +311,21 @@ export default function Create() {
                                         {usuarioTrabajador.cargo ? `(${usuarioTrabajador.cargo})` : ''}
                                     </p>
                                 )}
+                            </div>
+
+                            {/* TIPO DE REPORTE */}
+                            <div>
+                                <label htmlFor="id_tipo_evento" className={ETIQUETA_DETALLE}>Tipo de reporte</label>
+                                <select
+                                    id="id_tipo_evento"
+                                    value={data.id_tipo_evento}
+                                    onChange={(e) => setData('id_tipo_evento', Number(e.target.value))}
+                                    className={CAMPO_DETALLE}
+                                >
+                                    {tiposEvento.map((tipo) => (
+                                        <option key={tipo.id_tipo_evento} value={tipo.id_tipo_evento}>{tipo.nombre}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             {/* PERSONA REPORTADA (SOLO SI ES PARA UN TERCERO) */}
@@ -387,8 +452,139 @@ export default function Create() {
                                 )}
                             </div>
 
+                            {/* CUÁNDO OCURRIÓ */}
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label htmlFor="fecha_ocurrencia" className={ETIQUETA_DETALLE}>Fecha y hora en que ocurrió</label>
+                                    <input
+                                        id="fecha_ocurrencia"
+                                        type="datetime-local"
+                                        required
+                                        value={data.fecha_ocurrencia}
+                                        onChange={(e) => setData('fecha_ocurrencia', e.target.value)}
+                                        className={CAMPO_DETALLE}
+                                    />
+                                    {errors.fecha_ocurrencia && <p className="text-red-400 text-xs mt-1">{errors.fecha_ocurrencia}</p>}
+                                </div>
+                                <div>
+                                    <label htmlFor="id_turno" className={ETIQUETA_DETALLE}>Turno</label>
+                                    <select
+                                        id="id_turno"
+                                        value={data.id_turno}
+                                        onChange={(e) => setData('id_turno', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin indicar</option>
+                                        {catalogos?.turnos.map((t) => <option key={t.id_turno} value={t.id_turno}>{t.nombre}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {actividadesDisponibles.length > 0 && (
+                                <div>
+                                    <label htmlFor="id_actividad" className={ETIQUETA_DETALLE}>Actividad en ejecución</label>
+                                    <select
+                                        id="id_actividad"
+                                        value={data.id_actividad}
+                                        onChange={(e) => setData('id_actividad', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin indicar</option>
+                                        {actividadesDisponibles.map((a) => <option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>)}
+                                    </select>
+                                    {errors.id_actividad && <p className="text-red-400 text-xs mt-1">{errors.id_actividad}</p>}
+                                </div>
+                            )}
+
+                            {/* SEVERIDAD */}
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label htmlFor="id_severidad" className={ETIQUETA_DETALLE}>Severidad real</label>
+                                    <select
+                                        id="id_severidad"
+                                        value={data.id_severidad}
+                                        onChange={(e) => setData('id_severidad', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin indicar</option>
+                                        {catalogos?.severidades.map((s) => <option key={s.id_severidad} value={s.id_severidad}>{s.nombre}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="id_potencial_severidad" className={ETIQUETA_DETALLE}>Lo que pudo haber pasado</label>
+                                    <select
+                                        id="id_potencial_severidad"
+                                        value={data.id_potencial_severidad}
+                                        onChange={(e) => setData('id_potencial_severidad', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin indicar</option>
+                                        {catalogos?.severidades.map((s) => <option key={s.id_severidad} value={s.id_severidad}>{s.nombre}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label htmlFor="id_categoria_evento" className={ETIQUETA_DETALLE}>Tipo de contacto</label>
+                                    <select
+                                        id="id_categoria_evento"
+                                        value={data.id_categoria_evento}
+                                        onChange={(e) => setData('id_categoria_evento', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin indicar</option>
+                                        {catalogos?.categorias.map((c) => <option key={c.id_categoria_evento} value={c.id_categoria_evento}>{c.nombre}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="dia_ciclo" className={ETIQUETA_DETALLE}>Día del turno (ej. 10 de 14)</label>
+                                    <input
+                                        id="dia_ciclo"
+                                        type="number"
+                                        min={1}
+                                        max={30}
+                                        value={data.dia_ciclo}
+                                        onChange={(e) => setData('dia_ciclo', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    />
+                                    {errors.dia_ciclo && <p className="text-red-400 text-xs mt-1">{errors.dia_ciclo}</p>}
+                                </div>
+                            </div>
+
+                            {esIncidente && (
+                                <div>
+                                    <label htmlFor="id_clasificacion_incidente" className={ETIQUETA_DETALLE}>Clasificación</label>
+                                    <select
+                                        id="id_clasificacion_incidente"
+                                        value={data.id_clasificacion_incidente}
+                                        onChange={(e) => setData('id_clasificacion_incidente', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin clasificar</option>
+                                        {catalogos?.clasificaciones.map((c) => <option key={c.id_clasificacion_incidente} value={c.id_clasificacion_incidente}>{c.codigo} · {c.nombre}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            {esPare && (
+                                <div>
+                                    <label htmlFor="tipo_detencion" className={ETIQUETA_DETALLE}>Detención del trabajo</label>
+                                    <select
+                                        id="tipo_detencion"
+                                        value={data.tipo_detencion}
+                                        onChange={(e) => setData('tipo_detencion', e.target.value)}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="total">Total</option>
+                                        <option value="parcial">Parcial</option>
+                                        <option value="sin_detencion">Sin detención</option>
+                                    </select>
+                                </div>
+                            )}
+
                             {/* CONDICIÓN DEL EVENTO */}
-                            <div>
+                            {esPare && <div>
                                 <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
                                     Condición del Evento (PARE)
                                 </label>
@@ -410,7 +606,7 @@ export default function Create() {
                                         {(errors as any).condicion}
                                     </p>
                                 )}
-                            </div>
+                            </div>}
 
                             {/* DESCRIPCIÓN DETALLADA */}
                             <div>

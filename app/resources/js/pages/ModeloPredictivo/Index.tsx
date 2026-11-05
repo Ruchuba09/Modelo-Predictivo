@@ -4,7 +4,7 @@ import { Activity, RefreshCw, Sparkles } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { api } from '@/lib/api';
 import { etiquetaTipo } from '@/lib/utils';
-import { CalidadModelos, HistorialReal, type CalidadNivel, type Historial } from '@/components/CalidadModelos';
+import { CalidadModelos, EvaluacionPredicciones, HistorialReal, type CalidadNivel, type Historial } from '@/components/CalidadModelos';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 type Proyecto = { id_proyecto: number; nombre: string };
@@ -230,6 +230,7 @@ export default function Index() {
                 </section>
 
                 {generada && metadatos?.modelos && <CalidadModelos modelos={metadatos.modelos} />}
+                {generada && <EvaluacionPredicciones />}
                 {generada && metadatos?.historial && <HistorialReal historial={metadatos.historial} horizonte={horizonte} />}
 
                 {generada && resultados.length > 0 && (

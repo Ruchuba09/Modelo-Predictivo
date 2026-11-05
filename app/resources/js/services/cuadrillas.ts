@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { api } from '@/lib/api';
-import type { Cuadrilla, CrearCuadrilla, SupervisorOpcion } from '@/types/cuadrilla';
+import type { Cuadrilla, CrearCuadrilla, MiembroOpcion, SupervisorOpcion } from '@/types/cuadrilla';
 
 const BASE = '/cuadrillas';
 
@@ -44,4 +44,8 @@ export const cuadrillasApi = {
         request<Cuadrilla>(`${BASE}/${id}`, { method: 'PUT', data: datos }),
     eliminar: (id: number) => request<void>(`${BASE}/${id}`, { method: 'DELETE' }),
     supervisores: () => request<SupervisorOpcion[]>(`${BASE}/supervisores`),
+    jefesZona: () => request<SupervisorOpcion[]>(`${BASE}/jefes-zona`),
+    miembros: (id: number) => request<MiembroOpcion[]>(`${BASE}/${id}/miembros`),
+    actualizarMiembros: (id: number, trabajadores: number[]) =>
+        request<MiembroOpcion[]>(`${BASE}/${id}/miembros`, { method: 'PUT', data: { trabajadores } }),
 };

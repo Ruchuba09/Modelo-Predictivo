@@ -7,6 +7,7 @@ import pandas as pd
 
 from modelo_predictivo import (
     OBJETIVO_INCIDENTES,
+    OBJETIVO_LESIONES,
     acotar_al_proyecto,
     aplicar_modelo,
     con_defecto,
@@ -28,6 +29,15 @@ class FiltrarObjetivo(unittest.TestCase):
 
     def test_incidentes_reales_excluye_predictores_e_informes(self):
         self.assertEqual(self.tipos(OBJETIVO_INCIDENTES), {"accidente", "incidente", "reporte_flash"})
+
+    def test_excluye_trayecto_y_permite_objetivo_de_lesiones(self):
+        tabla = pd.DataFrame({
+            "tipo": ["accidente", "accidente", "incidente"],
+            "laboral": [True, False, True],
+            "con_lesion": [True, True, False],
+        })
+        self.assertEqual(len(filtrar_objetivo(tabla, OBJETIVO_INCIDENTES)), 2)
+        self.assertEqual(len(filtrar_objetivo(tabla, OBJETIVO_LESIONES)), 1)
 
     def test_todos_no_cuenta_doble_el_informe(self):
         self.assertNotIn("informe_investigacion", self.tipos("todos"))

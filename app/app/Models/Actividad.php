@@ -23,6 +23,7 @@ class Actividad extends Model
         'fecha_inicio',
         'fecha_termino',
         'estado',
+        'id_riesgo_critico',
     ];
 
     protected $casts = [

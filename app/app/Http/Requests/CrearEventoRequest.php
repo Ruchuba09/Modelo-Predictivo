@@ -5,7 +5,9 @@ namespace App\Http\Requests;
 use App\DataTransferObjects\CrearEventoData;
 use App\Models\Area;
 use App\Models\Proyecto;
+use App\Models\TipoEvento;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CrearEventoRequest extends FormRequest
@@ -23,7 +25,31 @@ class CrearEventoRequest extends FormRequest
         $idFaena = Proyecto::whereKey($this->integer('id_proyecto'))->value('id_faena');
         $faenaConAreas = $idFaena && Area::where('id_faena', $idFaena)->exists();
 
+        $idTipoPare = TipoEvento::where('nombre', 'Tarjeta PARE')->value('id_tipo_evento');
+
         return [
+            'id_severidad' => ['nullable', 'integer', 'exists:cat_severidad,id_severidad'],
+            'id_potencial_severidad' => ['nullable', 'integer', 'exists:cat_severidad,id_severidad'],
+            'fecha_ocurrencia' => ['nullable', 'date', 'before:+1 day'],
+            'id_turno' => ['nullable', 'integer', 'exists:cat_turno,id_turno'],
+            'id_categoria_evento' => ['nullable', 'integer', 'exists:cat_categoria_evento,id_categoria_evento'],
+            'id_clasificacion_incidente' => ['nullable', 'integer', 'exists:cat_clasificacion_incidente,id_clasificacion_incidente'],
+            'tipo_detencion' => ['nullable', 'string', Rule::in(['sin_detencion', 'parcial', 'total'])],
+            'dia_ciclo' => ['nullable', 'integer', 'between:1,30'],
+            'id_actividad' => [
+                'nullable',
+                'integer',
+                function (string $campo, mixed $valor, \Closure $falla) {
+                    $delProyecto = DB::table('actividades as ac')
+                        ->join('asignaciones as a', 'a.id_asignacion', '=', 'ac.id_asignacion')
+                        ->where('ac.id_actividad', $valor)
+                        ->where('a.id_proyecto', $this->integer('id_proyecto'))
+                        ->exists();
+                    if (! $delProyecto) {
+                        $falla('La actividad no pertenece al proyecto seleccionado.');
+                    }
+                },
+            ],
             'id_area' => [
                 $faenaConAreas ? 'required' : 'nullable',
                 'integer',
@@ -35,7 +61,8 @@ class CrearEventoRequest extends FormRequest
                 'exists:tipo_eventos,id_tipo_evento',
             ],
             'condicion' => [
-                'required',
+                Rule::requiredIf((int) $this->input('id_tipo_evento') === (int) $idTipoPare),
+                'nullable',
                 'integer',
                 'between:1,10',
             ],

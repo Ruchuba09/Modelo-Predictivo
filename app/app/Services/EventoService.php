@@ -13,6 +13,7 @@ use App\Models\Cuadrilla;
 use App\Models\Evento;
 use App\Models\Obrero;
 use App\Models\Proyecto;
+use App\Models\SituacionCritica;
 use App\Models\Supervisor;
 use App\Models\TipoEvento;
 use App\Models\Trabajador;
@@ -199,7 +200,41 @@ class EventoService
             'proyectos' => $this->listarProyectosParaCrear(),
             'idTipoPare' => $this->idTipoPare(),
             'areasPorProyecto' => $this->areasPorProyecto(),
+            'actividadesPorProyecto' => $this->actividadesPorProyecto(),
+            'catalogos' => $this->catalogos(),
         ];
+    }
+
+    /** Opciones de los campos clasificados de eventos. */
+    public function catalogos(): array
+    {
+        $causas = DB::table('cat_causa')->orderBy('codigo')->get(['id_causa', 'tipo', 'subtipo', 'codigo', 'nombre']);
+
+        return [
+            'severidades' => DB::table('cat_severidad')->orderBy('nivel')->get(['id_severidad', 'nombre', 'nivel']),
+            'turnos' => DB::table('cat_turno')->orderBy('id_turno')->get(['id_turno', 'nombre']),
+            'categorias' => DB::table('cat_categoria_evento')->orderBy('nombre')->get(['id_categoria_evento', 'nombre']),
+            'clasificaciones' => DB::table('cat_clasificacion_incidente')->orderBy('id_clasificacion_incidente')
+                ->get(['id_clasificacion_incidente', 'codigo', 'nombre']),
+            'causas_inmediatas' => $causas->where('tipo', 'inmediata')->values(),
+            'causas_basicas' => $causas->where('tipo', 'basica')->values(),
+            'causas_raiz' => $causas->where('tipo', 'raiz')->values(),
+            'riesgos_criticos' => DB::table('cat_riesgo_critico')->orderBy('id_riesgo_critico')->get(['id_riesgo_critico', 'nombre']),
+        ];
+    }
+
+    /** Actividades vigentes de cada proyecto, para el selector del formulario. */
+    private function actividadesPorProyecto(): Collection
+    {
+        return DB::table('actividades as ac')
+            ->join('asignaciones as a', 'a.id_asignacion', '=', 'ac.id_asignacion')
+            ->where('ac.estado', '!=', 'completada')
+            ->orderBy('ac.nombre')
+            ->get(['a.id_proyecto', 'ac.id_actividad', 'ac.nombre'])
+            ->groupBy('id_proyecto')
+            ->map(fn (Collection $filas) => $filas->map(fn ($fila) => [
+                'id_actividad' => $fila->id_actividad, 'nombre' => $fila->nombre,
+            ])->values());
     }
 
     /** Áreas de la faena de cada proyecto, para el selector del formulario. */
@@ -258,10 +293,17 @@ class EventoService
                     $campos['severidad'] = $datos->severidad;
                 }
 
+                $campos += $datos->detalle;
+                // Sin indicar otra hora, la detención parte cuando ocurrió el evento.
+                if (in_array($campos['tipo_detencion'] ?? null, ['parcial', 'total'], true)) {
+                    $campos['fecha_detencion'] = $campos['fecha_ocurrencia'] ?? now();
+                }
+
                 $evento = Evento::create($campos);
                 if ($idTrabajador) {
                     $evento->trabajadores()->sync([$idTrabajador]);
                 }
+                $this->registrarSituacionCritica($evento);
 
                 return $evento;
             });
@@ -273,6 +315,20 @@ class EventoService
         $this->avisarTarjetaPare($evento);
 
         return $evento;
+    }
+
+    /** Cada Tarjeta PARE es una situación crítica; así no hay que registrarla dos veces. */
+    private function registrarSituacionCritica(Evento $evento): void
+    {
+        if ((int) $evento->id_tipo_evento === $this->idTipoPare() && $evento->id_trabajador && $evento->condicion) {
+            SituacionCritica::create([
+                'id_trabajador' => $evento->id_trabajador,
+                'id_supervisor' => $evento->id_supervisor,
+                'id_evento' => $evento->id_evento,
+                'referencia' => $evento->referencia,
+                'condicion' => $evento->condicion,
+            ]);
+        }
     }
 
     /**
@@ -329,6 +385,8 @@ class EventoService
             'tipoEvento',
             'proyecto',
             'area',
+            'actividad',
+            'autorizaReinicio.persona',
             'administrador.trabajador.persona',
             'trabajador.persona',
             'supervisor.trabajador.persona',
@@ -491,6 +549,10 @@ class EventoService
                     'justificacion' => $datos->justificacion,
                     'evidencia_cierre' => $rutasArchivos,
                     'fecha_cierre' => now(),
+                    ...$datos->detalle,
+                    'id_autoriza_reinicio' => isset($datos->detalle['fecha_reinicio'])
+                        ? $administrativo->id_trabajador
+                        : $bloqueado->id_autoriza_reinicio,
                 ]);
 
                 $evento->setRawAttributes($bloqueado->getAttributes(), true);

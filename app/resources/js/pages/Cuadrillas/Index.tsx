@@ -3,14 +3,20 @@ import { Head } from '@inertiajs/react';
 import { useCallback, useEffect, useState, FormEvent } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import { cuadrillasApi, ApiError } from '@/services/cuadrillas';
-import type { Cuadrilla, SupervisorOpcion } from '@/types/cuadrilla';
+import type { Cuadrilla, MiembroOpcion, SupervisorOpcion } from '@/types/cuadrilla';
 
 interface FormState {
     numero_cuadrilla: string;
     id_supervisor: string;
+    id_jefe_zona: string;
 }
 
-const FORM_VACIO: FormState = { numero_cuadrilla: '', id_supervisor: '' };
+const FORM_VACIO: FormState = { numero_cuadrilla: '', id_supervisor: '', id_jefe_zona: '' };
+
+function nombreJefe(c: Cuadrilla): string {
+    const p = c.jefe_zona?.trabajador?.persona;
+    return `${p?.nombre_1 ?? ''} ${p?.apellido_1 ?? ''}`.trim() || '—';
+}
 
 function nombreSupervisor(c: Cuadrilla): string {
     const p = c.supervisor?.trabajador?.persona;
@@ -21,6 +27,10 @@ function nombreSupervisor(c: Cuadrilla): string {
 export default function CuadrillasIndex() {
     const [cuadrillas, setCuadrillas] = useState<Cuadrilla[]>([]);
     const [supervisores, setSupervisores] = useState<SupervisorOpcion[]>([]);
+    const [jefes, setJefes] = useState<SupervisorOpcion[]>([]);
+    const [integrantesDe, setIntegrantesDe] = useState<Cuadrilla | null>(null);
+    const [opciones, setOpciones] = useState<MiembroOpcion[]>([]);
+    const [seleccionados, setSeleccionados] = useState<number[]>([]);
     const [cargando, setCargando] = useState(true);
     const [errorGlobal, setErrorGlobal] = useState<string | null>(null);
     const [mensaje, setMensaje] = useState<string | null>(null);
@@ -38,12 +48,14 @@ export default function CuadrillasIndex() {
         setCargando(true);
         setErrorGlobal(null);
         try {
-            const [lista, sups] = await Promise.all([
+            const [lista, sups, jefesZona] = await Promise.all([
                 cuadrillasApi.listar(),
                 cuadrillasApi.supervisores(),
+                cuadrillasApi.jefesZona(),
             ]);
             setCuadrillas(lista);
             setSupervisores(sups);
+            setJefes(jefesZona);
         } catch (e) {
             setErrorGlobal(e instanceof ApiError ? e.message : 'No se pudo cargar la información.');
         } finally {
@@ -73,6 +85,7 @@ export default function CuadrillasIndex() {
         setForm({
             numero_cuadrilla: c.numero_cuadrilla,
             id_supervisor: String(c.id_supervisor),
+            id_jefe_zona: c.id_jefe_zona ? String(c.id_jefe_zona) : '',
         });
         setErrores({});
         setModalAbierto(true);
@@ -83,6 +96,33 @@ export default function CuadrillasIndex() {
         setModalAbierto(false);
     };
 
+    const abrirIntegrantes = async (c: Cuadrilla) => {
+        setErrorGlobal(null);
+        try {
+            const lista = await cuadrillasApi.miembros(c.id_cuadrilla);
+            setOpciones(lista);
+            setSeleccionados(lista.filter((m) => m.integra).map((m) => m.id_trabajador));
+            setIntegrantesDe(c);
+        } catch (e) {
+            setErrorGlobal(e instanceof ApiError ? e.message : 'No se pudieron cargar los integrantes.');
+        }
+    };
+
+    const guardarIntegrantes = async () => {
+        if (!integrantesDe) return;
+        setGuardando(true);
+        try {
+            await cuadrillasApi.actualizarMiembros(integrantesDe.id_cuadrilla, seleccionados);
+            setIntegrantesDe(null);
+            setMensaje('Integrantes actualizados.');
+            await cargar();
+        } catch (e) {
+            setErrorGlobal(e instanceof ApiError ? e.message : 'No se pudieron guardar los integrantes.');
+        } finally {
+            setGuardando(false);
+        }
+    };
+
     const guardar = async (e: FormEvent) => {
         e.preventDefault();
         setGuardando(true);
@@ -91,6 +131,7 @@ export default function CuadrillasIndex() {
         const payload = {
             numero_cuadrilla: form.numero_cuadrilla.trim(),
             id_supervisor: Number(form.id_supervisor),
+            id_jefe_zona: form.id_jefe_zona ? Number(form.id_jefe_zona) : null,
         };
 
         try {
@@ -214,6 +255,7 @@ export default function CuadrillasIndex() {
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">#</th>
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">N° Cuadrilla</th>
                                         <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">Supervisor</th>
+                                        <th className="px-6 py-4 text-[12px] uppercase tracking-wider text-gris-1 font-bold">Jefe de zona</th>
                                         <th className="px-6 py-4"></th>
                                     </tr>
                                 </thead>
@@ -226,8 +268,15 @@ export default function CuadrillasIndex() {
                                             <td className="px-6 py-4 text-gris-1 dark:text-gray-400 font-bold">#{c.id_cuadrilla}</td>
                                             <td className="px-6 py-4 text-gris-2 dark:text-white font-medium">{c.numero_cuadrilla}</td>
                                             <td className="px-6 py-4 text-gris-1 dark:text-gray-400">{nombreSupervisor(c)}</td>
+                                            <td className="px-6 py-4 text-gris-1 dark:text-gray-400">{nombreJefe(c)}</td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-4">
+                                                    <button
+                                                        onClick={() => abrirIntegrantes(c)}
+                                                        className="text-verde-6 hover:underline font-bold text-xs"
+                                                    >
+                                                        Integrantes ({c.integrantes_count ?? 0})
+                                                    </button>
                                                     <button
                                                         onClick={() => abrirEditar(c)}
                                                         className="text-verde-6 hover:underline font-bold text-xs uppercase"
@@ -309,6 +358,24 @@ export default function CuadrillasIndex() {
                                     <p className="text-xs text-rojo-1 mt-1">{errores.id_supervisor[0]}</p>
                                 )}
                             </div>
+
+                            <div>
+                                <label htmlFor="id_jefe_zona" className="block text-[12px] uppercase tracking-wider text-gris-1 font-bold mb-1">
+                                    Jefe de zona
+                                </label>
+                                <select
+                                    id="id_jefe_zona"
+                                    value={form.id_jefe_zona}
+                                    onChange={(e) => setForm({ ...form, id_jefe_zona: e.target.value })}
+                                    className={inputClass}
+                                >
+                                    <option value="">Sin jefe de zona</option>
+                                    {jefes.map((j) => (
+                                        <option key={j.id_trabajador} value={j.id_trabajador}>{j.nombre || `Trabajador #${j.id_trabajador}`}</option>
+                                    ))}
+                                </select>
+                                {errores.id_jefe_zona && <p className="text-xs text-rojo-1 mt-1">{errores.id_jefe_zona[0]}</p>}
+                            </div>
                         </div>
 
                         <div className="px-6 py-4 border-t border-verde-3 flex items-center justify-end gap-3">
@@ -358,6 +425,42 @@ export default function CuadrillasIndex() {
                                 className="bg-rojo-1 hover:opacity-90 text-white rounded-lg font-bold px-5 py-2 text-sm transition-opacity disabled:opacity-60"
                             >
                                 {eliminando ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {integrantesDe && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label={`Integrantes de ${integrantesDe.numero_cuadrilla}`}>
+                    <div className="bg-white rounded-xl border border-verde-3 w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh]">
+                        <div className="px-6 py-4 border-b border-verde-3">
+                            <h2 className="font-bold text-gris-2">Integrantes de {integrantesDe.numero_cuadrilla}</h2>
+                            <p className="text-xs text-gris-1 mt-1">Quien ya integra otra cuadrilla se traslada a esta; el historial queda registrado.</p>
+                        </div>
+                        <ul className="overflow-auto px-6 py-3 divide-y divide-verde-3 flex-1">
+                            {opciones.map((m) => (
+                                <li key={m.id_trabajador}>
+                                    <label className="flex items-center gap-3 py-2 text-sm text-gris-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={seleccionados.includes(m.id_trabajador)}
+                                            onChange={(e) => setSeleccionados((actuales) =>
+                                                e.target.checked ? [...actuales, m.id_trabajador] : actuales.filter((id) => id !== m.id_trabajador))}
+                                        />
+                                        <span className="flex-1">{m.nombre || `Trabajador #${m.id_trabajador}`}</span>
+                                        <span className="text-xs text-gris-1">
+                                            {m.cargo ?? ''}{m.id_cuadrilla && !m.integra ? ' · en otra cuadrilla' : ''}
+                                        </span>
+                                    </label>
+                                </li>
+                            ))}
+                            {opciones.length === 0 && <li className="py-4 text-sm text-gris-1">No hay obreros registrados.</li>}
+                        </ul>
+                        <div className="px-6 py-4 border-t border-verde-3 flex justify-end gap-3">
+                            <button onClick={() => setIntegrantesDe(null)} disabled={guardando} className="px-4 py-2 text-sm font-bold text-gris-1">Cancelar</button>
+                            <button onClick={guardarIntegrantes} disabled={guardando} className="px-4 py-2 rounded-lg text-sm font-bold bg-verde-5 hover:bg-verde-6 text-black disabled:opacity-50">
+                                {guardando ? 'Guardando...' : 'Guardar'}
                             </button>
                         </div>
                     </div>

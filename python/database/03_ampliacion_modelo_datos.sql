@@ -183,17 +183,7 @@ SELECT pg_temp.add_fk('public.trabajadores', 'fk_trabajador_empresa',
 COMMENT ON COLUMN public.trabajadores.fecha_ingreso IS
     'Fecha real de ingreso a la empresa (fecha_creacion es solo cuando se creo el registro).';
 
--- Historial de pertenencia a cuadrillas (obreros.id_cuadrilla solo guarda lo actual)
-CREATE TABLE IF NOT EXISTS public.trabajador_cuadrilla (
-    id_trabajador_cuadrilla BIGSERIAL PRIMARY KEY,
-    id_trabajador BIGINT NOT NULL REFERENCES public.trabajadores(id_trabajador) ON DELETE CASCADE,
-    id_cuadrilla  BIGINT NOT NULL REFERENCES public.cuadrillas(id_cuadrilla) ON DELETE CASCADE,
-    fecha_inicio DATE NOT NULL,
-    fecha_termino DATE,
-    CONSTRAINT chk_tc_fechas CHECK (fecha_termino IS NULL OR fecha_termino >= fecha_inicio)
-);
-CREATE INDEX IF NOT EXISTS idx_tc_trabajador ON public.trabajador_cuadrilla(id_trabajador, fecha_inicio);
-CREATE INDEX IF NOT EXISTS idx_tc_cuadrilla  ON public.trabajador_cuadrilla(id_cuadrilla, fecha_inicio);
+-- La pertenencia historica a cuadrillas esta en trabajadores_cuadrillas.
 
 ALTER TABLE public.cuadrillas
     ADD COLUMN IF NOT EXISTS id_turno BIGINT,

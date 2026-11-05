@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ActividadController;
+use App\Http\Controllers\Api\V1\ActividadTrabajadorController;
+use App\Http\Controllers\Api\V1\CatalogoSeguridadController;
+use App\Http\Controllers\Api\V1\ExposicionController;
 use App\Http\Controllers\Api\V1\AreaController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ClienteController;
@@ -87,6 +90,18 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($gestion, $admin, $
 
             Route::get('cuadrillas/supervisores', [CuadrillaController::class, 'supervisores'])
                 ->name('cuadrillas.supervisores');
+            Route::get('cuadrillas/jefes-zona', [CuadrillaController::class, 'jefesZona'])->name('cuadrillas.jefes-zona');
+            Route::get('cuadrillas/{cuadrilla}/miembros', [CuadrillaController::class, 'miembros'])->whereNumber('cuadrilla')->name('cuadrillas.miembros');
+            Route::put('cuadrillas/{cuadrilla}/miembros', [CuadrillaController::class, 'actualizarMiembros'])->whereNumber('cuadrilla')->name('cuadrillas.miembros.actualizar');
+            Route::get('catalogos-seguridad', CatalogoSeguridadController::class)->name('catalogos-seguridad');
+            Route::get('actividades/{actividad}/trabajadores', [ActividadTrabajadorController::class, 'index'])->whereNumber('actividad')->name('actividades.trabajadores');
+            Route::post('actividades/{actividad}/trabajadores', [ActividadTrabajadorController::class, 'store'])->whereNumber('actividad')->name('actividades.trabajadores.asignar');
+            Route::delete('actividades/{actividad}/trabajadores/{trabajador}', [ActividadTrabajadorController::class, 'destroy'])->whereNumber('actividad')->name('actividades.trabajadores.desasignar');
+            Route::get('exposicion/horas', [ExposicionController::class, 'horas'])->name('exposicion.horas');
+            Route::post('exposicion/horas', [ExposicionController::class, 'guardarHoras'])->name('exposicion.horas.guardar');
+            Route::get('exposicion/asistencia', [ExposicionController::class, 'asistencia'])->name('exposicion.asistencia');
+            Route::post('exposicion/asistencia', [ExposicionController::class, 'guardarAsistencia'])->name('exposicion.asistencia.guardar');
+            Route::get('modelo-predictivo/evaluacion', [ModeloPredictivoController::class, 'evaluacion'])->name('modelo-predictivo.evaluacion');
             Route::apiResource('cuadrillas', CuadrillaController::class)->whereNumber('cuadrilla');
             Route::apiResource('proyectos', ProyectoController::class);
             Route::apiResource('actividades', ActividadController::class)

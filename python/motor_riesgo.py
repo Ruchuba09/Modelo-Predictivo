@@ -14,6 +14,7 @@ Datasets entidad-semana en CSV:
 import argparse
 import hashlib
 import json
+import logging
 import os
 import threading
 import warnings
@@ -31,15 +32,19 @@ from sklearn.metrics import average_precision_score, brier_score_loss, log_loss,
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.exc import SQLAlchemyError
 from threadpoolctl import threadpool_limits
 
-from modelo_predictivo import OBJETIVO_INCIDENTES, TIPOS_SEGUIMIENTO, filtrar_objetivo
+from modelo_predictivo import (
+    OBJETIVO_INCIDENTES,
+    SQL_CLASIFICACION,
+    SQL_TIPO,
+    TIPOS_SEGUIMIENTO,
+    actualizar_tipos,
+    filtrar_objetivo,
+)
 from riesgos_texto import RIESGOS, etiquetas_riesgo
 
-TIPOS_PROACTIVOS = frozenset({
-    "hallazgo", "no_conformidad", "observacion_preventiva", "observacion_de_seguridad",
-    "reporte_previene", "tarjeta_pare",
-})
 VENTANAS = (1, 2, 4, 8, 13, 26)
 MIN_POSITIVOS = 20
 MIN_NEGATIVOS = 20
@@ -58,6 +63,9 @@ ETIQUETAS_BASE = {
 }
 ETIQUETAS = {
     "sem_desde_ultimo": "semanas desde el último incidente",
+    "riesgo_critico": "riesgo crítico de la tarea",
+    "id_cliente": "cliente",
+    "id_faena": "faena",
     "tasa_historica": "tasa histórica de incidentes",
     "tasa_por_persona_u13": "incidentes por persona (13 semanas)",
     "tendencia": "tendencia de incidentes",
@@ -66,6 +74,10 @@ ETIQUETAS = {
     "ratio_proactivo": "razón preventivo / reactivo",
     "recurrencia_u13": "repetición de una misma condición",
     "sev_max_u13": "severidad máxima (13 semanas)",
+    "potencial_max_u13": "peor severidad potencial (13 semanas)",
+    "dia_ciclo_prom_u13": "día promedio del turno en los eventos",
+    "en_tarea_critica_u13": "eventos en tareas de riesgo crítico",
+    "actividades_criticas": "actividades de riesgo crítico en curso",
     "edad": "semanas de actividad",
     "tamano": "personas expuestas",
     "global_objetivo_u8": "incidentes en toda la empresa (8 semanas)",
@@ -81,7 +93,8 @@ def etiqueta(variable):
         return ETIQUETAS[variable]
     for base, nombre in ETIQUETAS_BASE.items():
         if variable.startswith(f"{base}_u"):
-            return f"{nombre} ({variable.rsplit('_u', 1)[1]} semanas)"
+            semanas = variable.rsplit("_u", 1)[1]
+            return f"{nombre} ({semanas} {'semana' if semanas == '1' else 'semanas'})"
     if variable.startswith("riesgo_"):
         return f"eventos de {variable[7:].rsplit('_u', 1)[0].replace('_', ' ')}"
     if variable.startswith("condicion_"):
@@ -130,6 +143,18 @@ def construir_panel(spine, eventos, h, cats=(), numericas=(), padre=None, global
         for w in VENTANAS if base in ("objetivo", "total", "proactivo") else (4, 13):
             feats[f"{base}_u{w}"] = rodar(df[f"n_{base}"], w)
     feats["sev_max_u13"] = rodar(df["n_sev"], 13, "max")
+
+    # Datos opcionales: la severidad potencial, el dia del turno y la tarea con riesgo critico.
+    if "potencial" in ev and ev["potencial"].notna().any():
+        por_semana = ev.groupby(claves)["potencial"].max().rename("n_potencial").reset_index()
+        feats["potencial_max_u13"] = rodar(df[claves].merge(por_semana, how="left", on=claves)["n_potencial"], 13, "max")
+    if "dia_ciclo" in ev and ev["dia_ciclo"].notna().any():
+        por_semana = ev.groupby(claves)["dia_ciclo"].mean().rename("n_dia").reset_index()
+        feats["dia_ciclo_prom_u13"] = rodar(df[claves].merge(por_semana, how="left", on=claves)["n_dia"], 13, "mean")
+    if "riesgo_critico" in ev and ev["riesgo_critico"].notna().any():
+        por_semana = ev[ev["riesgo_critico"].notna()].groupby(claves).size().rename("n_critico").reset_index()
+        criticos = df[claves].merge(por_semana, how="left", on=claves)["n_critico"].fillna(0)
+        feats["en_tarea_critica_u13"] = rodar(criticos, 13)
 
     # Etiquetas de riesgo extraidas del texto
     if "riesgos" in ev and ev["riesgos"].map(bool).any():
@@ -421,37 +446,42 @@ def _leer(engine, sql, **params):
 
 def cargar_base(engine):
     """Lee eventos de todas las fuentes y la estructura operativa."""
-    tipo = "lower(regexp_replace(trim(te.nombre), '[[:space:]]+', '_', 'g'))"
+    actualizar_tipos(engine)
     eventos = _leer(engine, f"""
         SELECT 'e' || e.id_evento AS clave, e.id_evento, e.id_proyecto, e.id_area, e.id_actividad, e.id_trabajador,
-               {tipo} AS tipo,
-               CASE WHEN e.severidad ILIKE 'baja%' THEN 1 WHEN e.severidad ILIKE 'media%' THEN 2
-                    WHEN e.severidad ILIKE 'alta%' THEN 3
-                    WHEN e.severidad ILIKE ANY (ARRAY['cr_tic%', 'grave%']) THEN 4 END AS severidad,
+               {SQL_TIPO} AS tipo, te.es_proactivo AS proactivo, {SQL_CLASIFICACION},
+               s.nivel AS severidad, sp.nivel AS potencial, e.dia_ciclo, rc.codigo AS riesgo_critico,
                COALESCE(e.fecha_ocurrencia, e.fecha_creacion) AS fecha, e.fecha_cierre,
                e.condicion, ct.nombre AS turno, e.descripcion AS texto
         FROM public.eventos e
         JOIN public.tipo_eventos te USING (id_tipo_evento)
+        LEFT JOIN public.cat_clasificacion_incidente ci ON ci.id_clasificacion_incidente = e.id_clasificacion_incidente
+        LEFT JOIN public.cat_severidad s ON s.id_severidad = e.id_severidad
+        LEFT JOIN public.cat_severidad sp ON sp.id_severidad = e.id_potencial_severidad
         LEFT JOIN public.cat_turno ct ON ct.id_turno = e.id_turno
+        LEFT JOIN public.actividades ac ON ac.id_actividad = e.id_actividad
+        LEFT JOIN public.cat_riesgo_critico rc ON rc.id_riesgo_critico = ac.id_riesgo_critico AND rc.codigo <> 'sin_riesgo_critico'
         WHERE e.id_proyecto IS NOT NULL
         UNION ALL
-        SELECT 'p' || id_local, NULL, id_proyecto, id_area, NULL, NULL, 'reporte_previene', urgencia,
-               fecha::timestamp, cierre_fecha::timestamp, NULL, NULL, descripcion
+        SELECT 'p' || id_local, NULL, id_proyecto, id_area, NULL, NULL, 'reporte_previene', TRUE, FALSE, TRUE, urgencia,
+               NULL, NULL, NULL, fecha::timestamp, cierre_fecha::timestamp, NULL, NULL, descripcion
         FROM public.reportes_previene_intrava WHERE id_proyecto IS NOT NULL AND fecha IS NOT NULL
         UNION ALL
-        SELECT 'f' || id_local, NULL, id_proyecto, id_area, NULL, NULL, 'reporte_flash', NULL,
-               fecha::timestamp, NULL, NULL, turno, descripcion
-        FROM public.reportes_flash_intrava WHERE id_proyecto IS NOT NULL AND fecha IS NOT NULL
+        SELECT 'f' || id_local, NULL, r.id_proyecto, r.id_area, NULL, NULL, 'reporte_flash', FALSE,
+               COALESCE(ci.con_lesion, FALSE), COALESCE(ci.laboral, TRUE), NULL, NULL, NULL, NULL,
+               r.fecha::timestamp, NULL, NULL, r.turno, r.descripcion
+        FROM public.reportes_flash_intrava r
+        LEFT JOIN public.cat_clasificacion_incidente ci ON ci.id_clasificacion_incidente = r.id_clasificacion_incidente
+        WHERE r.id_proyecto IS NOT NULL AND r.fecha IS NOT NULL
         UNION ALL
-        SELECT 'h' || id_intrava, NULL, id_proyecto, NULL, NULL, NULL, 'hallazgo', NULL,
-               COALESCE(fecha_deteccion, fecha_creacion)::timestamp, fecha_cierre::timestamp, NULL, NULL,
+        SELECT 'h' || id_intrava, NULL, id_proyecto, id_area, NULL, NULL, 'hallazgo', TRUE, FALSE, TRUE, NULL,
+               NULL, NULL, NULL, COALESCE(fecha_deteccion, fecha_creacion)::timestamp, fecha_cierre::timestamp, NULL, NULL,
                requisito_incumplido
         FROM public.hallazgos_intrava
         WHERE id_proyecto IS NOT NULL AND COALESCE(fecha_deteccion, fecha_creacion) IS NOT NULL
     """)
     eventos["fecha"] = pd.to_datetime(eventos["fecha"])
     eventos["fecha_cierre"] = pd.to_datetime(eventos["fecha_cierre"])
-    eventos["proactivo"] = eventos["tipo"].isin(TIPOS_PROACTIVOS)
     eventos["pare"] = eventos["tipo"] == "tarjeta_pare"
     eventos["noche"] = eventos["turno"].fillna("").str.lower().str.startswith("noche") | (
         eventos["fecha"].dt.hour.between(20, 23) | eventos["fecha"].dt.hour.between(0, 5))
@@ -477,8 +507,9 @@ def cargar_base(engine):
         """),
         "actividades": _leer(engine, """
             SELECT ac.id_actividad, a.id_proyecto, COALESCE(ac.fecha_inicio, a.fecha_inicio) AS inicio,
-                   COALESCE(ac.fecha_termino, a.fecha_termino) AS termino
+                   COALESCE(ac.fecha_termino, a.fecha_termino) AS termino, rc.codigo AS riesgo_critico
             FROM public.actividades ac JOIN public.asignaciones a USING (id_asignacion)
+            LEFT JOIN public.cat_riesgo_critico rc ON rc.id_riesgo_critico = ac.id_riesgo_critico
         """),
     }
     inspector = inspect(engine)
@@ -510,8 +541,9 @@ def huella_datos(engine, tipo_obj, horizonte, hoy=None):
         "SELECT count(*), max(sincronizado_en)::text FROM public.hallazgos_intrava",
         "SELECT count(*), max(fecha_inicio)::text FROM public.asignaciones",
         "SELECT count(*), max(fecha_inicio)::text FROM public.trabajadores_cuadrillas",
+        "SELECT count(*), max(codigo) FROM public.tipo_eventos WHERE es_incidente",
     ]
-    estado = [str(semana_actual(hoy).date()), tipo_obj, horizonte, 2]
+    estado = [str(semana_actual(hoy).date()), tipo_obj, horizonte, 3]
     with engine.connect() as conexion:
         estado += [list(conexion.execute(text(c)).one()) for c in consultas]
         if inspect(engine).has_table("incidentes_historicos"):
@@ -557,7 +589,17 @@ def construir_niveles(base, tipo_obj, h, hoy=None):
 
     spine_p = base["semanas"].merge(base["contexto"], how="left", on=["id_proyecto", "semana"]).merge(proyectos, on="id_proyecto")
     spine_p = spine_p.assign(entidad=spine_p["id_proyecto"], tamano=spine_p["n_obreros"])
-    numericas = ["n_cuadrillas", "n_supervisores", "n_actividades"]
+    numericas = ["n_cuadrillas", "n_supervisores", "n_actividades", "actividades_criticas"]
+    criticas = base["actividades"]
+    if not criticas.empty:
+        criticas = _expandir(
+            criticas[criticas["riesgo_critico"].notna() & (criticas["riesgo_critico"] != "sin_riesgo_critico")],
+            "id_proyecto", "inicio", "termino", hoy=hoy,
+        )
+    if len(criticas):
+        por_semana = criticas.groupby(["entidad", "semana"]).size().rename("actividades_criticas").reset_index()
+        spine_p = spine_p.merge(por_semana, how="left", on=["entidad", "semana"])
+        spine_p["actividades_criticas"] = spine_p["actividades_criticas"].fillna(0)
     extra_cols = []
     if not base["extra"].empty:
         extra = base["extra"].sort_values(["id_proyecto", "semana"]).copy()
@@ -613,10 +655,10 @@ def construir_niveles(base, tipo_obj, h, hoy=None):
                                          ["cargo"], [])
 
     if not base["actividades"].empty:
-        spine_ac = _expandir(base["actividades"], "id_actividad", "inicio", "termino", ["id_proyecto"], hoy)
+        spine_ac = _expandir(base["actividades"], "id_actividad", "inicio", "termino", ["id_proyecto", "riesgo_critico"], hoy)
         if not spine_ac.empty:
             niveles["actividad"] = (spine_ac, eventos.dropna(subset=["id_actividad"]).assign(entidad=lambda d: d["id_actividad"].astype(int)),
-                                    [], [])
+                                    ["riesgo_critico"], [])
     return niveles
 
 
@@ -651,6 +693,9 @@ def entrenar(base, tipo_obj, h, hoy=None):
         resultado["historial"] = entrenar_historial(base["historicos"], "laboral", h, hoy)
         lesiones = entrenar_historial(base["historicos"], "con_lesion", h, hoy)
         resultado["historial"]["lesiones"] = {k: lesiones[k] for k in ("calidad", "predicciones")}
+        resultado["predicciones"]["cliente_historico"] = {
+            p["cliente"]: p for p in (lesiones if tipo_obj == "lesiones" else resultado["historial"])["predicciones"]
+        }
     return resultado
 
 
@@ -701,8 +746,8 @@ def entrenar_historial(historicos, objetivo, h, hoy=None):
     ev = pd.DataFrame({
         "entidad": datos["cliente"].map(nombres), "fecha": datos["fecha"], "fecha_cierre": pd.NaT,
         "objetivo": datos[objetivo].astype(bool),
-        "proactivo": False, "pare": False, "severidad": datos["categoria"].map({"fatal": 4, "lesion_ctp": 3, "lesion_stp": 2}),
-        "condicion": np.nan, "noche": datos["turno"].eq("noche"),
+        "proactivo": False, "pare": False, "severidad": datos["categoria"].map({"fatal": 5, "lesion_ctp": 4, "lesion_stp": 3}),
+        "condicion": np.nan, "noche": datos["turno"].eq("noche"), "dia_ciclo": pd.to_numeric(datos["dia_ciclo"], errors="coerce"),
         "riesgos": datos["riesgos"].fillna("").map(lambda r: [x for x in r.split(",") if x]),
     })
     rango = ev.groupby("entidad")["fecha"].agg(["min", "max"]).reset_index()
@@ -747,6 +792,10 @@ def obtener_modelos(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4, forzar=Fa
         resultado["huella"] = huella
         _memoria[huella] = resultado
         try:
+            registrar_predicciones(engine, resultado, tipo_obj, horizonte)
+        except SQLAlchemyError:
+            logging.getLogger(__name__).exception("No se pudieron registrar las predicciones.")
+        try:
             DIRECTORIO_MODELOS.mkdir(parents=True, exist_ok=True)
             for viejo in DIRECTORIO_MODELOS.glob("*.joblib"):
                 if (pd.Timestamp.now() - pd.Timestamp(viejo.stat().st_mtime, unit="s")).days > 7:
@@ -755,6 +804,63 @@ def obtener_modelos(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4, forzar=Fa
         except OSError:
             pass  # Sin disco disponible, el resultado sigue en memoria.
         return resultado
+
+
+def registrar_predicciones(engine, resultado, tipo_obj, horizonte, hoy=None):
+    """Guarda lo predicho; la primera prediccion de cada semana queda como la oficial."""
+    if not inspect(engine).has_table("predicciones_registradas"):
+        return
+    semana = semana_actual(hoy).date()
+    filas = [
+        {"semana": semana, "nivel": nivel, "id": entidad, "tipo": tipo_obj, "h": horizonte,
+         "p": p["prob"], "modelo": p["modelo"], "metodo": p["metodo"]}
+        for nivel, predicciones in resultado["predicciones"].items() if nivel != "cliente_historico"
+        for entidad, p in predicciones.items()
+    ]
+    if filas:
+        with engine.begin() as conexion:
+            conexion.execute(text("""
+                INSERT INTO public.predicciones_registradas
+                    (semana, nivel, id_entidad, tipo_objetivo, horizonte, probabilidad, modelo, metodo)
+                VALUES (:semana, :nivel, :id, :tipo, :h, :p, :modelo, :metodo)
+                ON CONFLICT DO NOTHING
+            """), filas)
+
+
+def evaluar_predicciones(engine, hoy=None):
+    """Compara lo predicho con lo que ocurrio, solo en semanas cuyo horizonte ya termino."""
+    if not inspect(engine).has_table("predicciones_registradas"):
+        return []
+    registros = _leer(engine, "SELECT semana, nivel, id_entidad, tipo_objetivo, horizonte, probabilidad FROM public.predicciones_registradas")
+    if registros.empty:
+        return []
+    registros["semana"] = pd.to_datetime(registros["semana"])
+    registros["fin"] = registros["semana"] + pd.to_timedelta(registros["horizonte"] * 7, unit="D")
+    registros = registros[registros["fin"] <= semana_actual(hoy)]
+    if registros.empty:
+        return []
+    base = cargar_base(engine)
+    salida = []
+    for (tipo_obj, horizonte, nivel), grupo in registros.groupby(["tipo_objetivo", "horizonte", "nivel"]):
+        niveles = construir_niveles(base, tipo_obj, int(horizonte), hoy)
+        if nivel not in niveles:
+            continue
+        eventos = niveles[nivel][1]
+        ocurridos = eventos[eventos["objetivo"]][["entidad", "fecha"]].sort_values("fecha")
+        cruce = grupo.merge(ocurridos, how="left", left_on="id_entidad", right_on="entidad")
+        cruce["ocurrio"] = (cruce["fecha"] >= cruce["semana"]) & (cruce["fecha"] < cruce["fin"])
+        y = grupo.assign(y=grupo.set_index(["semana", "id_entidad"]).index.isin(
+            cruce[cruce["ocurrio"]].set_index(["semana", "id_entidad"]).index).astype(int))
+        p = y["probabilidad"].astype(float)
+        fila = {
+            "nivel": nivel, "tipo_objetivo": tipo_obj, "horizonte": int(horizonte), "predicciones": len(y),
+            "ocurrieron": int(y["y"].sum()), "riesgo_predicho": round(float(p.mean()), 4), "tasa_real": round(float(y["y"].mean()), 4),
+            "brier": round(float(brier_score_loss(y["y"], p)), 4),
+        }
+        if y["y"].nunique() == 2 and len(y) >= 20:
+            fila["auc_roc"] = round(float(roc_auc_score(y["y"], p)), 4)
+        salida.append(fila)
+    return salida
 
 
 def main():

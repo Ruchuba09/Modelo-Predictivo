@@ -31,6 +31,11 @@ class ActividadService
     {
         $actividad->update($datos->toArray());
 
+        // Al completarse, sus trabajadores quedan libres para recibir otra actividad.
+        if ($actividad->estado === 'completada') {
+            app(AsignacionTrabajadorService::class)->finalizarTodos($actividad, 'completada');
+        }
+
         return $actividad->fresh('asignacion.proyecto');
     }
 

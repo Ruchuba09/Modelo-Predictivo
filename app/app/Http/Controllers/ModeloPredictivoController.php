@@ -30,6 +30,11 @@ class ModeloPredictivoController extends Controller
         return $this->solicitarModelo('/predicciones', $parametros);
     }
 
+    public function evaluacion(): JsonResponse
+    {
+        return $this->solicitarModelo('/modelo/evaluacion');
+    }
+
     public function tipos(): JsonResponse
     {
         return $this->solicitarModelo('/tipos');

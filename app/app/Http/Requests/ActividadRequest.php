@@ -14,7 +14,7 @@ class ActividadRequest extends FormRequest
 
     public function rules(): array
     {
-        $required = $this->isMethod('POST') ? 'required' : 'sometimes|required';
+        $required = $this->isMethod('POST') ? 'required' : 'sometimes';
 
         return [
             'id_asignacion' => [$required, 'integer', 'exists:asignaciones,id_asignacion'],
@@ -23,6 +23,7 @@ class ActividadRequest extends FormRequest
             'fecha_inicio' => ['nullable', 'date'],
             'fecha_termino' => ['nullable', 'date', 'after_or_equal:fecha_inicio'],
             'estado' => [$required, 'string', 'max:30'],
+            'id_riesgo_critico' => ['nullable', 'integer', 'exists:cat_riesgo_critico,id_riesgo_critico'],
         ];
     }
 

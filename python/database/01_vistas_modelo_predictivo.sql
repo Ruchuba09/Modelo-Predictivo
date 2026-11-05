@@ -1,5 +1,5 @@
 -- Vistas para el modelo predictivo, unidad: proyecto por semana (lunes).
--- PostgreSQL. Crea las vistas y, si faltan, las columnas de eventos que usan.
+-- PostgreSQL. En una base existente, ejecutar antes `php artisan migrate`.
 
 ALTER TABLE public.eventos
     ADD COLUMN IF NOT EXISTS severidad VARCHAR(100),
@@ -8,43 +8,40 @@ ALTER TABLE public.eventos
 CREATE OR REPLACE VIEW public.v_eventos_unificados AS
 SELECT e.id_proyecto,
        COALESCE(e.fecha_ocurrencia, e.fecha_creacion)::date AS fecha,
-       lower(regexp_replace(trim(te.nombre), '\s+', '_', 'g')) AS tipo,
-       CASE
-           WHEN e.severidad ILIKE 'baja%' THEN 1
-           WHEN e.severidad ILIKE 'media%' THEN 2
-           WHEN e.severidad ILIKE 'alta%' THEN 3
-           WHEN e.severidad ILIKE ANY (ARRAY['cr_tic%', 'grave%']) THEN 4
-       END AS severidad,
+       COALESCE(te.codigo, lower(regexp_replace(trim(te.nombre), '\s+', '_', 'g')))::text AS tipo,
+       s.nivel::numeric AS severidad,
        'eventos'::text AS origen,
-       e.id_evento::text AS id_origen
+       e.id_evento::text AS id_origen,
+       e.id_area,
+       COALESCE(ci.con_lesion, FALSE) AS con_lesion,
+       COALESCE(ci.laboral, TRUE) AS laboral
 FROM public.eventos e
 JOIN public.tipo_eventos te USING (id_tipo_evento)
+LEFT JOIN public.cat_severidad s ON s.id_severidad = e.id_severidad
+LEFT JOIN public.cat_clasificacion_incidente ci ON ci.id_clasificacion_incidente = e.id_clasificacion_incidente
 UNION ALL
 SELECT id_proyecto, fecha, 'reporte_previene', urgencia::numeric,
-       'reportes_previene_intrava', id_local::text
+       'reportes_previene_intrava', id_local::text, id_area, FALSE, TRUE
 FROM public.reportes_previene_intrava
 WHERE id_proyecto IS NOT NULL AND fecha IS NOT NULL
 UNION ALL
-SELECT id_proyecto, fecha, 'reporte_flash', NULL,
-       'reportes_flash_intrava', id_local::text
-FROM public.reportes_flash_intrava
-WHERE id_proyecto IS NOT NULL AND fecha IS NOT NULL
+SELECT r.id_proyecto, r.fecha, 'reporte_flash', NULL,
+       'reportes_flash_intrava', r.id_local::text, r.id_area,
+       COALESCE(ci.con_lesion, FALSE), COALESCE(ci.laboral, TRUE)
+FROM public.reportes_flash_intrava r
+LEFT JOIN public.cat_clasificacion_incidente ci ON ci.id_clasificacion_incidente = r.id_clasificacion_incidente
+WHERE r.id_proyecto IS NOT NULL AND r.fecha IS NOT NULL
 UNION ALL
--- El informe hereda la fecha de su Reporte Flash; la de sincronizacion no es una
--- fecha del evento, asi que un informe sin Flash con fecha no entra a la serie.
-SELECT i.id_proyecto, f.fecha,
-       'informe_investigacion', NULL,
-       'informes_investigacion_intrava', i.id_local::text
+SELECT i.id_proyecto, f.fecha, 'informe_investigacion', NULL,
+       'informes_investigacion_intrava', i.id_local::text, f.id_area, FALSE, TRUE
 FROM public.informes_investigacion_intrava i
-JOIN public.reportes_flash_intrava f
-       ON f.id_intrava = i.id_reporte_flash_intrava
+JOIN public.reportes_flash_intrava f ON f.id_intrava = i.id_reporte_flash_intrava
 WHERE i.id_proyecto IS NOT NULL AND f.fecha IS NOT NULL
 UNION ALL
-SELECT id_proyecto, COALESCE(fecha_deteccion, fecha_creacion),
-       'hallazgo', NULL, 'hallazgos_intrava', id_intrava::text
+SELECT id_proyecto, COALESCE(fecha_deteccion, fecha_creacion), 'hallazgo', NULL,
+       'hallazgos_intrava', id_intrava::text, id_area, FALSE, TRUE
 FROM public.hallazgos_intrava
-WHERE id_proyecto IS NOT NULL
-  AND COALESCE(fecha_deteccion, fecha_creacion) IS NOT NULL;
+WHERE id_proyecto IS NOT NULL AND COALESCE(fecha_deteccion, fecha_creacion) IS NOT NULL;
 
 CREATE OR REPLACE VIEW public.v_proyecto_semanas AS
 WITH rango AS (

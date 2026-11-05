@@ -26,7 +26,7 @@ class TrabajadorRequest extends FormRequest
             'apellido_2' => ['nullable', 'string', 'max:100'],
             'cargo' => ['required', 'string', 'max:100'],
             'estado' => ['nullable', 'string', 'max:30'],
-            'id_tipo_trabajador' => ['required', 'string', 'in:obrero,supervisor,administrativo'],
+            'id_tipo_trabajador' => ['required', 'string', 'in:obrero,supervisor,administrativo,jefe_zona'],
             'id_tipo_obrero' => [
                 'nullable',
                 'integer',

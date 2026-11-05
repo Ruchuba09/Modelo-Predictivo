@@ -90,6 +90,7 @@ class EventoController extends Controller
         return Inertia::render('Eventos/Show', [
             'evento' => $this->servicio->obtener($evento),
             'puedeEditar' => request()->user()->can('update', $evento),
+            'catalogos' => $this->servicio->catalogos(),
         ]);
     }
 

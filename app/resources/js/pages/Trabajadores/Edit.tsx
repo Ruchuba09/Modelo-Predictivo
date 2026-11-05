@@ -165,6 +165,7 @@ const Edit: React.FC<EditProps> = ({ trabajador }) => {
                                 </option>
                                 <option value="obrero">Obrero</option>
                                 <option value="supervisor">Supervisor</option>
+                                <option value="jefe_zona">Jefe de zona</option>
                                 <option value="administrativo">Administrativo</option>
                             </select>
                             {errors.id_tipo_trabajador && (

@@ -31,6 +31,20 @@ class Evento extends Model
         'referencia',
         'estado',
         'severidad',
+        'id_severidad',
+        'id_potencial_severidad',
+        'fecha_ocurrencia',
+        'id_turno',
+        'id_actividad',
+        'id_categoria_evento',
+        'id_clasificacion_incidente',
+        'id_causa_inmediata',
+        'id_causa_basica',
+        'tipo_detencion',
+        'fecha_detencion',
+        'fecha_reinicio',
+        'id_autoriza_reinicio',
+        'dia_ciclo',
         'evidencia',
         'evidencia_cierre',
         'justificacion',
@@ -41,7 +55,10 @@ class Evento extends Model
         'fecha_creacion' => 'datetime',
         'fecha_actualizacion' => 'datetime',
         'fecha_cierre' => 'datetime',
-        'condicion' => 'decimal:2',
+        'condicion' => 'integer',
+        'fecha_ocurrencia' => 'datetime',
+        'fecha_detencion' => 'datetime',
+        'fecha_reinicio' => 'datetime',
         'evidencia' => 'array',
         'evidencia_cierre' => 'array',
         'estado' => EstadoEvento::class,
@@ -80,6 +97,16 @@ class Evento extends Model
     public function trabajadores(): BelongsToMany
     {
         return $this->belongsToMany(Trabajador::class, 'evento_trabajador', 'id_evento', 'id_trabajador');
+    }
+
+    public function actividad(): BelongsTo
+    {
+        return $this->belongsTo(Actividad::class, 'id_actividad', 'id_actividad');
+    }
+
+    public function autorizaReinicio(): BelongsTo
+    {
+        return $this->belongsTo(Trabajador::class, 'id_autoriza_reinicio', 'id_trabajador');
     }
 
     public function evidencias(): HasMany

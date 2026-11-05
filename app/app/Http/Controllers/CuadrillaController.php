@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateCuadrillaRequest;
 use App\Models\Cuadrilla;
 use App\Services\CuadrillaService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class CuadrillaController extends Controller
@@ -15,6 +16,27 @@ class CuadrillaController extends Controller
     public function __construct(
         private readonly CuadrillaService $cuadrillaService
     ) {}
+
+    public function jefesZona(): JsonResponse
+    {
+        return response()->json($this->cuadrillaService->jefesZona());
+    }
+
+    public function miembros(Cuadrilla $cuadrilla): JsonResponse
+    {
+        return response()->json($this->cuadrillaService->miembros($cuadrilla));
+    }
+
+    public function actualizarMiembros(Request $request, Cuadrilla $cuadrilla): JsonResponse
+    {
+        $datos = $request->validate([
+            'trabajadores' => ['present', 'array'],
+            'trabajadores.*' => ['integer', 'exists:obreros,id_trabajador'],
+        ]);
+        $this->cuadrillaService->sincronizarMiembros($cuadrilla, $datos['trabajadores']);
+
+        return response()->json($this->cuadrillaService->miembros($cuadrilla));
+    }
 
     public function index(): JsonResponse
     {

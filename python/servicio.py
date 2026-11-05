@@ -10,13 +10,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from modelo_predictivo import (
     OBJETIVO_INCIDENTES,
+    OBJETIVO_LESIONES,
     generar_analisis_entidades,
     generar_predicciones_cuadrillas,
     generar_predicciones_historicas,
     sin_nulos,
     tipos_disponibles,
 )
-from motor_riesgo import obtener_modelos, semana_actual
+from motor_riesgo import evaluar_predicciones, obtener_modelos, semana_actual
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -62,12 +63,18 @@ def health():
 @app.get("/tipos")
 def listar_tipos():
     try:
-        return {"tipos": [OBJETIVO_INCIDENTES, "todos", *tipos_disponibles(db())]}
+        return {"tipos": [OBJETIVO_INCIDENTES, OBJETIVO_LESIONES, "todos", *tipos_disponibles(db())]}
     except SQLAlchemyError as exc:
         raise HTTPException(
             status_code=503,
             detail="No se pudieron leer las vistas predictivas. Ejecuta primero 01_vistas_modelo_predictivo.sql.",
         ) from exc
+
+
+@app.get("/modelo/evaluacion")
+def evaluacion():
+    """Aciertos de las predicciones publicadas, cuando su horizonte ya terminó."""
+    return {"evaluacion": sin_nulos(evaluar_predicciones(db()))}
 
 
 @app.post("/modelo/entrenar")
@@ -98,7 +105,7 @@ def predicciones(
                        (SELECT count(*) FROM public.cuadrillas) AS cuadrillas_registradas
             """)).mappings().one()
         disponibles = tipos_disponibles(conexion)
-        if tipo_objetivo not in (OBJETIVO_INCIDENTES, "todos") and tipo_objetivo not in disponibles:
+        if tipo_objetivo not in (OBJETIVO_INCIDENTES, OBJETIVO_LESIONES, "todos") and tipo_objetivo not in disponibles:
             raise HTTPException(status_code=422, detail="El tipo de evento seleccionado no existe.")
         motor = obtener_modelos(conexion, tipo_objetivo, horizonte)
         calidad_proyecto = motor["niveles"].get("proyecto", {})

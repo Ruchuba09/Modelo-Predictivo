@@ -12,6 +12,7 @@ final readonly class ActividadData
         public ?string $fechaTermino,
         public ?string $estado,
         public array $camposInformados = [],
+        public ?int $idRiesgoCritico = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -24,6 +25,7 @@ final readonly class ActividadData
             fechaTermino: $data['fecha_termino'] ?? null,
             estado: $data['estado'] ?? null,
             camposInformados: array_keys($data),
+            idRiesgoCritico: isset($data['id_riesgo_critico']) ? (int) $data['id_riesgo_critico'] : null,
         );
     }
 
@@ -36,6 +38,7 @@ final readonly class ActividadData
             'fecha_inicio' => $this->fechaInicio,
             'fecha_termino' => $this->fechaTermino,
             'estado' => $this->estado,
+            'id_riesgo_critico' => $this->idRiesgoCritico,
         ], array_flip($this->camposInformados));
     }
 }

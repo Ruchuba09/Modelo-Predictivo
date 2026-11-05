@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+
 export type CalidadNivel = {
     publicado?: boolean;
     metodo?: string | null;
@@ -110,6 +113,71 @@ export function CalidadModelos({ modelos }: { modelos: Record<string, CalidadNiv
                     </tbody>
                 </table>
             </div>
+        </section>
+    );
+}
+
+type FilaEvaluacion = {
+    nivel: string;
+    tipo_objetivo: string;
+    horizonte: number;
+    predicciones: number;
+    ocurrieron: number;
+    riesgo_predicho: number;
+    tasa_real: number;
+    brier: number;
+    auc_roc?: number;
+};
+
+export function EvaluacionPredicciones() {
+    const [filas, setFilas] = useState<FilaEvaluacion[] | null>(null);
+
+    useEffect(() => {
+        api.get<{ evaluacion: FilaEvaluacion[] }>('/modelo-predictivo/evaluacion')
+            .then(({ data }) => setFilas(data.evaluacion))
+            .catch(() => setFilas([]));
+    }, []);
+
+    if (filas === null) return null;
+
+    return (
+        <section className="bg-white border border-verde-3 rounded-2xl shadow-md p-6">
+            <h2 className="text-lg font-bold text-gris-2">¿Acertó el modelo?</h2>
+            <p className="text-xs text-gris-1 mt-1">
+                Compara lo predicho cada semana con lo que ocurrió después. Si el riesgo predicho y la tasa real se parecen, las probabilidades son confiables.
+            </p>
+            {filas.length === 0 ? (
+                <p className="text-sm text-gris-1 mt-3">Todavía no hay predicciones cuyo plazo haya terminado.</p>
+            ) : (
+                <div className="overflow-x-auto mt-4">
+                    <table className="w-full text-sm">
+                        <thead className="text-xs uppercase tracking-wider text-gris-1 border-b border-verde-3 text-left">
+                            <tr>
+                                <th scope="col" className="px-3 py-2">Entidad</th>
+                                <th scope="col" className="px-3 py-2">Objetivo</th>
+                                <th scope="col" className="px-3 py-2">Semanas</th>
+                                <th scope="col" className="px-3 py-2">Predicciones</th>
+                                <th scope="col" className="px-3 py-2">Riesgo predicho</th>
+                                <th scope="col" className="px-3 py-2">Tasa real</th>
+                                <th scope="col" className="px-3 py-2">AUC-ROC</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-verde-3 text-gris-2">
+                            {filas.map((f) => (
+                                <tr key={`${f.nivel}-${f.tipo_objetivo}-${f.horizonte}`}>
+                                    <th scope="row" className="px-3 py-2 text-left font-bold">{NIVELES[f.nivel] ?? f.nivel}</th>
+                                    <td className="px-3 py-2">{texto(f.tipo_objetivo)}</td>
+                                    <td className="px-3 py-2">{f.horizonte}</td>
+                                    <td className="px-3 py-2">{f.predicciones}</td>
+                                    <td className="px-3 py-2">{porcentaje(f.riesgo_predicho)}</td>
+                                    <td className="px-3 py-2">{porcentaje(f.tasa_real)}</td>
+                                    <td className="px-3 py-2">{f.auc_roc !== undefined ? f.auc_roc.toFixed(2) : '—'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
         </section>
     );
 }

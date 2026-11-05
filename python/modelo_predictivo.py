@@ -9,10 +9,23 @@ import pandas as pd
 # Objetivo por defecto: lo que AVA pide predecir. Hallazgos, Previene y PARE quedan
 # como predictores; incluirlos en el objetivo haria predecir reportes, no incidentes.
 OBJETIVO_INCIDENTES = "incidentes_reales"
-TIPOS_INCIDENTE_REAL = frozenset({"accidente", "incidente", "reporte_flash"})
+OBJETIVO_LESIONES = "lesiones"
+# Se completa con los tipos marcados es_incidente en tipo_eventos (ver actualizar_tipos).
+TIPOS_INCIDENTE_REAL = {"accidente", "incidente", "reporte_flash"}
+SQL_TIPO = "COALESCE(te.codigo, lower(regexp_replace(trim(te.nombre), '[[:space:]]+', '_', 'g')))"
+SQL_CLASIFICACION = "COALESCE(ci.con_lesion, FALSE) AS con_lesion, COALESCE(ci.laboral, TRUE) AS laboral"
 # El informe documenta un incidente ya contado por su Reporte Flash.
 TIPOS_SEGUIMIENTO = frozenset({"informe_investigacion"})
-OBJETIVOS_AGRUPADOS = frozenset({"todos", OBJETIVO_INCIDENTES})
+OBJETIVOS_AGRUPADOS = frozenset({"todos", OBJETIVO_INCIDENTES, OBJETIVO_LESIONES})
+
+
+def actualizar_tipos(engine):
+    """Toma del catalogo que tipos son incidentes; asi un tipo nuevo no exige cambiar el codigo."""
+    from sqlalchemy import text
+
+    incidentes = pd.read_sql(text("SELECT codigo FROM public.tipo_eventos WHERE es_incidente AND codigo IS NOT NULL"), engine)
+    TIPOS_INCIDENTE_REAL.clear()
+    TIPOS_INCIDENTE_REAL.update({"reporte_flash", *incidentes["codigo"]})
 
 def tasa_desde_probabilidad(probabilidad, horizonte):
     p = min(max(float(probabilidad), 0.0001), 0.9999)
@@ -72,8 +85,14 @@ def filtrar_objetivo(tabla, tipo_obj):
     """Filas de `tabla` (con columna tipo) que cuentan para el objetivo."""
     if tipo_obj == "todos":
         return tabla[~tabla["tipo"].isin(TIPOS_SEGUIMIENTO)]
-    if tipo_obj == OBJETIVO_INCIDENTES:
-        return tabla[tabla["tipo"].isin(TIPOS_INCIDENTE_REAL)]
+    if tipo_obj in (OBJETIVO_INCIDENTES, OBJETIVO_LESIONES):
+        filas = tabla["tipo"].isin(TIPOS_INCIDENTE_REAL)
+        # Trayecto y enfermedad comun ocurren fuera de la obra: no se predicen con sus datos.
+        if "laboral" in tabla:
+            filas &= tabla["laboral"].fillna(True).astype(bool)
+        if tipo_obj == OBJETIVO_LESIONES:
+            filas &= tabla["con_lesion"].fillna(False).astype(bool) if "con_lesion" in tabla else False
+        return tabla[filas]
     return tabla[tabla["tipo"] == tipo_obj]
 
 
@@ -102,7 +121,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
 
     proyecto = pd.read_sql(text("""
         SELECT p.id_proyecto, p.nombre, p.id_cliente, p.id_faena,
-               p.fecha_inicio, p.fecha_termino,
+               p.fecha_inicio, p.fecha_termino, c.codigo_historico,
                COALESCE(c.nombre, c.razon_social) AS cliente, f.nombre AS faena
         FROM public.proyectos p
         LEFT JOIN public.clientes c ON c.id_cliente = p.id_cliente
@@ -140,14 +159,15 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
         for nombre, columna in dimensiones_ids.items()
     )
     eventos = pd.read_sql(text(f"""
-        SELECT e.id_evento, e.id_proyecto, {fecha_expr}::date AS fecha,
-               lower(regexp_replace(trim(te.nombre), '[[:space:]]+', '_', 'g')) AS tipo,
+        SELECT e.id_evento, e.id_proyecto, {fecha_expr}::date AS fecha, {SQL_CLASIFICACION},
+               {SQL_TIPO} AS tipo,
                e.id_trabajador, {area_expr} AS id_area,
                {actividad_expr} AS id_actividad, {severidad_expr} AS severidad,
                {dimensiones_select},
                pr.id_cliente, pr.id_faena
         FROM public.eventos e
         JOIN public.tipo_eventos te USING (id_tipo_evento)
+        LEFT JOIN public.cat_clasificacion_incidente ci ON ci.id_clasificacion_incidente = e.id_clasificacion_incidente
         JOIN public.proyectos pr USING (id_proyecto)
         WHERE e.id_proyecto IS NOT NULL AND {fecha_expr} IS NOT NULL
     """), engine)
@@ -155,8 +175,8 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
     # No se inventan asociaciones a personas cuando el origen no las registra.
     extras = pd.read_sql(text("""
         SELECT 'origen:' || u.origen || ':' || u.id_origen AS id_evento,
-               u.id_proyecto, u.fecha, u.tipo, NULL::bigint AS id_trabajador,
-               NULL::bigint AS id_area, NULL::bigint AS id_actividad,
+               u.id_proyecto, u.fecha, u.tipo, u.con_lesion, u.laboral, NULL::bigint AS id_trabajador,
+               u.id_area, NULL::bigint AS id_actividad,
                u.severidad::text AS severidad,
                NULL::bigint AS dimension_supervisor, NULL::bigint AS dimension_equipo,
                NULL::bigint AS dimension_empresa, NULL::bigint AS dimension_turno,
@@ -183,7 +203,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
         participantes = participantes.drop_duplicates(["id_evento", "id_trabajador"])
     except Exception:
         pass
-    participantes = participantes.merge(eventos[["id_evento", "id_proyecto", "fecha", "tipo"]],
+    participantes = participantes.merge(eventos[["id_evento", "id_proyecto", "fecha", "tipo", "con_lesion", "laboral"]],
                                          on="id_evento", how="inner")
     participantes = filtrar_objetivo(participantes, tipo_obj).copy()
     participantes["fecha"] = pd.to_datetime(participantes["fecha"])
@@ -390,6 +410,12 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
     faena_projects = int(same_faena["id_proyecto"].nunique()) if not same_faena.empty else 0
     faena_exposure = exposicion_conjunta("id_faena", p["id_faena"])
     faena_prob, faena_rate, faena_quality = riesgo(faena_n, faena_exposure, faena_n)
+    # Con el cliente enlazado a los logs, su riesgo sale del modelo entrenado con el historial real.
+    prediccion_cliente = (modelos.get("cliente_historico") or {}).get(p.get("codigo_historico"))
+    if prediccion_cliente:
+        cliente.update({"prob_evento": prediccion_cliente["prob"], "metodo": prediccion_cliente["metodo"],
+                        "modelo": prediccion_cliente["modelo"], "factores_principales": prediccion_cliente["factores"]})
+
     faena = {"id_faena": int(p["id_faena"]) if pd.notna(p["id_faena"]) else None,
         "nombre": p.get("faena"),
         "prob_evento": faena_prob, "tipo_objetivo": tipo_obj, "horizonte_semanas": horizonte,
@@ -480,10 +506,10 @@ def generar_predicciones_historicas(engine, tipo_obj=OBJETIVO_INCIDENTES, horizo
         WHERE fecha_inicio IS NOT NULL
     """, engine)
     conteos = pd.read_sql("""
-        SELECT id_proyecto, tipo, count(*) AS eventos
+        SELECT id_proyecto, tipo, con_lesion, laboral, count(*) AS eventos
         FROM public.v_eventos_unificados
         WHERE id_proyecto IS NOT NULL
-        GROUP BY id_proyecto, tipo
+        GROUP BY id_proyecto, tipo, con_lesion, laboral
     """, engine)
     conteos = filtrar_objetivo(conteos, tipo_obj)
     por_proyecto = conteos.groupby("id_proyecto")["eventos"].sum() if not conteos.empty else pd.Series(dtype=float)
@@ -541,25 +567,27 @@ def generar_predicciones_cuadrillas(engine, horizonte=4, tipo_obj=OBJETIVO_INCID
     if asignaciones.empty:
         return []
 
-    eventos = pd.read_sql(text("""
+    eventos = pd.read_sql(text(f"""
         SELECT e.id_evento, e.id_proyecto,
-               lower(regexp_replace(trim(te.nombre), '[[:space:]]+', '_', 'g')) AS tipo,
+               {SQL_TIPO} AS tipo, {SQL_CLASIFICACION},
                e.id_trabajador,
                COALESCE(e.fecha_ocurrencia, e.fecha_creacion)::date AS fecha
         FROM public.eventos e
         JOIN public.tipo_eventos te USING (id_tipo_evento)
+        LEFT JOIN public.cat_clasificacion_incidente ci ON ci.id_clasificacion_incidente = e.id_clasificacion_incidente
         WHERE e.id_proyecto IS NOT NULL
     """), engine)
-    participantes = eventos[["id_evento", "id_proyecto", "tipo", "id_trabajador", "fecha"]].dropna().copy()
+    participantes = eventos[["id_evento", "id_proyecto", "tipo", "con_lesion", "laboral", "id_trabajador", "fecha"]].dropna().copy()
     try:
-        extras = pd.read_sql(text("""
+        extras = pd.read_sql(text(f"""
             SELECT et.id_evento, e.id_proyecto,
-                   lower(regexp_replace(trim(te.nombre), '[[:space:]]+', '_', 'g')) AS tipo,
+                   {SQL_TIPO} AS tipo, {SQL_CLASIFICACION},
                    et.id_trabajador,
                    COALESCE(e.fecha_ocurrencia, e.fecha_creacion)::date AS fecha
             FROM public.evento_trabajador et
             JOIN public.eventos e USING (id_evento)
             JOIN public.tipo_eventos te USING (id_tipo_evento)
+            LEFT JOIN public.cat_clasificacion_incidente ci ON ci.id_clasificacion_incidente = e.id_clasificacion_incidente
         """), engine)
         participantes = pd.concat([participantes, extras], ignore_index=True)
         participantes = participantes.drop_duplicates(["id_evento", "id_proyecto", "id_trabajador"])

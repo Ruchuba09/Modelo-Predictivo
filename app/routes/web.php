@@ -96,6 +96,8 @@ Route::middleware('auth')->group(function () {
         // El CRUD de cuadrillas lo consume el frontend desde /api/v1/cuadrillas.
         Route::inertia('/cuadrillas', 'Cuadrillas/Index')->name('cuadrillas.index');
         Route::inertia('/fuentes-intrava', 'Intrava/Index')->name('intrava.index');
+        Route::inertia('/actividades', 'Actividades/Index')->name('actividades.index');
+        Route::inertia('/exposicion', 'Exposicion/Index')->name('exposicion.index');
     });
 
     // Eventos y reportes

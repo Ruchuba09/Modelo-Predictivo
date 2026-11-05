@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Departamento;
-use App\Models\TipoEvento;
 use App\Models\TipoObrero;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -23,8 +22,18 @@ class CatalogosSeeder extends Seeder
 
     public function run(): void
     {
-        foreach (['Tarjeta PARE', 'Incidente', 'Accidente', 'Hallazgo', 'No conformidad', 'Observacion preventiva'] as $nombre) {
-            TipoEvento::firstOrCreate(['nombre' => $nombre]);
+        foreach ([
+            ['Tarjeta PARE', 'tarjeta_pare', false, true],
+            ['Incidente', 'incidente', true, false],
+            ['Accidente', 'accidente', true, false],
+            ['Hallazgo', 'hallazgo', false, true],
+            ['No conformidad', 'no_conformidad', false, true],
+            ['Observacion preventiva', 'observacion_preventiva', false, true],
+        ] as [$nombre, $codigo, $incidente, $proactivo]) {
+            DB::table('tipo_eventos')->updateOrInsert(
+                ['nombre' => $nombre],
+                ['codigo' => $codigo, 'es_incidente' => $incidente, 'es_proactivo' => $proactivo],
+            );
         }
 
         foreach ([

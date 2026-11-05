@@ -7,6 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 const ETIQUETAS_TIPO_OBJETIVO: Record<string, string> = {
     incidentes_reales: 'Incidentes reales',
+    lesiones: 'Incidentes con lesión',
     todos: 'Todos los eventos',
 };
 
