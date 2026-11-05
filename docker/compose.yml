@@ -47,6 +47,8 @@ services:
       context: ../python
       dockerfile: Dockerfile
     restart: unless-stopped
+    volumes:
+      - modelos_predictivos:/service/models
     environment:
       DATABASE_URL: ${PREDICTIVE_DATABASE_URL:-postgresql+psycopg2://${PG_USERNAME:-postgres}:${PG_PASSWORD:-postgres}@postgres:5432/${PG_DATABASE:-postgres}}
     depends_on:
@@ -142,6 +144,7 @@ services:
       retries: 10
 
 volumes:
+  modelos_predictivos:
   laravel_vendor:
   laravel_storage:
   laravel_cache:

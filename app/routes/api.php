@@ -103,6 +103,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($gestion, $admin, $
             Route::post('exposicion/asistencia', [ExposicionController::class, 'guardarAsistencia'])->name('exposicion.asistencia.guardar');
             Route::get('modelo-predictivo/entidades', [ModeloPredictivoController::class, 'entidades'])->name('modelo-predictivo.entidades');
             Route::get('modelo-predictivo/evaluacion', [ModeloPredictivoController::class, 'evaluacion'])->name('modelo-predictivo.evaluacion');
+            Route::get('modelo-predictivo/red-neuronal', [ModeloPredictivoController::class, 'redNeuronal'])->name('modelo-predictivo.red-neuronal');
+            Route::post('modelo-predictivo/red-neuronal/entrenar', [ModeloPredictivoController::class, 'entrenarRedNeuronal'])->name('modelo-predictivo.red-neuronal.entrenar');
+            Route::get('proyectos/{proyecto}/red-neuronal', [ModeloPredictivoController::class, 'prediccionRedNeuronal'])->whereNumber('proyecto')->name('proyectos.red-neuronal');
             Route::apiResource('cuadrillas', CuadrillaController::class)->whereNumber('cuadrilla');
             Route::apiResource('proyectos', ProyectoController::class);
             Route::apiResource('actividades', ActividadController::class)

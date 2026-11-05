@@ -67,6 +67,43 @@ class ModeloPredictivoController extends Controller
         ]);
     }
 
+    public function redNeuronal(Request $request): JsonResponse
+    {
+        return $this->solicitarModelo('/red-neuronal', $this->horizonteValidado($request));
+    }
+
+    public function entrenarRedNeuronal(Request $request): JsonResponse
+    {
+        $parametros = $this->horizonteValidado($request);
+
+        try {
+            // El servicio entrena en segundo plano y responde de inmediato.
+            $response = Http::acceptJson()
+                ->timeout(30)
+                ->post(rtrim((string) config('services.predictive_model.url'), '/') . '/red-neuronal/entrenar?' . http_build_query($parametros));
+        } catch (ConnectionException) {
+            return response()->json([
+                'message' => 'El servicio del modelo predictivo no está disponible.',
+            ], 503);
+        }
+
+        return response()->json($response->json() ?? [
+            'message' => 'El servicio del modelo predictivo devolvió una respuesta inválida.',
+        ], $response->status());
+    }
+
+    public function prediccionRedNeuronal(Request $request, Proyecto $proyecto): JsonResponse
+    {
+        return $this->solicitarModelo('/red-neuronal/proyectos/' . $proyecto->getKey(), $this->horizonteValidado($request));
+    }
+
+    private function horizonteValidado(Request $request): array
+    {
+        $filtros = $request->validate(['horizonte' => ['sometimes', 'integer', 'between:1,52']]);
+
+        return ['horizonte' => $filtros['horizonte'] ?? 4];
+    }
+
     private function solicitarModelo(string $ruta, array $parametros = []): JsonResponse
     {
         try {

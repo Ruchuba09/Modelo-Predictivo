@@ -17,6 +17,7 @@ from modelo_predictivo import (
     sin_nulos,
     tipos_disponibles,
 )
+import red_neuronal
 from motor_riesgo import evaluar_predicciones, obtener_modelos, predicciones_por_entidad, semana_actual
 
 
@@ -100,6 +101,31 @@ def entrenar_modelos(
     """Reentrena aunque los datos no hayan cambiado y devuelve la calidad de cada nivel."""
     motor = obtener_modelos(db(), tipo_objetivo, horizonte, forzar=True)
     return sin_nulos({"modelos": motor["niveles"], "historial": motor.get("historial")})
+
+
+@app.get("/red-neuronal")
+def estado_red_neuronal(horizonte: int = Query(default=4, ge=1, le=52)):
+    """Estado del entrenamiento y evaluación de la red, comparada con sus referencias."""
+    return sin_nulos(red_neuronal.estado(horizonte))
+
+
+@app.post("/red-neuronal/entrenar", status_code=202)
+def entrenar_red_neuronal(horizonte: int = Query(default=4, ge=1, le=52)):
+    """Inicia el entrenamiento en segundo plano; su avance se consulta con GET /red-neuronal."""
+    red_neuronal.iniciar_entrenamiento(db(), horizonte)
+    return sin_nulos(red_neuronal.estado(horizonte))
+
+
+@app.get("/red-neuronal/proyectos/{id_proyecto}")
+def prediccion_red_neuronal(id_proyecto: int, horizonte: int = Query(default=4, ge=1, le=52)):
+    """Probabilidad de cada tipo de evento y de cada entidad, usando solo datos a nivel de proyecto."""
+    try:
+        resultado = red_neuronal.predecir_proyecto(db(), id_proyecto, horizonte)
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudo calcular la predicción de la red neuronal.") from exc
+    if resultado is None:
+        raise HTTPException(status_code=409, detail="La red neuronal aún no está entrenada para este horizonte.")
+    return sin_nulos(resultado)
 
 
 @app.get("/predicciones")
