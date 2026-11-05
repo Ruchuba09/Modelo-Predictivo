@@ -30,6 +30,19 @@ class ModeloPredictivoController extends Controller
         return $this->solicitarModelo('/predicciones', $parametros);
     }
 
+    public function entidades(Request $request): JsonResponse
+    {
+        $filtros = $request->validate([
+            'tipo_objetivo' => ['sometimes', 'string', 'max:100'],
+            'horizonte' => ['sometimes', 'integer', 'between:1,52'],
+        ]);
+
+        return $this->solicitarModelo('/predicciones/entidades', [
+            'tipo_objetivo' => $filtros['tipo_objetivo'] ?? 'incidentes_reales',
+            'horizonte' => $filtros['horizonte'] ?? 4,
+        ]);
+    }
+
     public function evaluacion(): JsonResponse
     {
         return $this->solicitarModelo('/modelo/evaluacion');

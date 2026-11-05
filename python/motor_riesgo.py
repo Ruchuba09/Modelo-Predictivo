@@ -37,6 +37,8 @@ from threadpoolctl import threadpool_limits
 
 from modelo_predictivo import (
     OBJETIVO_INCIDENTES,
+    acotar_al_proyecto,
+    tasa_desde_probabilidad,
     SQL_CLASIFICACION,
     SQL_TIPO,
     TIPOS_SEGUIMIENTO,
@@ -406,11 +408,21 @@ def predecir(ajuste, resumen, X, meta, hoy=None):
     filas = meta[actuales]
     if filas.empty or ajuste is None:
         return {}
+
+    def indicadores(indice):
+        fila = X.loc[indice]
+        valores = {clave: fila.get(columna) for clave, columna in {
+            "incidentes_13_semanas": "objetivo_u13", "reportes_preventivos_13_semanas": "proactivo_u13",
+            "pendientes_de_cierre": "abiertos", "semanas_desde_ultimo_incidente": "sem_desde_ultimo",
+            "personas_expuestas": "tamano",
+        }.items()}
+        return {clave: None if pd.isna(valor) else round(float(valor), 1) for clave, valor in valores.items()}
+
     if "tasas" in ajuste:
         return {
-            int(e): {"prob": round(float(ajuste["tasas"].get(e, ajuste["prior"])), 6), "metodo": resumen["metodo"],
-                     "modelo": resumen["modelo"], "factores": []}
-            for e in filas["entidad"]
+            int(fila.entidad): {"prob": round(float(ajuste["tasas"].get(fila.entidad, ajuste["prior"])), 6), "metodo": resumen["metodo"],
+                                "modelo": resumen["modelo"], "factores": [], "indicadores": indicadores(fila.Index)}
+            for fila in filas.itertuples()
         }
     Xa = X.loc[filas.index, ajuste["columnas"]]
     crudas = ajuste["modelo"].predict_proba(Xa)[:, 1]
@@ -434,6 +446,7 @@ def predecir(ajuste, resumen, X, meta, hoy=None):
                  "efecto": round(float(efectos[v][i]), 4)}
                 for v in principales if abs(efectos[v][i]) >= 0.002
             ],
+            "indicadores": indicadores(filas.index[i]),
         }
     return salida
 
@@ -543,7 +556,7 @@ def huella_datos(engine, tipo_obj, horizonte, hoy=None):
         "SELECT count(*), max(fecha_inicio)::text FROM public.trabajadores_cuadrillas",
         "SELECT count(*), max(codigo) FROM public.tipo_eventos WHERE es_incidente",
     ]
-    estado = [str(semana_actual(hoy).date()), tipo_obj, horizonte, 3]
+    estado = [str(semana_actual(hoy).date()), tipo_obj, horizonte, 4]
     with engine.connect() as conexion:
         estado += [list(conexion.execute(text(c)).one()) for c in consultas]
         if inspect(engine).has_table("incidentes_historicos"):
@@ -804,6 +817,126 @@ def obtener_modelos(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4, forzar=Fa
         except OSError:
             pass  # Sin disco disponible, el resultado sigue en memoria.
         return resultado
+
+
+SQL_NOMBRE_PERSONA = "trim(concat_ws(' ', pe.nombre_1, pe.apellido_1))"
+SQL_VIGENTE = """p.fecha_inicio <= CURRENT_DATE AND (p.fecha_termino IS NULL OR p.fecha_termino >= CURRENT_DATE)"""
+
+
+def _contexto_entidades(engine):
+    """Nombre y ubicacion de cada entidad vigente, por proyecto."""
+    return {
+        "proyecto": _leer(engine, f"""
+            SELECT p.id_proyecto AS id, p.nombre, p.id_proyecto, p.nombre AS proyecto,
+                   COALESCE(c.nombre, c.razon_social) AS cliente, f.nombre AS faena, p.num_contrato AS detalle
+            FROM public.proyectos p
+            LEFT JOIN public.clientes c ON c.id_cliente = p.id_cliente
+            LEFT JOIN public.faenas f ON f.id_faena = p.id_faena
+            WHERE {SQL_VIGENTE}
+        """),
+        "area": _leer(engine, f"""
+            SELECT a.id_area AS id, COALESCE(a.descripcion, a.codigo_area) AS nombre, p.id_proyecto, p.nombre AS proyecto,
+                   COALESCE(c.nombre, c.razon_social) AS cliente, f.nombre AS faena, a.codigo_area AS detalle
+            FROM public.areas a
+            JOIN public.proyectos p ON p.id_faena = a.id_faena
+            LEFT JOIN public.clientes c ON c.id_cliente = p.id_cliente
+            LEFT JOIN public.faenas f ON f.id_faena = p.id_faena
+            WHERE {SQL_VIGENTE}
+        """),
+        "cuadrilla": _leer(engine, f"""
+            SELECT DISTINCT ON (cu.id_cuadrilla) cu.id_cuadrilla AS id, cu.numero_cuadrilla AS nombre, p.id_proyecto, p.nombre AS proyecto,
+                   COALESCE(c.nombre, c.razon_social) AS cliente, f.nombre AS faena,
+                   {SQL_NOMBRE_PERSONA} AS detalle
+            FROM public.cuadrillas cu
+            JOIN public.asignaciones asg ON asg.id_cuadrilla = cu.id_cuadrilla
+            JOIN public.proyectos p ON p.id_proyecto = asg.id_proyecto
+            LEFT JOIN public.clientes c ON c.id_cliente = p.id_cliente
+            LEFT JOIN public.faenas f ON f.id_faena = p.id_faena
+            LEFT JOIN public.trabajadores t ON t.id_trabajador = cu.id_supervisor
+            LEFT JOIN public.personas pe ON pe.id_persona = t.id_persona
+            WHERE {SQL_VIGENTE} AND COALESCE(asg.fecha_termino, 'infinity'::date) >= CURRENT_DATE
+            ORDER BY cu.id_cuadrilla, asg.fecha_inicio DESC
+        """),
+        "trabajador": _leer(engine, f"""
+            SELECT DISTINCT ON (o.id_trabajador) o.id_trabajador AS id, {SQL_NOMBRE_PERSONA} AS nombre, p.id_proyecto, p.nombre AS proyecto,
+                   COALESCE(c.nombre, c.razon_social) AS cliente, f.nombre AS faena,
+                   concat_ws(' · ', t.cargo, cu.numero_cuadrilla) AS detalle
+            FROM public.obreros o
+            JOIN public.trabajadores t ON t.id_trabajador = o.id_trabajador
+            JOIN public.personas pe ON pe.id_persona = t.id_persona
+            JOIN public.cuadrillas cu ON cu.id_cuadrilla = o.id_cuadrilla
+            JOIN public.asignaciones asg ON asg.id_cuadrilla = cu.id_cuadrilla
+            JOIN public.proyectos p ON p.id_proyecto = asg.id_proyecto
+            LEFT JOIN public.clientes c ON c.id_cliente = p.id_cliente
+            LEFT JOIN public.faenas f ON f.id_faena = p.id_faena
+            WHERE {SQL_VIGENTE} AND COALESCE(asg.fecha_termino, 'infinity'::date) >= CURRENT_DATE
+            ORDER BY o.id_trabajador, asg.fecha_inicio DESC
+        """),
+        "actividad": _leer(engine, f"""
+            SELECT ac.id_actividad AS id, ac.nombre, p.id_proyecto, p.nombre AS proyecto,
+                   COALESCE(c.nombre, c.razon_social) AS cliente, f.nombre AS faena,
+                   concat_ws(' · ', rc.nombre, cu.numero_cuadrilla) AS detalle
+            FROM public.actividades ac
+            JOIN public.asignaciones asg USING (id_asignacion)
+            JOIN public.cuadrillas cu ON cu.id_cuadrilla = asg.id_cuadrilla
+            JOIN public.proyectos p ON p.id_proyecto = asg.id_proyecto
+            LEFT JOIN public.clientes c ON c.id_cliente = p.id_cliente
+            LEFT JOIN public.faenas f ON f.id_faena = p.id_faena
+            LEFT JOIN public.cat_riesgo_critico rc ON rc.id_riesgo_critico = ac.id_riesgo_critico
+            WHERE {SQL_VIGENTE}
+        """),
+    }
+
+
+def _combinar(filas, campo):
+    """Riesgo de un cliente o faena: al menos un incidente en alguno de sus proyectos."""
+    grupos = {}
+    for fila in filas:
+        if fila.get(campo):
+            grupos.setdefault(fila[campo], []).append(fila)
+    return [
+        {"id": indice, "nombre": nombre, "proyecto": None, "id_proyecto": None, "cliente": None, "faena": None,
+         "detalle": f"{len(grupo)} {'proyecto vigente' if len(grupo) == 1 else 'proyectos vigentes'}",
+         "prob_evento": round(1 - float(np.prod([1 - f["prob_evento"] for f in grupo])), 6),
+         "metodo": "combinacion", "modelo": "Combinación de sus proyectos", "factores": [],
+         "indicadores": {"incidentes_13_semanas": sum(f["indicadores"].get("incidentes_13_semanas") or 0 for f in grupo),
+                         "reportes_preventivos_13_semanas": sum(f["indicadores"].get("reportes_preventivos_13_semanas") or 0 for f in grupo),
+                         "pendientes_de_cierre": sum(f["indicadores"].get("pendientes_de_cierre") or 0 for f in grupo)}}
+        for indice, (nombre, grupo) in enumerate(sorted(grupos.items()), start=1)
+    ]
+
+
+def predicciones_por_entidad(engine, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4):
+    """Todas las predicciones vigentes con nombre y contexto, listas para mostrar y filtrar."""
+    motor = obtener_modelos(engine, tipo_obj, horizonte)
+    contexto = _contexto_entidades(engine)
+    proyectos = motor["predicciones"].get("proyecto", {})
+    niveles = {}
+    for nivel, tabla in contexto.items():
+        predicciones = motor["predicciones"].get(nivel, {})
+        filas = []
+        for registro in tabla.to_dict("records"):
+            prediccion = predicciones.get(int(registro["id"]))
+            if prediccion:
+                filas.append({
+                    **{k: (None if pd.isna(v) else v) for k, v in registro.items()},
+                    "id": int(registro["id"]), "id_proyecto": int(registro["id_proyecto"]),
+                    "prob_evento": prediccion["prob"], "metodo": prediccion["metodo"], "modelo": prediccion["modelo"],
+                    "factores": prediccion["factores"], "indicadores": prediccion.get("indicadores", {}),
+                    "tasa_semanal_suavizada": float(tasa_desde_probabilidad(prediccion["prob"], horizonte)),
+                })
+        # Las partes de un proyecto no pueden sumar mas riesgo que el proyecto.
+        if nivel != "proyecto":
+            for id_proyecto, prediccion in proyectos.items():
+                acotar_al_proyecto([f for f in filas if f["id_proyecto"] == id_proyecto],
+                                   tasa_desde_probabilidad(prediccion["prob"], horizonte), horizonte)
+        niveles[nivel] = sorted(filas, key=lambda f: f["prob_evento"], reverse=True)
+    for nivel, campo in (("cliente", "cliente"), ("faena", "faena")):
+        niveles[nivel] = sorted(_combinar(niveles["proyecto"], campo), key=lambda f: f["prob_evento"], reverse=True)
+    return {
+        "tipo_objetivo": tipo_obj, "horizonte_semanas": horizonte, "semana": str(semana_actual().date()),
+        "niveles": niveles, "modelos": motor["niveles"], "historial": motor.get("historial"),
+    }
 
 
 def registrar_predicciones(engine, resultado, tipo_obj, horizonte, hoy=None):

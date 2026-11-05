@@ -16,6 +16,7 @@ SQL_TIPO = "COALESCE(te.codigo, lower(regexp_replace(trim(te.nombre), '[[:space:
 SQL_CLASIFICACION = "COALESCE(ci.con_lesion, FALSE) AS con_lesion, COALESCE(ci.laboral, TRUE) AS laboral"
 # El informe documenta un incidente ya contado por su Reporte Flash.
 TIPOS_SEGUIMIENTO = frozenset({"informe_investigacion"})
+NOMBRES_NIVEL_SEVERIDAD = {"Grave": "Crítica"}
 OBJETIVOS_AGRUPADOS = frozenset({"todos", OBJETIVO_INCIDENTES, OBJETIVO_LESIONES})
 
 
@@ -107,6 +108,27 @@ def tipos_disponibles(engine):
         "SELECT DISTINCT tipo FROM public.v_conteo_semanal_tipo ORDER BY tipo", engine
     )
     return filas["tipo"].dropna().tolist()
+
+
+def _nombres_dimensiones(engine):
+    """Traduce los identificadores de las dimensiones operativas a nombres legibles."""
+    from sqlalchemy import text
+
+    consultas = {
+        "supervisor": """SELECT s.id_trabajador AS id, trim(concat_ws(' ', pe.nombre_1, pe.apellido_1)) AS nombre
+                         FROM public.supervisores s JOIN public.trabajadores t USING (id_trabajador)
+                         JOIN public.personas pe USING (id_persona)""",
+        "turno": "SELECT id_turno AS id, nombre FROM public.cat_turno",
+        "categoria": "SELECT id_categoria_evento AS id, nombre FROM public.cat_categoria_evento",
+        "causa_inmediata": "SELECT id_causa AS id, nombre FROM public.cat_causa",
+        "causa_basica": "SELECT id_causa AS id, nombre FROM public.cat_causa",
+        "empresa": "SELECT id_empresa AS id, razon_social AS nombre FROM public.empresas",
+        "equipo": "SELECT id_equipo AS id, codigo AS nombre FROM public.equipos",
+    }
+    return {
+        dimension: dict(zip(tabla["id"].astype(int), tabla["nombre"]))
+        for dimension, tabla in ((d, pd.read_sql(text(sql), engine)) for d, sql in consultas.items())
+    }
 
 
 def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES, horizonte=4,
@@ -354,6 +376,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
     acotar(areas)
 
     dimensiones_operativas = []
+    nombres_dimension = _nombres_dimensiones(engine)
     eventos_proyecto = eventos_obj[eventos_obj["id_proyecto"] == id_proyecto]
     for nombre, columna in [(f"dimension_{nombre}", f"dimension_{nombre}") for nombre in dimensiones_ids]:
         valores = eventos_proyecto[columna].dropna().value_counts() if not eventos_proyecto.empty else pd.Series(dtype=int)
@@ -361,7 +384,8 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
             prob, tasa, calidad = riesgo(int(n), semanas_proyecto, int(n), 1 / len(valores))
             dimensiones_operativas.append({
                 "dimension": nombre.replace("dimension_", ""),
-                "valor": int(valor) if isinstance(valor, (int, np.integer)) else str(valor),
+                "valor": int(valor),
+                "nombre": nombres_dimension.get(nombre.replace("dimension_", ""), {}).get(int(valor), f"#{int(valor)}"),
                 "prob_evento": prob, "tipo_objetivo": tipo_obj, "horizonte_semanas": horizonte,
                 "historico_eventos": int(n), "tasa_semanal_suavizada": tasa, "evidencia": calidad,
                 "factores": {"id_proyecto": int(id_proyecto), "probabilidad_base_proyecto": round(base, 6),
@@ -372,7 +396,7 @@ def generar_analisis_entidades(engine, id_proyecto, tipo_obj=OBJETIVO_INCIDENTES
         for valor, n in valores_severidad.items():
             prob, tasa, calidad = riesgo(int(n), semanas_proyecto, int(n), 1 / len(valores_severidad))
             dimensiones_operativas.append({
-                "dimension": "severidad", "valor": valor, "prob_evento": prob,
+                "dimension": "severidad", "valor": valor, "nombre": NOMBRES_NIVEL_SEVERIDAD.get(valor, valor), "prob_evento": prob,
                 "tipo_objetivo": tipo_obj, "horizonte_semanas": horizonte,
                 "historico_eventos": int(n), "tasa_semanal_suavizada": tasa, "evidencia": calidad,
                 "factores": {"id_proyecto": int(id_proyecto), "probabilidad_base_proyecto": round(base, 6)},

@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { Link } from '@inertiajs/react';
 import { etiquetaTipo } from '../lib/utils';
+import { DetalleRiesgo, ListaFactores } from './modelo/Elementos';
+import type { Factor } from '../lib/modeloPredictivo';
 
 type Prediction = {
     id_proyecto: number;
     semana: string;
     prob_evento: number;
     variables?: Record<string, string | number | boolean | null>;
+    factores_principales?: Factor[];
 };
 type EntityAnalysis = { entidades: Record<string, unknown>; contexto: Record<string, unknown> };
 
@@ -35,7 +39,7 @@ export default function PrediccionProyecto({ idProyecto }: { idProyecto: number 
             params: { tipo_objetivo: tipo, horizonte },
         })
             .then(({ data }) => {
-                if (vigente) setPrediccion(data.predicciones?.[0] ?? null);
+                if (vigente) setPrediccion(data.predicciones?.find((p) => p.id_proyecto === idProyecto) ?? null);
                 if (vigente) setAnalisis(data.analisis_entidades ?? null);
             })
             .catch((err) => {
@@ -91,14 +95,12 @@ export default function PrediccionProyecto({ idProyecto }: { idProyecto: number 
                             <span className="font-bold text-gris-2">Dentro de {horizonte} {horizonte === 1 ? 'semana' : 'semanas'}</span>
                             <p className="text-xs mt-1">Semana base: {prediccion.semana}</p>
                         </div>
-                        {prediccion.variables && <details className="sm:col-span-3 text-xs text-gris-1">
-                            <summary className="cursor-pointer font-semibold">Variables consideradas por el modelo</summary>
-                            <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
-                                {Object.entries(prediccion.variables).map(([nombre, valor]) => (
-                                    <div key={nombre} className="flex gap-1"><dt className="font-semibold">{nombre}:</dt><dd>{valor === null ? 'Sin dato' : String(valor)}</dd></div>
-                                ))}
-                            </dl>
-                        </details>}
+                        {prediccion.factores_principales && prediccion.factores_principales.length > 0 && (
+                            <div className="sm:col-span-3">
+                                <p className="text-xs font-bold text-gris-2 mb-1.5">Qué mueve este riesgo</p>
+                                <ListaFactores factores={prediccion.factores_principales} />
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <p className="text-sm text-gris-1">No hay predicción disponible para este proyecto.</p>
@@ -106,18 +108,21 @@ export default function PrediccionProyecto({ idProyecto }: { idProyecto: number 
             </div>
             {!cargando && !error && analisis && <div className="mt-4 border-t border-verde-3 pt-4">
                 <h3 className="font-bold text-gris-2">Riesgo por entidad del proyecto</h3>
-                <p className="mt-1 text-xs text-gris-1">Las estimaciones se suavizan hacia el riesgo del proyecto; revisa nivel de evidencia y exposición estimada.</p>
+                <p className="mt-1 text-xs text-gris-1">
+                    Revisa el nivel de evidencia y la exposición de cada estimación.{' '}
+                    <Link href={`/modelo-predictivo/entidades?id_proyecto=${idProyecto}&nivel=trabajador`} className="font-bold text-verde-6 hover:underline">Abrir en Riesgo por entidad</Link>
+                </p>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                     {Object.entries(analisis.entidades).map(([clave, valor]) => {
                         const items = Array.isArray(valor) ? valor as Array<Record<string, unknown>> : [valor as Record<string, unknown>];
-                        const titulos: Record<string, string> = { trabajadores: 'Trabajadores', trabajador_actividad: 'Trabajador por actividad', cuadrillas: 'Cuadrillas', actividades: 'Actividades', areas: 'Áreas', faena: 'Faena', cliente: 'Cliente' };
+                        const titulos: Record<string, string> = { trabajadores: 'Trabajadores', trabajador_actividad: 'Trabajador por actividad', cuadrillas: 'Cuadrillas', actividades: 'Actividades', areas: 'Áreas', dimensiones_operativas: 'Factores operativos', faena: 'Faena', cliente: 'Cliente' };
                         return <details key={clave} className="rounded-lg border border-verde-3/70 p-3 text-xs text-gris-1">
                             <summary className="cursor-pointer font-bold text-gris-2">{titulos[clave] ?? clave} ({items.length})</summary>
                             <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
                                 {items.map((item, index) => <div key={`${clave}-${index}`} className="rounded-md bg-verde-1 p-2">
-                                    <p className="font-semibold">{String(item.nombre_trabajador ?? item.nombre ?? item.actividad ?? `${clave} ${item.id_trabajador ?? item.id_cuadrilla ?? item.id_area ?? ''}`)} · {Math.round(Number(item.prob_evento ?? 0) * 100)}%</p>
+                                    <p className="font-semibold">{clave === 'dimensiones_operativas' ? `${String(item.dimension).replace(/_/g, ' ')}: ${String(item.nombre ?? item.valor)}` : String(item.nombre_trabajador ?? item.nombre ?? item.actividad ?? `${titulos[clave] ?? clave} ${item.id_trabajador ?? item.id_cuadrilla ?? item.id_area ?? ''}`)} · {Math.round(Number(item.prob_evento ?? 0) * 100)}%</p>
                                     <p>Historial: {String(item.historico_eventos ?? item.historico_eventos_asociados ?? 0)} · evidencia: {String(item.evidencia ?? 'baja')}</p>
-                                    <details className="mt-1"><summary className="cursor-pointer">Información completa</summary><pre className="mt-1 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(item, null, 2)}</pre></details>
+                                    <details className="mt-1"><summary className="cursor-pointer">Ver detalle</summary><div className="mt-1"><DetalleRiesgo registro={item} /></div></details>
                                 </div>)}
                             </div>
                         </details>;

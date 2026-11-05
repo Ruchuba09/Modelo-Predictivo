@@ -4,7 +4,9 @@ import { Activity, RefreshCw, Sparkles } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { api } from '@/lib/api';
 import { etiquetaTipo } from '@/lib/utils';
-import { CalidadModelos, EvaluacionPredicciones, HistorialReal, type CalidadNivel, type Historial } from '@/components/CalidadModelos';
+import type { CalidadNivel, Historial } from '@/components/CalidadModelos';
+import { BarraRiesgo, DetalleRiesgo } from '@/components/modelo/Elementos';
+import { NIVELES_ENTIDAD, porcentaje, useEntidades } from '@/lib/modeloPredictivo';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 type Proyecto = { id_proyecto: number; nombre: string };
@@ -137,6 +139,7 @@ export default function Index() {
         ? Math.round(resultados.reduce((total, item) => total + item.prob_evento, 0) / resultados.length * 100)
         : 0;
     const maxima = resultados[0];
+    const { datos: entidades } = useEntidades(tipo, horizonte);
     const eventoEstimado: EventoEstimado | null = idProyecto === 'todos'
         ? metadatos?.analisis_global?.proximo_evento ?? null
         : analisis?.contexto.evento_estimado ?? null;
@@ -229,9 +232,29 @@ export default function Index() {
                     )}
                 </section>
 
-                {generada && metadatos?.modelos && <CalidadModelos modelos={metadatos.modelos} />}
-                {generada && <EvaluacionPredicciones />}
-                {generada && metadatos?.historial && <HistorialReal historial={metadatos.historial} horizonte={horizonte} />}
+                {entidades && (
+                    <section aria-label="Mayor riesgo por tipo de entidad" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {NIVELES_ENTIDAD.filter((n) => ['area', 'cuadrilla', 'trabajador', 'actividad'].includes(n.clave)).map((n) => {
+                            const filas = entidades.niveles[n.clave] ?? [];
+                            const mayor = filas[0];
+                            return (
+                                <Link key={n.clave} href={`/modelo-predictivo/entidades?nivel=${n.clave}`} className="bg-white border border-verde-3 rounded-2xl p-5 shadow-sm hover:border-verde-5 transition-colors">
+                                    <p className="text-xs uppercase tracking-wider text-gris-1 font-bold">{n.singular} de mayor riesgo</p>
+                                    {mayor ? (
+                                        <>
+                                            <p className="text-sm font-bold text-gris-2 mt-2 truncate" title={mayor.nombre}>{mayor.nombre}</p>
+                                            <p className="text-xs text-gris-1 truncate">{mayor.proyecto}</p>
+                                            <p className="text-2xl font-black text-gris-2 mt-1">{porcentaje(mayor.prob_evento)}</p>
+                                            <p className="text-xs font-bold text-verde-6 mt-1">Ver los {filas.length} →</p>
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-gris-1 mt-2">Sin datos suficientes para un modelo.</p>
+                                    )}
+                                </Link>
+                            );
+                        })}
+                    </section>
+                )}
 
                 {generada && resultados.length > 0 && (
                     <>
@@ -301,19 +324,13 @@ export default function Index() {
                                     </thead>
                                     <tbody className="divide-y divide-verde-3/70">
                                         {resultados.map((item) => {
-                                            const porcentaje = Math.round(item.prob_evento * 100);
                                             return (
                                                 <tr key={item.id_proyecto} className="hover:bg-verde-1/60 transition-colors">
                                                     <td className="px-6 py-4 text-sm font-semibold text-gris-2">
                                                         {item.nombre_proyecto ?? proyectosPorId.get(item.id_proyecto) ?? `Proyecto #${item.id_proyecto}`}
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="w-12 text-sm font-black text-verde-6">{porcentaje}%</span>
-                                                            <div className="h-2 w-32 rounded-full bg-verde-2 overflow-hidden" role="progressbar" aria-label={`Probabilidad ${porcentaje}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={porcentaje}>
-                                                                <div className="h-full rounded-full bg-verde-5" style={{ width: `${porcentaje}%` }} />
-                                                            </div>
-                                                        </div>
+                                                        <BarraRiesgo probabilidad={item.prob_evento} />
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-gris-1">{item.semana}</td>
                                                     <td className="px-6 py-4">
@@ -328,14 +345,7 @@ export default function Index() {
                                                                     ))}
                                                                 </ul>
                                                             )}
-                                                            <details className="text-xs text-gris-1">
-                                                                <summary className="cursor-pointer font-semibold">Variables del modelo</summary>
-                                                                {item.variables && <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
-                                                                    {Object.entries(item.variables).map(([nombre, valor]) => (
-                                                                        <div key={nombre} className="flex gap-1"><dt className="font-semibold">{nombre}:</dt><dd>{valor === null ? 'Sin dato' : String(valor)}</dd></div>
-                                                                    ))}
-                                                                </dl>}
-                                                            </details>
+                                                            <Link href={`/modelo-predictivo/entidades?id_proyecto=${item.id_proyecto}&nivel=trabajador`} className="text-xs font-bold text-verde-6 hover:underline">Ver sus trabajadores y áreas</Link>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -360,7 +370,10 @@ export default function Index() {
                     {Object.entries(analisis.entidades).map(([clave, valor]) => {
                         const registros = Array.isArray(valor) ? valor as Array<Record<string, unknown>> : [valor as Record<string, unknown>];
                         const registrosGrafico = registros.slice(0, 20);
-                        const titulos: Record<string, string> = { trabajadores: 'Trabajadores', trabajador_actividad: 'Trabajador por actividad', cuadrillas: 'Configuraciones de cuadrilla', actividades: 'Actividades', areas: 'Áreas', faena: 'Historial de la faena', cliente: 'Historial del cliente' };
+                        const titulos: Record<string, string> = { trabajadores: 'Trabajadores', trabajador_actividad: 'Trabajador por actividad', cuadrillas: 'Cuadrillas', actividades: 'Actividades', areas: 'Áreas', dimensiones_operativas: 'Factores operativos', faena: 'Historial de la faena', cliente: 'Historial del cliente' };
+                        const nombreDe = (registro: Record<string, unknown>, index: number) => clave === 'dimensiones_operativas'
+                            ? `${String(registro.dimension).replace(/_/g, ' ')}: ${String(registro.nombre ?? registro.valor)}`
+                            : String(registro.nombre_trabajador ?? registro.nombre ?? registro.actividad ?? `${titulos[clave] ?? clave} ${registro.id_trabajador ?? registro.id_cuadrilla ?? registro.id_area ?? index + 1}`);
                         return <section key={clave} className="bg-white border border-verde-3 rounded-2xl p-6 shadow-sm">
                             <h3 className="text-base font-bold text-gris-2">{titulos[clave] ?? clave}</h3>
                             {registros.length === 0 ? <p className="mt-3 text-sm text-gris-1">No hay entidades activas con datos para esta categoría.</p> :
@@ -368,7 +381,7 @@ export default function Index() {
                                     <div className="h-64 w-full" aria-label={`Gráfico de probabilidad: ${titulos[clave] ?? clave}`}>
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart data={registrosGrafico.map((registro, index) => ({
-                                                nombre: String(registro.nombre_trabajador ?? registro.nombre ?? registro.actividad ?? `${clave} ${registro.id_trabajador ?? registro.id_cuadrilla ?? registro.id_area ?? index}`),
+                                                nombre: nombreDe(registro, index),
                                                 probabilidad: Number(registro.prob_evento ?? 0),
                                             }))} margin={{ top: 12, right: 12, left: 0, bottom: 48 }}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -386,13 +399,13 @@ export default function Index() {
                                             </tr></thead>
                                             <tbody className="divide-y divide-verde-3/70">{registros.map((registro, index) => {
                                                 const id = registro.id_trabajador ?? registro.id_actividad ?? registro.id_cuadrilla ?? registro.id_area ?? registro.id_cliente ?? index;
-                                                const nombre = registro.nombre_trabajador ?? registro.nombre ?? registro.actividad ?? `${titulos[clave] ?? clave} ${id}`;
+                                                const nombre = nombreDe(registro, index);
                                                 return <tr key={`${clave}-${id}-${index}`}>
-                                                    <td className="px-3 py-3 font-semibold">{String(nombre)}{clave === 'trabajador_actividad' ? ` · Actividad ${String(registro.id_actividad)}` : ''}</td>
+                                                    <td className="px-3 py-3 font-semibold">{nombre}{clave === 'trabajador_actividad' ? ` · ${String(registro.actividad ?? `Actividad ${String(registro.id_actividad)}`)}` : ''}</td>
                                                     <td className="px-3 py-3 font-black text-verde-6">{Math.round(Number(registro.prob_evento ?? 0) * 100)}%</td>
                                                     <td className="px-3 py-3">{String(registro.historico_eventos ?? registro.historico_eventos_asociados ?? 0)}</td>
                                                     <td className="px-3 py-3">{String(registro.evidencia ?? 'baja')}</td>
-                                                    <td className="px-3 py-3"><details><summary className="cursor-pointer font-semibold text-verde-6">Ver</summary><pre className="mt-2 max-w-xl overflow-x-auto whitespace-pre-wrap text-xs">{JSON.stringify(registro, null, 2)}</pre></details></td>
+                                                    <td className="px-3 py-3 w-80"><details><summary className="cursor-pointer font-semibold text-verde-6">Ver detalle</summary><div className="mt-2"><DetalleRiesgo registro={registro} /></div></details></td>
                                                 </tr>;
                                             })}</tbody>
                                         </table>

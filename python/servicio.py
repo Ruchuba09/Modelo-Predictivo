@@ -17,7 +17,7 @@ from modelo_predictivo import (
     sin_nulos,
     tipos_disponibles,
 )
-from motor_riesgo import evaluar_predicciones, obtener_modelos, semana_actual
+from motor_riesgo import evaluar_predicciones, obtener_modelos, predicciones_por_entidad, semana_actual
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -69,6 +69,21 @@ def listar_tipos():
             status_code=503,
             detail="No se pudieron leer las vistas predictivas. Ejecuta primero 01_vistas_modelo_predictivo.sql.",
         ) from exc
+
+
+@app.get("/predicciones/entidades")
+def predicciones_entidades(
+    tipo_objetivo: str = Query(default=OBJETIVO_INCIDENTES, min_length=1, max_length=100),
+    horizonte: int = Query(default=4, ge=1, le=52),
+):
+    """Todas las entidades vigentes con su riesgo, sus factores y la calidad de cada modelo."""
+    try:
+        conexion = db()
+        if tipo_objetivo not in (OBJETIVO_INCIDENTES, OBJETIVO_LESIONES, "todos") and tipo_objetivo not in tipos_disponibles(conexion):
+            raise HTTPException(status_code=422, detail="El tipo de evento seleccionado no existe.")
+        return sin_nulos(predicciones_por_entidad(conexion, tipo_objetivo, horizonte))
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudieron calcular las predicciones por entidad.") from exc
 
 
 @app.get("/modelo/evaluacion")

@@ -68,6 +68,7 @@ No versiones los Excel originales.
 ## Contrato HTTP
 
 - `POST /modelo/entrenar`: reentrena aunque los datos no hayan cambiado.
+- `GET /predicciones/entidades?tipo_objetivo=incidentes_reales&horizonte=4`: todas las entidades vigentes por nivel (proyecto, área, cuadrilla, trabajador, actividad, cliente y faena) con nombre, ubicación, riesgo, factores e indicadores, más la calidad de cada modelo.
 - `GET /modelo/evaluacion`: compara las predicciones registradas con lo ocurrido, cuando su plazo ya terminó.
 
 - `GET /health`: comprueba conexión con PostgreSQL.

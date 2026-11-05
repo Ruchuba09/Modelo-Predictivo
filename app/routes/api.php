@@ -101,6 +101,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($gestion, $admin, $
             Route::post('exposicion/horas', [ExposicionController::class, 'guardarHoras'])->name('exposicion.horas.guardar');
             Route::get('exposicion/asistencia', [ExposicionController::class, 'asistencia'])->name('exposicion.asistencia');
             Route::post('exposicion/asistencia', [ExposicionController::class, 'guardarAsistencia'])->name('exposicion.asistencia.guardar');
+            Route::get('modelo-predictivo/entidades', [ModeloPredictivoController::class, 'entidades'])->name('modelo-predictivo.entidades');
             Route::get('modelo-predictivo/evaluacion', [ModeloPredictivoController::class, 'evaluacion'])->name('modelo-predictivo.evaluacion');
             Route::apiResource('cuadrillas', CuadrillaController::class)->whereNumber('cuadrilla');
             Route::apiResource('proyectos', ProyectoController::class);

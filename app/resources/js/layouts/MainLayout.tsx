@@ -34,7 +34,10 @@ const NAV_ITEMS: NavItem[] = [
         roles: ['Administrador', 'Supervisor'],
         subItems: [
             { href: '/proyectos', label: 'Proyectos', roles: ['Administrador', 'Supervisor'] },
-            { href: '/modelo-predictivo', label: 'Modelo predictivo', roles: ['Administrador', 'Supervisor'] },
+            { href: '/modelo-predictivo', label: 'Predicciones: resumen', roles: ['Administrador', 'Supervisor'] },
+            { href: '/modelo-predictivo/entidades', label: 'Riesgo por entidad', roles: ['Administrador', 'Supervisor'] },
+            { href: '/modelo-predictivo/calidad', label: 'Calidad del modelo', roles: ['Administrador', 'Supervisor'] },
+            { href: '/modelo-predictivo/historial', label: 'Historial de incidentes', roles: ['Administrador', 'Supervisor'] },
             { href: '/cuadrillas', label: 'Cuadrillas', roles: ['Administrador', 'Supervisor'] },
             { href: '/actividades', label: 'Actividades', roles: ['Administrador', 'Supervisor'] },
             { href: '/exposicion', label: 'Horas y asistencia', roles: ['Administrador', 'Supervisor'] },
@@ -63,6 +66,9 @@ const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
     '/eventos/estadisticas': { title: 'Estadísticas', subtitle: 'Métricas predictivas y análisis de seguridad' },
     '/eventos/create': { title: 'Ingreso de Reporte', subtitle: 'Registra un evento detallando la condición y descripción' },
     '/proyectos': { title: 'Proyectos', subtitle: 'Gestión y control de proyectos' },
+    '/modelo-predictivo/entidades': { title: 'Riesgo por entidad', subtitle: 'Todas las predicciones, con filtros y factores' },
+    '/modelo-predictivo/calidad': { title: 'Calidad del modelo', subtitle: 'Qué tan confiables son las predicciones' },
+    '/modelo-predictivo/historial': { title: 'Historial de incidentes', subtitle: 'Patrones de los logs reales de AVA' },
     '/modelo-predictivo': { title: 'Modelo Predictivo', subtitle: 'Predicciones de eventos para los proyectos vigentes' },
     '/cuadrillas': { title: 'Cuadrillas', subtitle: 'Gestión de equipos de trabajo' },
     '/trabajadores': { title: 'Trabajadores', subtitle: 'Personal y asignaciones' },
@@ -96,6 +102,9 @@ function isRutaActiva(href: string, rutaActual: string): boolean {
     }
     if (href === '/portal') {
         return rutaActual === '/portal';
+    }
+    if (href === '/modelo-predictivo') {
+        return rutaActual === href || rutaActual.startsWith('/modelo-predictivo/proyectos');
     }
     return rutaActual === href || rutaActual.startsWith(href + '/');
 }

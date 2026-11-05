@@ -11,6 +11,8 @@ export type CalidadNivel = {
     prevalencia?: number | null;
     filas_validacion?: number;
     metricas?: { auc_roc: number; auc_pr: number; brier: number; log_loss: number };
+    candidatos?: Record<string, { auc_roc: number; auc_pr: number; brier: number; log_loss: number }>;
+    referencia?: { auc_roc: number; auc_pr: number; brier: number; log_loss: number };
     discriminacion?: string;
     mejora_log_loss_pct?: number;
     motivo?: string;

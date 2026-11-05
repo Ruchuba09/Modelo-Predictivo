@@ -84,6 +84,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/modelo-predictivo', [ModeloPredictivoPaginaController::class, 'index'])
             ->name('modelo-predictivo.index');
+        Route::inertia('/modelo-predictivo/entidades', 'ModeloPredictivo/Entidades')->name('modelo-predictivo.entidades');
+        Route::inertia('/modelo-predictivo/calidad', 'ModeloPredictivo/Calidad')->name('modelo-predictivo.calidad');
+        Route::inertia('/modelo-predictivo/historial', 'ModeloPredictivo/Historial')->name('modelo-predictivo.historial');
         Route::get('/modelo-predictivo/proyectos/{proyecto}/evento-estimado', [ModeloPredictivoPaginaController::class, 'eventoEstimado'])
             ->name('modelo-predictivo.evento-estimado');
 
