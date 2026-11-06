@@ -40,7 +40,9 @@ RUN --mount=type=secret,id=github_token \
     repo_path=$(echo "${URL_REPOSITORIO}" | sed -E "s|^https?://||; s|\\.git$||") && \
     git clone --branch ${RAMA} "https://x-access-token:${GITHUB_TOKEN}@${repo_path}.git" repository && \
     cd repository && git remote set-url origin "https://${repo_path}.git" && \
-    if [ -f app/composer.json ]; then \
+    if [ -f intrava/composer.json ]; then \
+        cp -a intrava/. /var/www/app/; \
+    elif [ -f app/composer.json ]; then \
         cp -a app/. /var/www/app/; \
     else \
         cp -a . /var/www/app/; \
