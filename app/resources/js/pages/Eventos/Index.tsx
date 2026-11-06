@@ -1,6 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import MainLayout from '../../layouts/MainLayout';
+import Paginacion, { Paginado } from '@/components/Paginacion';
 import CerrarEvento from '@/components/eventos/CerrarEvento';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -39,11 +40,13 @@ export default function Index() {
     const usuario = useAuth();
     const esAdmin = usuario?.roles?.some((r) => r.toLowerCase() === 'administrador') ?? false;
 
-    const { eventos, proyectos, filtros } = usePage().props as unknown as { 
-        eventos: Evento[], 
+    const { eventos: paginaEventos, proyectos, filtros } = usePage().props as unknown as {
+        eventos: Paginado<Evento>,
         proyectos: { id_proyecto: number; nombre: string }[],
         filtros: any
     };
+
+    const eventos = paginaEventos.data;
 
     const [formFiltros, setFormFiltros] = useState({
         id_evento: filtros?.id_evento ?? '',
@@ -291,6 +294,7 @@ export default function Index() {
                             </table>
                         </div>
                     )}
+                    <Paginacion pagina={paginaEventos} />
                 </div>
             </div>
         </MainLayout>

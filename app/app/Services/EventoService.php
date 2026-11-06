@@ -20,6 +20,7 @@ use App\Models\Trabajador;
 use App\Models\User;
 use App\Notifications\TarjetaPareRegistrada;
 use App\Support\CondicionesPare;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -73,23 +74,31 @@ class EventoService
             ->get();
     }
 
-    public function listar(array $filtros = []): Collection
+    /** Listado general de la pantalla web: los más recientes primero. */
+    public function paginarParaPantalla(array $filtros, int $porPagina): LengthAwarePaginator
     {
-        $query = Evento::with(['tipoEvento', 'proyecto']);
-
-        $this->aplicarFiltros($query, $filtros);
+        $query = Evento::query();
         $this->restringirASupervisor($query);
 
-        return $query->orderByDesc('fecha_creacion')->get();
+        return $this->paginarRecientes($query, $filtros, $porPagina);
     }
 
-    public function listarMisReportes(array $filtros = []): Collection
+    /** "Mis reportes" de la pantalla web: los más recientes primero. */
+    public function paginarMisReportesParaPantalla(array $filtros, int $porPagina): LengthAwarePaginator
     {
-        $query = $this->consultaMisReportes()->with(['tipoEvento', 'proyecto']);
+        return $this->paginarRecientes($this->consultaMisReportes(), $filtros, $porPagina);
+    }
 
+    private function paginarRecientes(Builder $query, array $filtros, int $porPagina): LengthAwarePaginator
+    {
+        $query->with(['tipoEvento', 'proyecto']);
         $this->aplicarFiltros($query, $filtros);
 
-        return $query->orderByDesc('fecha_creacion')->get();
+        return $query
+            ->orderByDesc('fecha_creacion')
+            ->orderByDesc('id_evento')
+            ->paginate($porPagina)
+            ->withQueryString();
     }
 
     /** Listado general por páginas, para clientes de la API. */

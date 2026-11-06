@@ -31,7 +31,7 @@ class EventoController extends Controller
         }
 
         return Inertia::render('Eventos/Index', [
-            'eventos' => $this->servicio->listar($request->filtros()),
+            'eventos' => $this->servicio->paginarParaPantalla($request->filtros(), $request->porPagina()),
             'proyectos' => $this->servicio->listarProyectos(),
             'filtros' => $request->filtros(),
         ]);
@@ -40,7 +40,7 @@ class EventoController extends Controller
     public function misReportes(FiltroEventoRequest $request)
     {
         return Inertia::render('Eventos/MisReportes', [
-            'eventos' => $this->servicio->listarMisReportes($request->filtros()),
+            'eventos' => $this->servicio->paginarMisReportesParaPantalla($request->filtros(), $request->porPagina()),
             'proyectos' => $this->servicio->listarProyectos(),
             'filtros' => $request->filtros(),
         ]);

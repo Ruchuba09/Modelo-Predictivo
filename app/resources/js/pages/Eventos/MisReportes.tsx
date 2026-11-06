@@ -1,6 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import MainLayout from '../../layouts/MainLayout';
+import Paginacion, { Paginado } from '@/components/Paginacion';
 
 const ESTADO_STYLES: { [key: string]: string } = {
     abierta: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
@@ -27,7 +28,7 @@ interface Evento {
 }
 
 interface Props {
-    eventos: Evento[];
+    eventos: Paginado<Evento>;
     proyectos?: { id_proyecto: number; nombre: string }[];
     filtros?: any;
 }
@@ -45,7 +46,8 @@ function EstadoBadge({ estado }: { estado: string }) {
 }
 
 export default function MisReportes() {
-    const { eventos = [], proyectos = [], filtros = {} } = usePage().props as unknown as Props;
+    const { eventos: paginaEventos, proyectos = [], filtros = {} } = usePage().props as unknown as Props;
+    const eventos = paginaEventos.data;
 
     const [formFiltros, setFormFiltros] = useState({
         id_evento: filtros?.id_evento ?? '',
@@ -199,7 +201,7 @@ export default function MisReportes() {
                             <span className="text-[10px] uppercase tracking-wider text-gris-1 dark:text-gray-400 font-bold">
                                 Total:
                             </span>
-                            <span className="text-sm font-black text-verde-6">{eventos.length}</span>
+                            <span className="text-sm font-black text-verde-6">{paginaEventos.total}</span>
                         </div>
                     </div>
                 </div>
@@ -295,6 +297,7 @@ export default function MisReportes() {
                             </table>
                         </div>
                     )}
+                    <Paginacion pagina={paginaEventos} />
                 </div>
             </div>
         </MainLayout>
