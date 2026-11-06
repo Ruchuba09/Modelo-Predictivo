@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use Notifiable;
+    use HasApiTokens, Notifiable;
 
     protected $table = "users";
     protected $primaryKey = "id_user";
@@ -68,6 +69,13 @@ class User extends Authenticatable
     {
         return $this->rolesActivos()
             ->pluck('roles.nombre')
+            ->map(fn (string $nombre) => match (strtolower(trim($nombre))) {
+                'admin', 'administrador' => 'Administrador',
+                'supervisor' => 'Supervisor',
+                'usuario' => 'Usuario',
+                'rrhh' => 'RRHH',
+                default => $nombre,
+            })
             ->all();
     }
 
@@ -84,11 +92,15 @@ class User extends Authenticatable
             ->all();
     }
 
-    public function tieneRol(string $nombreRol): bool
+    public function tieneRol(string ...$nombresRoles): bool
     {
-        return $this->rolesActivos()
-            ->where('roles.nombre', $nombreRol)
-            ->exists();
+        $userRoles = array_map('strtolower', $this->rolesArray());
+        foreach ($nombresRoles as $rol) {
+            if (in_array(strtolower($rol), $userRoles, true)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function tienePermiso(string $permiso): bool

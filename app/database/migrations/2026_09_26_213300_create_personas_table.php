@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // The baseline PostgreSQL schema may have been provisioned from SQL.
+        if (Schema::hasTable('personas')) {
+            return;
+        }
+
         Schema::create('personas', function (Blueprint $table) {
             $table->id();
             $table->timestamps();

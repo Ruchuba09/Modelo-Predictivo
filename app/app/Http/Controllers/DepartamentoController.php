@@ -27,8 +27,7 @@ class DepartamentoController extends Controller
     {
         Departamento::create($this->validarDatos($request));
 
-        return redirect()
-            ->route('departamentos.index')
+        return redirect()->route('departamentos.index')
             ->with('success', 'Departamento creado correctamente.');
     }
 
@@ -52,18 +51,15 @@ class DepartamentoController extends Controller
     {
         $departamento->update($this->validarDatos($request, $departamento));
 
-        return redirect()
-            ->route('departamentos.index')
+        return redirect()->route('departamentos.index')
             ->with('success', 'Departamento actualizado correctamente.');
     }
 
     public function destroy(Departamento $departamento)
     {
-        // trabajador_departamento hace cascade
         $departamento->delete();
 
-        return redirect()
-            ->route('departamentos.index')
+        return redirect()->route('departamentos.index')
             ->with('success', 'Departamento eliminado correctamente.');
     }
 
@@ -74,9 +70,10 @@ class DepartamentoController extends Controller
                 'required',
                 'string',
                 'max:150',
-                Rule::unique('departamentos', 'nombre')->ignore($departamento?->id_departamento, 'id_departamento'),
+                Rule::unique('departamentos', 'nombre')
+                    ->ignore($departamento?->id_departamento, 'id_departamento'),
             ],
-            'descripcion' => 'nullable|string',
+            'descripcion' => 'nullable|string|max:500',
             'estado' => 'sometimes|required|string|in:activo,inactivo',
         ]);
     }

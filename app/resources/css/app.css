@@ -5,7 +5,7 @@
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
     --font-sans:
@@ -173,3 +173,102 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* ==========================================================================
+   AVA Dark Mode Theme Overrides
+   ========================================================================== */
+.dark {
+    color-scheme: dark;
+}
+
+.dark body {
+    background-color: #111417;
+    color: #F3F4F6;
+}
+
+/* Card and Container Backgrounds in Dark Mode */
+.dark .bg-white {
+    background-color: #1E242B;
+}
+
+/* Background Tones in Dark Mode */
+.dark .bg-verde-1 {
+    background-color: #111417;
+}
+
+.dark .bg-verde-2 {
+    background-color: #1A2128;
+}
+
+/* Borders in Dark Mode */
+.dark .border-verde-3 {
+    border-color: #2A333E;
+}
+
+/* Typography in Dark Mode */
+.dark .text-gris-2 {
+    color: #F3F4F6;
+}
+
+.dark .text-gris-1 {
+    color: #9CA3AF;
+}
+
+/* Form Controls in Dark Mode */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark select,
+.dark textarea {
+    background-color: #151A1F;
+    color: #F3F4F6;
+    border-color: #2A333E;
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]):focus,
+.dark select:focus,
+.dark textarea:focus {
+    border-color: #A0F700;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: #6B7280;
+}
+
+.dark option {
+    background-color: #1E242B;
+    color: #F3F4F6;
+}
+
+/* Tables in Dark Mode */
+.dark table {
+    color: #F3F4F6;
+}
+
+.dark tr.border-b,
+.dark th.border-b,
+.dark td.border-b {
+    border-color: #2A333E;
+}
+
+.dark thead {
+    background-color: #151A1F;
+}
+
+.dark tbody tr:hover {
+    background-color: #242C36;
+}
+
+/* Custom Scrollbars in Dark Mode */
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+    background: #151A1F;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #2E3844;
+    border-radius: 4px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #3B4756;
+}
+

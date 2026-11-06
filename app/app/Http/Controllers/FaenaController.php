@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\FaenaRequest;
 use App\Models\Faena;
-use App\Models\Proyecto;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use App\Services\FaenaService;
 use Inertia\Inertia;
 
 class FaenaController extends Controller
 {
+    public function __construct(
+        private readonly FaenaService $servicio
+    ) {}
+
     public function index()
     {
         return Inertia::render('Faenas/Index', [
-            'faenas' => Faena::withCount(['areas', 'proyectos'])
-                ->orderBy('nombre')
-                ->get(),
+            'faenas' => $this->servicio->listar(),
         ]);
     }
 
@@ -24,9 +25,9 @@ class FaenaController extends Controller
         return Inertia::render('Faenas/Create');
     }
 
-    public function store(Request $request)
+    public function store(FaenaRequest $request)
     {
-        Faena::create($this->validarDatos($request));
+        $this->servicio->crear($request->toData());
 
         return redirect()
             ->route('faenas.index')
@@ -35,23 +36,26 @@ class FaenaController extends Controller
 
     public function show(Faena $faena)
     {
-        $faena->load(['areas', 'proyectos']);
-
         return Inertia::render('Faenas/Show', [
-            'faena' => $faena,
+            'faena' => $this->servicio->obtener($faena),
         ]);
     }
 
     public function edit(Faena $faena)
     {
         return Inertia::render('Faenas/Edit', [
-            'faena' => $faena,
+            'faena' => $this->servicio->obtenerParaEditar($faena),
         ]);
     }
 
-    public function update(Request $request, Faena $faena)
-    {
-        $faena->update($this->validarDatos($request, $faena));
+    public function update(
+        FaenaRequest $request,
+        Faena $faena
+    ) {
+        $this->servicio->actualizar(
+            $faena,
+            $request->toData()
+        );
 
         return redirect()
             ->route('faenas.index')
@@ -60,28 +64,17 @@ class FaenaController extends Controller
 
     public function destroy(Faena $faena)
     {
-        // proyectos.id_faena es ON DELETE RESTRICT (areas hace cascade)
-        if (Proyecto::where('id_faena', $faena->id_faena)->exists()) {
-            return back()->with('error', 'No se puede eliminar: la faena tiene proyectos asociados.');
+        if ($this->servicio->tieneProyectos($faena)) {
+            return back()->with(
+                'error',
+                'No se puede eliminar: la faena tiene proyectos asociados.'
+            );
         }
 
-        $faena->delete();
+        $this->servicio->eliminar($faena);
 
         return redirect()
             ->route('faenas.index')
             ->with('success', 'Faena eliminada correctamente.');
-    }
-
-    private function validarDatos(Request $request, ?Faena $faena = null): array
-    {
-        return $request->validate([
-            'codigo_faena' => [
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('faenas', 'codigo_faena')->ignore($faena?->id_faena, 'id_faena'),
-            ],
-            'nombre' => 'required|string|max:255',
-        ]);
     }
 }

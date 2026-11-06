@@ -2,7 +2,7 @@
 
 ## Requisitos
 - [Docker Desktop](https://www.docker.com/)
-- Archivo `.env` configurado en la raiz del proyecto
+- Archivo `docker/.env` configurado a partir de `docker/.env.example`
 - Extensiones de VS Code:
   - Dev Containers
   - Container Tools
@@ -10,6 +10,8 @@
 
 ## Levantar el entorno
 ```bash
+cp .env.example .env
+# Completa URL_REPOSITORIO, RAMA, CORREO, NOMBRE y GITHUB_TOKEN antes del build.
 docker compose up -d --build
 ```
 
@@ -17,7 +19,17 @@ docker compose up -d --build
 - URL: `https://localhost/`
 - El navegador mostrara una advertencia de seguridad (`La conexion no es privada`) porque se usa un certificado local.
 - Continuar desde `Opciones avanzadas` -> `Continuar a localhost (no seguro)`.
-- En el primer arranque va a aparecer un error `500`; abrir el contenedor por VSC y seguir el README del proyecto Laravel para completar la configuracion inicial.
+- Configura `/var/www/app/.env` desde `app/.env.example` y verifica que el PostgreSQL tenga el esquema requerido antes de abrir la aplicación.
+
+## Crear la base de datos
+`postgres/AVA_BaseDatos_unificada.sql` crea el esquema completo con datos básicos de prueba y sus usuarios. Se ejecuta en una base vacía; si ya hay tablas se detiene sin cambiar nada.
+
+```bash
+docker compose cp postgres/AVA_BaseDatos_unificada.sql postgres:/tmp/ava.sql
+docker compose exec postgres psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/ava.sql
+```
+
+También se puede abrir y ejecutar completo en pgAdmin.
 
 ## Abrir contenedor
 1. Abrir la barra lateral de Docker en VS Code.
@@ -45,13 +57,7 @@ Para borrar todo lo generado por este proyecto (contenedores, volumenes, imagene
 
 ```bash
 docker compose down --volumes --rmi all --remove-orphans
-docker builder prune -af
-docker volume prune -f
-docker network prune -f
 ```
 
-Opcional (global): borrar todos los recursos sin uso de Docker en la maquina:
+`--volumes` elimina también la base de datos de desarrollo de este proyecto. No ejecutes comandos globales `docker volume prune` o `docker system prune` como parte de la limpieza normal.
 
-```bash
-docker system prune -a --volumes -f
-```

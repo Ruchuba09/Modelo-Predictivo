@@ -22,5 +22,5 @@ export function useTienePermiso(permiso: string) {
 }
 
 export function useTieneRol(rol: string) {
-    return useAuth()?.roles?.includes(rol) ?? false;
+    return useAuth()?.roles?.some((r) => r.toLowerCase() === rol.toLowerCase()) ?? false;
 }

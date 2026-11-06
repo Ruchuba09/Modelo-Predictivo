@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\DataTransferObjects\UsuarioData;
+use App\Http\Requests\StoreUsuarioRequest;
+use App\Http\Requests\UpdateUsuarioRequest;
 use App\Http\Resources\UsuarioResource;
 use App\Models\User;
 use App\Models\Rol;
@@ -30,17 +31,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreUsuarioRequest $request)
     {
-        $validated = $request->validate([
-            'rut' => ['required', 'string', 'unique:usuarios.users,rut'],
-            'email' => ['required', 'email', 'unique:usuarios.users,email'],
-            'password' => ['required', 'confirmed', 'min:8'],
-            'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['exists:usuarios.roles,id_rol'],
-        ]);
-
-        $this->userService->crear(UsuarioData::fromArray($validated));
+        $this->userService->crear($request->toData());
 
         return redirect()->route('usuarios.index')
             ->with('success', 'Usuario creado correctamente.');
@@ -61,25 +54,17 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(Request $request, User $usuario)
+    public function update(UpdateUsuarioRequest $request, User $usuario)
     {
-        $validated = $request->validate([
-            'rut' => ['required', 'string', 'unique:usuarios.users,rut,' . $usuario->id_user . ',id_user'],
-            'email' => ['required', 'email', 'unique:usuarios.users,email,' . $usuario->id_user . ',id_user'],
-            'password' => ['nullable', 'confirmed', 'min:8'],
-            'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['exists:usuarios.roles,id_rol'],
-        ]);
-
-        $this->userService->actualizar($usuario, UsuarioData::fromArray($validated));
+        $this->userService->actualizar($usuario, $request->toData());
 
         return redirect()->route('usuarios.index')
             ->with('success', 'Usuario actualizado correctamente.');
     }
 
-    public function destroy(User $usuario)
+    public function destroy(Request $request, User $usuario)
     {
-        $this->userService->eliminar($usuario);
+        $this->userService->eliminar($usuario, $request->user());
 
         return redirect()->route('usuarios.index')
             ->with('success', 'Usuario eliminado correctamente.');

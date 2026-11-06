@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Trabajador extends Model
 {
+    use HasFactory;
+
     protected $table = 'trabajadores';
     protected $primaryKey = 'id_trabajador';
 
@@ -54,6 +57,11 @@ class Trabajador extends Model
         return $this->hasOne(Supervisor::class, 'id_trabajador', 'id_trabajador');
     }
 
+    public function jefeZona(): HasOne
+    {
+        return $this->hasOne(JefeZona::class, 'id_trabajador', 'id_trabajador');
+    }
+
     public function departamentos(): BelongsToMany
     {
         return $this->belongsToMany(Departamento::class, 'trabajador_departamento', 'id_trabajador', 'id_departamento');
@@ -62,5 +70,10 @@ class Trabajador extends Model
     public function eventos(): BelongsToMany
     {
         return $this->belongsToMany(Evento::class, 'evento_trabajador', 'id_trabajador', 'id_evento');
+    }
+
+    public function cuadrillaActual(): ?Cuadrilla
+    {
+        return $this->obrero?->cuadrilla;
     }
 }

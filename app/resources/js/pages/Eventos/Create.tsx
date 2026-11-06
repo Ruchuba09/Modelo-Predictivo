@@ -1,85 +1,263 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { FormEvent, useRef } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
+import { useCondicionesPare } from '../../lib/condicionesPare';
 
-const CONDICIONES = [
-    'Si las condiciones de trabajo NO son seguras.',
-    'Si NO tiene las herramientas adecuadas o están en mal estado.',
-    'Si NO tiene los EPP adecuados.',
-    'Si NO sabe o no está capacitado / autorizado para realizar la actividad.',
-    'Si NO hay un procedimiento / instructivo asociado a la actividad o si este existe pero no ha sido difundido.',
-    'NO contar con el apoyo de recursos humanos y/o materiales necesarios para realizar la actividad.',
-    'NO contar con AST, VATS, ERT.',
-    'NO contar con el o los permisos exigidos para realizar la actividad.',
-    'NO encontrarse en condiciones físicas o emocionales para realizar la actividad.',
-    'Otras condiciones no consideradas que impliquen un riesgo no controlado.'
-];
+interface ProyectoItem {
+    id_proyecto: number;
+    nombre: string;
+}
+
+interface AreaItem {
+    id_area: number;
+    nombre: string;
+}
+
+interface TrabajadorItem {
+    id_trabajador: number;
+    nombre: string;
+    nombre_completo?: string;
+    rut?: string;
+    cargo?: string;
+    proyectos: ProyectoItem[];
+}
+
+interface UsuarioTrabajador {
+    id_trabajador: number;
+    nombre: string;
+    cargo?: string;
+    proyectos: ProyectoItem[];
+}
+
+interface CreatePageProps {
+    tiposEvento: any[];
+    usuarioTrabajador?: UsuarioTrabajador | null;
+    trabajadores?: TrabajadorItem[];
+    proyectos?: ProyectoItem[];
+    idTipoPare?: number | null;
+    areasPorProyecto?: Record<number, AreaItem[]>;
+    actividadesPorProyecto?: Record<number, { id_actividad: number; nombre: string }[]>;
+    catalogos?: Catalogos;
+}
+
+interface Catalogos {
+    severidades: { id_severidad: number; nombre: string }[];
+    turnos: { id_turno: number; nombre: string }[];
+    categorias: { id_categoria_evento: number; nombre: string }[];
+    clasificaciones: { id_clasificacion_incidente: number; codigo: string; nombre: string }[];
+}
+
+const CAMPO_DETALLE = 'w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 transition-colors';
+const ETIQUETA_DETALLE = 'block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1';
+
+function ahoraLocal(): string {
+    const ahora = new Date();
+    return new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function esTurnoNoche(fecha: string): boolean {
+    const hora = Number(fecha.slice(11, 13));
+    return hora >= 20 || hora < 6;
+}
 
 export default function Create() {
-    const { tiposEvento } = usePage().props as unknown as { tiposEvento: any[] };
+    const CONDICIONES_PARE = useCondicionesPare();
+    const {
+        tiposEvento = [],
+        usuarioTrabajador = null,
+        trabajadores = [],
+        proyectos = [],
+        idTipoPare = null,
+        areasPorProyecto = {},
+        actividadesPorProyecto = {},
+        catalogos,
+    } = usePage().props as unknown as CreatePageProps;
 
-    const { data, setData, post, processing, errors } = useForm({
-        id_tipo_evento: 4, // 4 = Tarjeta PARE (Accidente)
+    const [esParaMi, setEsParaMi] = useState<boolean>(true);
+
+    const { data, setData, post, processing, errors, transform } = useForm({
+        fecha_ocurrencia: ahoraLocal(),
+        id_turno: '' as number | '',
+        id_actividad: '' as number | '',
+        id_severidad: '' as number | '',
+        id_potencial_severidad: '' as number | '',
+        tipo_detencion: 'total',
+        id_clasificacion_incidente: '' as number | '',
+        id_categoria_evento: '' as number | '',
+        dia_ciclo: '' as number | '',
+        id_tipo_evento: idTipoPare ?? 0,
         condicion: 0,
         descripcion: '',
         referencia: '',
-        evidencia: [] as File[]
+        id_proyecto: '' as number | '',
+        id_area: '' as number | '',
+        id_trabajador: (usuarioTrabajador?.id_trabajador || '') as number | '',
+        es_para_mi: true as boolean,
+        evidencia: [] as File[],
     });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const esPare = Number(data.id_tipo_evento) === Number(idTipoPare);
+    const tipoSeleccionado = tiposEvento.find((tipo) => tipo.id_tipo_evento === Number(data.id_tipo_evento));
+    const esIncidente = Boolean(tipoSeleccionado?.es_incidente);
+    const actividadesDisponibles = data.id_proyecto ? actividadesPorProyecto[Number(data.id_proyecto)] ?? [] : [];
 
-    // FUNCIÓN PARA AGREGAR ARCHIVOS
+    // El turno se propone según la hora; quien reporta puede cambiarlo.
+    useEffect(() => {
+        const nombre = esTurnoNoche(data.fecha_ocurrencia) ? 'noche' : 'día';
+        const turno = catalogos?.turnos.find((t) => t.nombre.toLowerCase() === nombre);
+        if (turno) setData('id_turno', turno.id_turno);
+    }, [data.fecha_ocurrencia]);
+
+    // Calcular proyectos disponibles según el trabajador activo
+    const proyectosDisponibles: ProyectoItem[] = useMemo(() => {
+        if (esParaMi) {
+            if (usuarioTrabajador?.proyectos && usuarioTrabajador.proyectos.length > 0) {
+                return usuarioTrabajador.proyectos;
+            }
+            return proyectos || [];
+        } else {
+            if (!data.id_trabajador) {
+                return [];
+            }
+            const trabajador = trabajadores.find(
+                (item) => item.id_trabajador === Number(data.id_trabajador)
+            );
+            if (trabajador?.proyectos && trabajador.proyectos.length > 0) {
+                return trabajador.proyectos;
+            }
+            return proyectos || [];
+        }
+    }, [esParaMi, data.id_trabajador, usuarioTrabajador, trabajadores, proyectos]);
+
+    // Sincronizar el id_proyecto cuando cambian los proyectos disponibles
+    useEffect(() => {
+        if (proyectosDisponibles.length === 1) {
+            setData((prev) => ({
+                ...prev,
+                id_proyecto: proyectosDisponibles[0].id_proyecto,
+            }));
+        } else if (proyectosDisponibles.length > 1) {
+            const existe = proyectosDisponibles.some(
+                (p) => p.id_proyecto === Number(data.id_proyecto)
+            );
+            if (!existe) {
+                setData((prev) => ({
+                    ...prev,
+                    id_proyecto: proyectosDisponibles[0].id_proyecto,
+                }));
+            }
+        } else {
+            setData((prev) => ({
+                ...prev,
+                id_proyecto: '',
+            }));
+        }
+    }, [proyectosDisponibles]);
+
+    const areasDisponibles: AreaItem[] = useMemo(
+        () => (data.id_proyecto ? areasPorProyecto[Number(data.id_proyecto)] ?? [] : []),
+        [data.id_proyecto, areasPorProyecto]
+    );
+
+    // Al cambiar de proyecto, el área anterior puede no pertenecer a su faena
+    useEffect(() => {
+        const existe = areasDisponibles.some((a) => a.id_area === Number(data.id_area));
+        if (!existe) {
+            setData('id_area', areasDisponibles.length === 1 ? areasDisponibles[0].id_area : '');
+        }
+    }, [areasDisponibles]);
+
+    // Cambiar entre 'Para mí' y 'Para un tercero'
+    const handleCambiarModo = (paraMi: boolean) => {
+        setEsParaMi(paraMi);
+        if (paraMi) {
+            setData((prev) => ({
+                ...prev,
+                es_para_mi: true,
+                id_trabajador: usuarioTrabajador?.id_trabajador || '',
+            }));
+        } else {
+            setData((prev) => ({
+                ...prev,
+                es_para_mi: false,
+                id_trabajador: '',
+                id_proyecto: '',
+            }));
+        }
+    };
+
+    // Seleccionar persona reportada en modo tercero
+    const handleSeleccionarTrabajador = (id: number | '') => {
+        setData((prev) => ({
+            ...prev,
+            id_trabajador: id,
+        }));
+    };
+
+    // Manejo de archivos
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const archivosNuevos = Array.from(e.target.files || []);
-        const archivosActuales = data.evidencia || []; // Validación de seguridad
-        
+        const archivosActuales = data.evidencia || [];
+
         const totalArchivos = archivosActuales.length + archivosNuevos.length;
 
         if (totalArchivos > 3) {
-            alert("Puedes subir un máximo de 3 archivos.");
+            alert('Puedes subir un máximo de 3 archivos.');
             if (fileInputRef.current) fileInputRef.current.value = '';
             return;
         }
 
         setData('evidencia', [...archivosActuales, ...archivosNuevos]);
-        
+
         if (fileInputRef.current) {
-            fileInputRef.current.value = ''; 
+            fileInputRef.current.value = '';
         }
     };
 
-    // FUNCIÓN PARA BORRAR
     const removerArchivo = (index: number) => {
-        const nuevosArchivos = [...(data.evidencia || [])]; // Validación de seguridad
+        const nuevosArchivos = [...(data.evidencia || [])];
         nuevosArchivos.splice(index, 1);
         setData('evidencia', nuevosArchivos);
-    };
-
-    const condicionesPare: {[key: number]: string} = {
-        1: "Si las condiciones de trabajo NO son seguras.",
-        2: "Si NO tiene las herramientas adecuadas o están en mal estado.",
-        3: "Si NO tiene los EPP adecuados.",
-        4: "Si NO sabe o no está capacitado / autorizado para realizar la actividad.",
-        5: "Si NO hay un procedimiento / instructivo asociado a la actividad o si este existe pero no ha sido difundido.",
-        6: "NO contar con el apoyo de recursos humanos y/o materiales necesarios para realizar la actividad.",
-        7: "NO contar con AST, VATS, ERT.",
-        8: "NO contar con el o los permisos exigidos para realizar la actividad.",
-        9: "NO encontrarse en condiciones físicas o emocionales para realizar la actividad.",
-        10: "Otras condiciones no consideradas que impliquen un riesgo no controlado."
     };
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
 
-        if (data.condicion === 0) {
-            alert("Por favor, seleccione una condición de uso (1 a 10).");
+        if (!idTipoPare) {
+            alert('El tipo de evento "Tarjeta PARE" no está configurado. Contacte al administrador.');
             return;
         }
 
+        if (!data.id_proyecto) {
+            alert('Por favor, seleccione un proyecto.');
+            return;
+        }
+
+        if (areasDisponibles.length > 0 && !data.id_area) {
+            alert('Por favor, seleccione el área.');
+            return;
+        }
+
+        if (!esParaMi && !data.id_trabajador) {
+            alert('Por favor, seleccione a la persona reportada.');
+            return;
+        }
+
+        if (esPare && data.condicion === 0) {
+            alert('Por favor, seleccione una condición de uso (1 a 10).');
+            return;
+        }
+
+        transform((datos) => ({
+            ...datos,
+            condicion: esPare ? datos.condicion : '',
+            tipo_detencion: esPare ? datos.tipo_detencion : '',
+            id_clasificacion_incidente: esIncidente ? datos.id_clasificacion_incidente : '',
+        }));
         post('/eventos');
     };
 
-    // VARIABLE SEGURA PARA RENDERIZAR
     const archivosSubidos = data.evidencia || [];
 
     return (
@@ -87,51 +265,351 @@ export default function Create() {
             <Head title="Ingreso de Reporte | AVA" />
 
             <div className="max-w-[1400px] mx-auto p-4 lg:p-6 lg:mt-0">
-                <div className="mb-4">
-                    <h1 className="text-2xl font-bold text-gris-2 mb-1">Ingreso de Reporte</h1>
-                    <p className="text-gris-1 text-sm">Registra un evento detallando la condición y la descripción.</p>
-                </div>
-
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
                     <div className="lg:col-span-2 bg-white border border-verde-3 rounded-xl p-6 shadow-2xl h-full flex flex-col justify-between">
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            
+                            {/* SECCIÓN: ¿PARA QUIÉN ES EL REPORTE? */}
+                            <div>
+                                <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1.5">
+                                    ¿Para quién es el reporte?
+                                </label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCambiarModo(true)}
+                                        className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all ${
+                                            esParaMi
+                                                ? 'bg-verde-5/20 border-verde-5 text-verde-6 shadow-sm ring-1 ring-verde-5/30'
+                                                : 'bg-verde-1 border-verde-3 text-gris-1 hover:border-gris-2 hover:text-gris-2'
+                                        }`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        Para mí
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCambiarModo(false)}
+                                        className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all ${
+                                            !esParaMi
+                                                ? 'bg-verde-5/20 border-verde-5 text-verde-6 shadow-sm ring-1 ring-verde-5/30'
+                                                : 'bg-verde-1 border-verde-3 text-gris-1 hover:border-gris-2 hover:text-gris-2'
+                                        }`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        Para un tercero
+                                    </button>
+                                </div>
+                                {esParaMi && usuarioTrabajador && (
+                                    <p className="text-[11px] text-gris-1 mt-1.5 flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-verde-6 shrink-0"></span>
+                                        Reportando como:{' '}
+                                        <span className="font-semibold text-gris-2">{usuarioTrabajador.nombre}</span>{' '}
+                                        {usuarioTrabajador.cargo ? `(${usuarioTrabajador.cargo})` : ''}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* TIPO DE REPORTE */}
+                            <div>
+                                <label htmlFor="id_tipo_evento" className={ETIQUETA_DETALLE}>Tipo de reporte</label>
+                                <select
+                                    id="id_tipo_evento"
+                                    value={data.id_tipo_evento}
+                                    onChange={(e) => setData('id_tipo_evento', Number(e.target.value))}
+                                    className={CAMPO_DETALLE}
+                                >
+                                    {tiposEvento.map((tipo) => (
+                                        <option key={tipo.id_tipo_evento} value={tipo.id_tipo_evento}>{tipo.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* PERSONA REPORTADA (SOLO SI ES PARA UN TERCERO) */}
+                            {!esParaMi && (
+                                <div>
+                                    <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
+                                        Persona Reportada
+                                    </label>
+                                    <select
+                                        required={!esParaMi}
+                                        value={data.id_trabajador}
+                                        onChange={(e) =>
+                                            handleSeleccionarTrabajador(
+                                                e.target.value ? Number(e.target.value) : ''
+                                            )
+                                        }
+                                        className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 transition-colors cursor-pointer"
+                                    >
+                                        <option value="">Selecciona a la persona reportada...</option>
+                                        {trabajadores.map((t) => (
+                                            <option key={t.id_trabajador} value={t.id_trabajador}>
+                                                {t.nombre} {t.rut ? `(${t.rut})` : ''} - {t.cargo || 'Trabajador'}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {errors.id_trabajador && (
+                                        <p className="text-red-400 text-xs mt-1">{errors.id_trabajador}</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* SELECTOR O CAMPO BLOQUEADO DE PROYECTO */}
                             <div>
                                 <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
-                                    Referencia 
+                                    Proyecto
+                                </label>
+
+                                {proyectosDisponibles.length === 1 ? (
+                                    <div className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 flex items-center justify-between text-gris-2">
+                                        <span className="text-[15px] font-semibold text-gris-2">
+                                            {proyectosDisponibles[0].nombre}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-verde-5/15 text-verde-6 border border-verde-5/30 shrink-0">
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
+                                            Proyecto asignado
+                                        </span>
+                                    </div>
+                                ) : proyectosDisponibles.length > 1 ? (
+                                    <select
+                                        required
+                                        value={data.id_proyecto}
+                                        onChange={(e) => setData('id_proyecto', Number(e.target.value))}
+                                        className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 transition-colors cursor-pointer"
+                                    >
+                                        <option value="">Selecciona el proyecto asignado...</option>
+                                        {proyectosDisponibles.map((p) => (
+                                            <option key={p.id_proyecto} value={p.id_proyecto}>
+                                                {p.nombre}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div className="w-full bg-verde-1/50 border border-verde-3/60 rounded-lg px-3 py-2 text-[14px] text-gris-1 italic">
+                                        {!esParaMi && !data.id_trabajador
+                                            ? 'Selecciona a la persona reportada para cargar sus proyectos disponibles.'
+                                            : 'No se encontraron proyectos asignados para este trabajador.'}
+                                    </div>
+                                )}
+
+                                {proyectosDisponibles.length > 1 && (
+                                    <p className="text-[11px] text-gris-1 mt-1">
+                                        El trabajador participa en más de un proyecto. Selecciona en cuál ocurrió el evento.
+                                    </p>
+                                )}
+                                {errors.id_proyecto && (
+                                    <p className="text-red-400 text-xs mt-1">{errors.id_proyecto}</p>
+                                )}
+                            </div>
+
+                            {/* ÁREA DE LA FAENA */}
+                            {areasDisponibles.length > 0 && (
+                                <div>
+                                    <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
+                                        Área
+                                    </label>
+                                    <select
+                                        required
+                                        value={data.id_area}
+                                        onChange={(e) =>
+                                            setData('id_area', e.target.value ? Number(e.target.value) : '')
+                                        }
+                                        className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 transition-colors cursor-pointer"
+                                    >
+                                        <option value="">Selecciona el área...</option>
+                                        {areasDisponibles.map((a) => (
+                                            <option key={a.id_area} value={a.id_area}>
+                                                {a.nombre}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            {errors.id_area && (
+                                <p className="text-red-400 text-xs mt-1">{errors.id_area}</p>
+                            )}
+
+                            {/* LUGAR EXACTO */}
+                            <div>
+                                <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
+                                    Lugar exacto
                                 </label>
                                 <input
                                     type="text"
                                     required
                                     value={data.referencia}
-                                    onChange={e => setData('referencia', e.target.value)}
+                                    onChange={(e) => setData('referencia', e.target.value)}
                                     placeholder="Ej: Chancador primario, Nivel 4..."
                                     className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 transition-colors"
                                 />
-                                {errors.referencia && <p className="text-red-400 text-xs mt-1">{errors.referencia}</p>}
+                                {errors.referencia && (
+                                    <p className="text-red-400 text-xs mt-1">{errors.referencia}</p>
+                                )}
                             </div>
 
-                            <div>
+                            {/* CUÁNDO OCURRIÓ */}
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label htmlFor="fecha_ocurrencia" className={ETIQUETA_DETALLE}>Fecha y hora en que ocurrió</label>
+                                    <input
+                                        id="fecha_ocurrencia"
+                                        type="datetime-local"
+                                        required
+                                        value={data.fecha_ocurrencia}
+                                        onChange={(e) => setData('fecha_ocurrencia', e.target.value)}
+                                        className={CAMPO_DETALLE}
+                                    />
+                                    {errors.fecha_ocurrencia && <p className="text-red-400 text-xs mt-1">{errors.fecha_ocurrencia}</p>}
+                                </div>
+                                <div>
+                                    <label htmlFor="id_turno" className={ETIQUETA_DETALLE}>Turno</label>
+                                    <select
+                                        id="id_turno"
+                                        value={data.id_turno}
+                                        onChange={(e) => setData('id_turno', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin indicar</option>
+                                        {catalogos?.turnos.map((t) => <option key={t.id_turno} value={t.id_turno}>{t.nombre}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {actividadesDisponibles.length > 0 && (
+                                <div>
+                                    <label htmlFor="id_actividad" className={ETIQUETA_DETALLE}>Actividad en ejecución</label>
+                                    <select
+                                        id="id_actividad"
+                                        value={data.id_actividad}
+                                        onChange={(e) => setData('id_actividad', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin indicar</option>
+                                        {actividadesDisponibles.map((a) => <option key={a.id_actividad} value={a.id_actividad}>{a.nombre}</option>)}
+                                    </select>
+                                    {errors.id_actividad && <p className="text-red-400 text-xs mt-1">{errors.id_actividad}</p>}
+                                </div>
+                            )}
+
+                            {/* SEVERIDAD */}
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label htmlFor="id_severidad" className={ETIQUETA_DETALLE}>Severidad real</label>
+                                    <select
+                                        id="id_severidad"
+                                        value={data.id_severidad}
+                                        onChange={(e) => setData('id_severidad', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin indicar</option>
+                                        {catalogos?.severidades.map((s) => <option key={s.id_severidad} value={s.id_severidad}>{s.nombre}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="id_potencial_severidad" className={ETIQUETA_DETALLE}>Lo que pudo haber pasado</label>
+                                    <select
+                                        id="id_potencial_severidad"
+                                        value={data.id_potencial_severidad}
+                                        onChange={(e) => setData('id_potencial_severidad', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin indicar</option>
+                                        {catalogos?.severidades.map((s) => <option key={s.id_severidad} value={s.id_severidad}>{s.nombre}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label htmlFor="id_categoria_evento" className={ETIQUETA_DETALLE}>Tipo de contacto</label>
+                                    <select
+                                        id="id_categoria_evento"
+                                        value={data.id_categoria_evento}
+                                        onChange={(e) => setData('id_categoria_evento', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin indicar</option>
+                                        {catalogos?.categorias.map((c) => <option key={c.id_categoria_evento} value={c.id_categoria_evento}>{c.nombre}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="dia_ciclo" className={ETIQUETA_DETALLE}>Día del turno (ej. 10 de 14)</label>
+                                    <input
+                                        id="dia_ciclo"
+                                        type="number"
+                                        min={1}
+                                        max={30}
+                                        value={data.dia_ciclo}
+                                        onChange={(e) => setData('dia_ciclo', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    />
+                                    {errors.dia_ciclo && <p className="text-red-400 text-xs mt-1">{errors.dia_ciclo}</p>}
+                                </div>
+                            </div>
+
+                            {esIncidente && (
+                                <div>
+                                    <label htmlFor="id_clasificacion_incidente" className={ETIQUETA_DETALLE}>Clasificación</label>
+                                    <select
+                                        id="id_clasificacion_incidente"
+                                        value={data.id_clasificacion_incidente}
+                                        onChange={(e) => setData('id_clasificacion_incidente', e.target.value ? Number(e.target.value) : '')}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="">Sin clasificar</option>
+                                        {catalogos?.clasificaciones.map((c) => <option key={c.id_clasificacion_incidente} value={c.id_clasificacion_incidente}>{c.codigo} · {c.nombre}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            {esPare && (
+                                <div>
+                                    <label htmlFor="tipo_detencion" className={ETIQUETA_DETALLE}>Detención del trabajo</label>
+                                    <select
+                                        id="tipo_detencion"
+                                        value={data.tipo_detencion}
+                                        onChange={(e) => setData('tipo_detencion', e.target.value)}
+                                        className={CAMPO_DETALLE}
+                                    >
+                                        <option value="total">Total</option>
+                                        <option value="parcial">Parcial</option>
+                                        <option value="sin_detencion">Sin detención</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* CONDICIÓN DEL EVENTO */}
+                            {esPare && <div>
                                 <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
                                     Condición del Evento (PARE)
                                 </label>
                                 <select
                                     required
                                     value={data.condicion}
-                                    onChange={e => setData('condicion', Number(e.target.value))}
+                                    onChange={(e) => setData('condicion', Number(e.target.value))}
                                     className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 transition-colors cursor-pointer"
                                 >
                                     <option value={0}>Seleccione la condición identificada</option>
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                                         <option key={num} value={num}>
-                                            {num.toString().padStart(2, '0')}. {condicionesPare[num]}
+                                            {num.toString().padStart(2, '0')}. {CONDICIONES_PARE[num]}
                                         </option>
                                     ))}
                                 </select>
-                                {(errors as any).condicion && <p className="text-red-400 text-xs mt-1">{(errors as any).condicion}</p>}
-                            </div>
+                                {(errors as any).condicion && (
+                                    <p className="text-red-400 text-xs mt-1">
+                                        {(errors as any).condicion}
+                                    </p>
+                                )}
+                            </div>}
 
+                            {/* DESCRIPCIÓN DETALLADA */}
                             <div>
                                 <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
                                     Descripción Detallada
@@ -141,31 +619,41 @@ export default function Create() {
                                     required
                                     maxLength={500}
                                     value={data.descripcion}
-                                    onChange={e => setData('descripcion', e.target.value)}
+                                    onChange={(e) => setData('descripcion', e.target.value)}
                                     placeholder="Describe el contexto del hallazgo..."
                                     className="w-full bg-verde-1 border border-verde-3 rounded-lg px-3 py-2 text-[15px] text-gris-2 focus:outline-none focus:border-verde-5 resize-none transition-colors"
                                 ></textarea>
                                 <div className="flex justify-between mt-1">
-                                    <div>{errors.descripcion && <p className="text-red-400 text-xs">{errors.descripcion}</p>}</div>
-                                    <span className={`text-[11px] font-bold ${data.descripcion.length >= 500 ? 'text-rojo-1' : 'text-gris-1'}`}>
+                                    <div>
+                                        {errors.descripcion && (
+                                            <p className="text-red-400 text-xs">{errors.descripcion}</p>
+                                        )}
+                                    </div>
+                                    <span
+                                        className={`text-[11px] font-bold ${
+                                            data.descripcion.length >= 500
+                                                ? 'text-rojo-1'
+                                                : 'text-gris-1'
+                                        }`}
+                                    >
                                         {data.descripcion.length} / 500
                                     </span>
                                 </div>
                             </div>
 
-                            {/* SECCIÓN MULTI-ARCHIVO SEGURA */}
+                            {/* EVIDENCIA ADJUNTA */}
                             <div>
                                 <label className="block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1">
                                     Evidencia Adjunta (Máx 3. archivos)
                                 </label>
-                                
+
                                 {archivosSubidos.length < 3 && (
                                     <div className="flex items-center justify-between">
                                         <input
                                             type="file"
                                             multiple
                                             ref={fileInputRef}
-                                            accept="image/*,.pdf,.doc,.docx"
+                                            accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
                                             onChange={handleFileChange}
                                             className="w-full max-w-sm bg-verde-1 border border-verde-3 rounded-lg px-2 py-1.5 text-sm text-gris-2 focus:outline-none focus:border-verde-5 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[13px] file:font-bold file:bg-verde-5/10 file:text-verde-6 hover:file:bg-verde-5/20 cursor-pointer transition-colors"
                                         />
@@ -176,13 +664,16 @@ export default function Create() {
                                 {archivosSubidos.length > 0 && (
                                     <div className="flex flex-row flex-wrap gap-2 mt-2">
                                         {archivosSubidos.map((file, index) => (
-                                            <div key={index} className="flex items-center gap-2 bg-verde-1 border border-verde-5/50 px-3 py-1.5 rounded-lg max-w-[200px]">
+                                            <div
+                                                key={index}
+                                                className="flex items-center gap-2 bg-verde-1 border border-verde-5/50 px-3 py-1.5 rounded-lg max-w-[200px]"
+                                            >
                                                 <span className="text-sm shrink-0">📎</span>
                                                 <span className="text-xs text-verde-6 font-medium truncate flex-1">
                                                     {file.name}
                                                 </span>
-                                                <button 
-                                                    type="button" 
+                                                <button
+                                                    type="button"
                                                     onClick={() => removerArchivo(index)}
                                                     className="text-rojo-1 text-sm font-black hover:scale-110 transition-transform shrink-0"
                                                     title="Quitar archivo"
@@ -193,7 +684,11 @@ export default function Create() {
                                         ))}
                                     </div>
                                 )}
-                                {(errors as any).evidencia && <p className="text-red-400 text-xs mt-1">{(errors as any).evidencia}</p>}
+                                {(errors as any).evidencia && (
+                                    <p className="text-red-400 text-xs mt-1">
+                                        {(errors as any).evidencia}
+                                    </p>
+                                )}
                             </div>
 
                             {(errors as any).general && (
@@ -209,7 +704,12 @@ export default function Create() {
                                     className="px-6 py-2.5 rounded-lg text-sm font-bold bg-verde-5 hover:bg-verde-6 text-black transition-colors shadow-lg shadow-verde-5/20 flex items-center gap-2 disabled:opacity-50"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2.5"
+                                            d="M5 13l4 4L19 7"
+                                        />
                                     </svg>
                                     {processing ? 'Guardando...' : 'Registrar evento'}
                                 </button>
@@ -217,13 +717,14 @@ export default function Create() {
                         </form>
                     </div>
 
+                    {/* GUÍA DE CONDICIONES A LA DERECHA */}
                     <div className="lg:col-span-1">
                         <div className="bg-white border border-verde-3 rounded-xl p-4 shadow-xl flex flex-col h-full">
                             <h3 className="text-[13px] font-bold text-gris-2 uppercase tracking-wider mb-3">
                                 Guía de Condiciones
                             </h3>
                             <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-2">
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                                     <div
                                         key={num}
                                         className={`px-3 py-2 rounded-lg border text-[13px] leading-tight transition-colors duration-300 flex gap-2 cursor-pointer ${
@@ -233,16 +734,21 @@ export default function Create() {
                                         }`}
                                         onClick={() => setData('condicion', num)}
                                     >
-                                        <div className={`font-black shrink-0 ${data.condicion === num ? 'text-verde-6' : 'text-gray-600'}`}>
+                                        <div
+                                            className={`font-black shrink-0 ${
+                                                data.condicion === num
+                                                    ? 'text-verde-6'
+                                                    : 'text-gray-600'
+                                            }`}
+                                        >
                                             {num.toString().padStart(2, '0')}.
                                         </div>
-                                        <div>{condicionesPare[num]}</div>
+                                        <div>{CONDICIONES_PARE[num]}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </MainLayout>
