@@ -538,9 +538,21 @@ class EventoService
                     'El evento debe estar abierto o en revisión antes de cerrarse.'
                 );
 
+                abort_if(
+                    empty($datos->evidenciasCierre),
+                    422,
+                    'Es obligatorio adjuntar al menos una evidencia para cerrar el reporte.'
+                );
+
                 $rutasArchivos = $this->evidencias->guardar(
                     $datos->evidenciasCierre,
                     'evidencias_cierre'
+                );
+
+                abort_if(
+                    empty($rutasArchivos),
+                    422,
+                    'Es obligatorio adjuntar al menos una evidencia para cerrar el reporte.'
                 );
 
                 $bloqueado->update([

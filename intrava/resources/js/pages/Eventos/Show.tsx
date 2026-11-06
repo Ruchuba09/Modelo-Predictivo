@@ -205,6 +205,7 @@ export default function Show() {
     });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [errorEvidenciaCierre, setErrorEvidenciaCierre] = useState<string | null>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const archivosNuevos = Array.from(e.target.files || []);
@@ -218,6 +219,7 @@ export default function Show() {
             return;
         }
 
+        setErrorEvidenciaCierre(null);
         setData('evidencia_cierre', [...archivosActuales, ...archivosNuevos]);
         
         if (fileInputRef.current) {
@@ -233,6 +235,12 @@ export default function Show() {
 
     const handleCerrar = (e: FormEvent) => {
         e.preventDefault();
+        const archivosActuales = data.evidencia_cierre || [];
+        if (archivosActuales.length === 0) {
+            setErrorEvidenciaCierre('Es obligatorio adjuntar al menos una evidencia para cerrar el reporte.');
+            return;
+        }
+        setErrorEvidenciaCierre(null);
         // Envía los datos a la ruta de cierre configurada por tu compañero
         post(route('eventos.cerrar', evento.id_evento));
     };
@@ -594,7 +602,7 @@ export default function Show() {
 
                                     <div>
                                         <label className="block text-[14px] uppercase tracking-wider text-gris-1 dark:text-gray-400 mb-2">
-                                            Evidencia de Cierre (Máx 3. archivos)
+                                            Evidencia de Cierre <span className="text-rojo-1 font-bold text-xs normal-case">* (Obligatorio: mín. 1 archivo, máx. 3)</span>
                                         </label>
                                         
                                         {archivosSubidos.length < 3 && (
@@ -602,6 +610,7 @@ export default function Show() {
                                                 <input
                                                     type="file"
                                                     multiple
+                                                    required={archivosSubidos.length === 0}
                                                     ref={fileInputRef}
                                                     accept="image/*,.pdf,.doc,.docx"
                                                     onChange={handleFileChange}
@@ -632,14 +641,16 @@ export default function Show() {
                                                 ))}
                                             </div>
                                         )}
-                                        {(errors as any).evidencia_cierre && <p className="text-red-400 text-xs mt-1">{(errors as any).evidencia_cierre}</p>}
+                                        {errorEvidenciaCierre && <p className="text-rojo-1 text-xs mt-1 font-semibold">{errorEvidenciaCierre}</p>}
+                                        {(errors as any).evidencia_cierre && <p className="text-red-400 text-xs mt-1 font-semibold">{(errors as any).evidencia_cierre}</p>}
                                     </div>
 
                                     <div className="flex justify-end pt-4">
                                         <button
                                             type="submit"
-                                            disabled={processing}
-                                            className="px-6 py-3 rounded-lg text-sm font-bold bg-verde-5 hover:bg-verde-6 text-black transition-colors shadow-lg shadow-verde-5/20 disabled:opacity-50 cursor-pointer"
+                                            disabled={processing || archivosSubidos.length === 0}
+                                            title={archivosSubidos.length === 0 ? 'Debes adjuntar al menos una evidencia para cerrar el reporte' : undefined}
+                                            className="px-6 py-3 rounded-lg text-sm font-bold bg-verde-5 hover:bg-verde-6 text-black transition-colors shadow-lg shadow-verde-5/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                         >
                                             {processing ? 'Cerrando...' : 'Cerrar reporte'}
                                         </button>

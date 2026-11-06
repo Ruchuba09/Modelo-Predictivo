@@ -31,15 +31,31 @@ class CerrarEventoRequest extends FormRequest
                 'max:500',
             ],
             'evidencia_cierre' => [
-                'nullable',
+                'required',
                 'array',
+                'min:1',
                 'max:3',
             ],
             'evidencia_cierre.*' => [
+                'required',
                 'file',
                 'mimes:jpg,jpeg,png,pdf,doc,docx',
                 'max:5120',
             ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'evidencia_cierre.required' => 'Es obligatorio adjuntar al menos una evidencia para cerrar el reporte.',
+            'evidencia_cierre.min' => 'Es obligatorio adjuntar al menos una evidencia para cerrar el reporte.',
+            'evidencia_cierre.max' => 'Puedes adjuntar un máximo de 3 evidencias.',
+            'evidencia_cierre.*.required' => 'El archivo de evidencia es obligatorio.',
+            'evidencia_cierre.*.file' => 'Cada evidencia debe ser un archivo válido.',
+            'evidencia_cierre.*.mimes' => 'Los formatos permitidos para las evidencias son: jpg, jpeg, png, pdf, doc, docx.',
+            'evidencia_cierre.*.max' => 'Cada archivo de evidencia no debe superar los 5 MB.',
+            'justificacion.required' => 'La justificación o acción correctiva es obligatoria.',
         ];
     }
 

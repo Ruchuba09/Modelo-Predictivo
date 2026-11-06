@@ -15,28 +15,8 @@ export default function CerrarEvento({ eventoId, estado, onCerrado }: CerrarEven
   const handleCerrar = () => {
     if (!puedeCerrar) return;
 
-    const confirmado = window.confirm(
-      '¿Seguro que deseas cerrar este evento? Esta acción no se puede deshacer.'
-    );
-    if (!confirmado) return;
-
-    setCargando(true);
-
-    router.patch(
-      route('eventos.cerrar', eventoId),
-      {},
-      {
-        preserveScroll: true,
-        onSuccess: () => {
-          onCerrado?.();
-        },
-        onError: (errors) => {
-          console.error(errors);
-          alert('No se pudo cerrar el evento. Revisa que esté en proceso.');
-        },
-        onFinish: () => setCargando(false),
-      }
-    );
+    // Redirige al detalle del evento donde es obligatorio adjuntar evidencia y justificación para cerrar
+    router.visit(route('eventos.show', eventoId));
   };
 
   return (
