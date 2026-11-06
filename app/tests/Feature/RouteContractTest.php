@@ -51,4 +51,29 @@ class RouteContractTest extends TestCase
     {
         $this->assertSame('/eventos/7/archivos/foto.jpg', route('eventos.archivo', [7, 'foto.jpg'], false));
     }
+
+    public function test_mobile_app_routes_use_token_authentication(): void
+    {
+        $esperadas = [
+            'api.v1.eventos.archivo' => '/api/v1/eventos/7/archivos/foto.jpg',
+            'api.v1.eventos.mi-cuadrilla' => '/api/v1/eventos/mi-cuadrilla',
+        ];
+
+        foreach ($esperadas as $nombre => $uri) {
+            $ruta = Route::getRoutes()->getByName($nombre);
+
+            $this->assertNotNull($ruta);
+            $this->assertContains('auth:sanctum', $ruta->gatherMiddleware());
+            $this->assertSame($nombre, Route::getRoutes()->match(
+                \Illuminate\Http\Request::create($uri)
+            )->getName());
+        }
+    }
+
+    public function test_team_reports_require_management_role(): void
+    {
+        $ruta = Route::getRoutes()->getByName('api.v1.eventos.mi-cuadrilla');
+
+        $this->assertContains('role:Administrador,Supervisor', $ruta->gatherMiddleware());
+    }
 }

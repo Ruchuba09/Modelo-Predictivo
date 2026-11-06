@@ -61,10 +61,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($gestion, $admin, $
         // Rutas fijas antes del recurso para que no se interpreten como {evento}.
         Route::get('eventos/mis-reportes', [EventoController::class, 'misReportes'])->name('eventos.mis-reportes');
         Route::get('eventos/opciones', [EventoController::class, 'opciones'])->name('eventos.opciones');
+        Route::get('eventos/mi-cuadrilla', [EventoController::class, 'miCuadrilla'])
+            ->middleware($gestion)->name('eventos.mi-cuadrilla');
         Route::get('eventos/sin-administrador', [EventoController::class, 'sinAdministrador'])
             ->middleware($admin)->name('eventos.sin-administrador');
         Route::get('eventos/{evento}/evidencias', [EventoController::class, 'evidencias'])
             ->whereNumber('evento')->name('eventos.evidencias');
+        Route::get('eventos/{evento}/archivos/{archivo}', [EventoController::class, 'archivo'])
+            ->whereNumber('evento')->name('eventos.archivo');
         Route::patch('eventos/{evento}/tomar', [EventoController::class, 'tomar'])
             ->whereNumber('evento')->middleware('role:Supervisor')->name('eventos.tomar');
         Route::patch('eventos/{evento}/cerrar', [EventoController::class, 'cerrar'])

@@ -73,6 +73,17 @@ class EventoController extends Controller
         return response()->json($this->servicio->listarMisReportes($request->filtros()));
     }
 
+    /**
+     * Reportes del equipo a cargo: el supervisor ve los de sus cuadrillas y el
+     * administrador todos, con la misma restricción que el listado general.
+     */
+    public function miCuadrilla(FiltroEventoRequest $request): JsonResponse
+    {
+        $this->authorize('viewAny', Evento::class);
+
+        return response()->json($this->servicio->listar($request->filtros()));
+    }
+
     public function opciones(): JsonResponse
     {
         return response()->json($this->servicio->obtenerDatosFormularioCrear());
@@ -83,6 +94,14 @@ class EventoController extends Controller
         $this->authorize('view', $evento);
 
         return response()->json($this->evidencias->listar($evento));
+    }
+
+    /** Evidencia privada para clientes con token, como la app móvil. */
+    public function archivo(Evento $evento, string $archivo)
+    {
+        $this->authorize('view', $evento);
+
+        return $this->evidencias->responder($evento, $archivo);
     }
 
     public function tomar(Evento $evento): JsonResponse

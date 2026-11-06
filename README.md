@@ -280,6 +280,17 @@ Por defecto: `http://localhost:8000`
 
 ---
 
+## Conectar la app móvil
+
+La app Flutter ([ava-movil](https://github.com/Ruchuba09/ava-movil)) consume `/api/v1` con tokens de Sanctum. La URL del backend se indica al ejecutarla con `API_BASE_URL`; el puerto 8080 de Docker atiende HTTP solo para desarrollo:
+
+| Dónde corre la app | `API_BASE_URL` |
+|---|---|
+| Emulador de Android | `http://10.0.2.2:8080/api/v1/` |
+| Teléfono físico en la misma red Wi-Fi | `http://<IP-del-PC>:8080/api/v1/` |
+
+Después de cambiar `docker/nginx/dev.conf`, reinicia nginx desde `docker/` con `docker compose restart nginx-dev`. Con un teléfono físico, permite además el puerto 8080 en el firewall del PC. Las compilaciones de producción de la app exigen HTTPS con un certificado válido.
+
 ## Comandos útiles
 
 | Comando | Descripción |
