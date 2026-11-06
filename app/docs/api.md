@@ -48,7 +48,11 @@ Los endpoints CRUD están protegidos y usan los métodos HTTP habituales (`GET` 
 
 Las colecciones paginadas aceptan `per_page` (máximo 100). Las que sirven para selectores aceptan `todos=1` (máximo 1000). Trabajadores, personas, faenas, clientes, áreas, departamentos, usuarios y roles aceptan `buscar`. Áreas también acepta `id_faena`; clientes y departamentos aceptan `estado`.
 
-Rutas específicas de eventos: `GET /api/v1/eventos/sin-administrador`, `GET /api/v1/eventos/mis-reportes`, `GET /api/v1/eventos/opciones`, `GET /api/v1/eventos/{id}/evidencias`, `GET /api/v1/eventos/estadisticas`, `GET /api/v1/eventos/estadisticas/{seccion}`, `PATCH /api/v1/eventos/{id}/tomar` y `PATCH /api/v1/eventos/{id}/cerrar`. La API también expone `GET /api/v1/cuadrillas/supervisores`.
+Rutas específicas de eventos: `GET /api/v1/eventos/sin-administrador`, `GET /api/v1/eventos/mis-reportes`, `GET /api/v1/eventos/mi-cuadrilla`, `GET /api/v1/eventos/opciones`, `GET /api/v1/eventos/{id}/evidencias`, `GET /api/v1/eventos/{id}/archivos/{archivo}`, `GET /api/v1/eventos/estadisticas`, `GET /api/v1/eventos/estadisticas/{seccion}`, `PATCH /api/v1/eventos/{id}/tomar` y `PATCH /api/v1/eventos/{id}/cerrar`. La API también expone `GET /api/v1/cuadrillas/supervisores`.
+
+`GET /api/v1/eventos`, `/eventos/mis-reportes` y `/eventos/mi-cuadrilla` responden por páginas, con los pendientes primero: aceptan `page`, `per_page` (30 por defecto, máximo 100), `id_evento`, `id_proyecto`, `condicion`, `estado`, `fecha_inicio` y `fecha_fin`. Además de `data`, `current_page`, `last_page` y `total`, entregan `proyectos` con los proyectos que el usuario puede filtrar.
+
+Para cerrar un evento con archivos (`evidencia_cierre[]`, máximo 3) se envía `POST` multipart con `_method=PATCH`, porque PHP no procesa archivos en un `PATCH` real. Si el evento tiene detención parcial o total, `fecha_reinicio` es obligatoria.
 
 ## Respuestas
 

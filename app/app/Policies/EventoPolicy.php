@@ -34,12 +34,12 @@ class EventoPolicy
     public function update(User $user, Evento $evento): Response
     {
         $idTrabajador = $this->idTrabajador($user);
+        $esPropio = $this->esAutor($user, $evento)
+            || ($idTrabajador && (int) $evento->id_trabajador === $idTrabajador);
 
         return $this->decidir(
             $user->tieneRol('Administrador')
-                || ($idTrabajador
-                    && (int) $evento->id_trabajador === $idTrabajador
-                    && $evento->estado?->editablePorAutor()),
+                || ($esPropio && $evento->estado?->editablePorAutor()),
             'No tienes permiso para editar este reporte.'
         );
     }
@@ -70,7 +70,7 @@ class EventoPolicy
 
     private function puedeVer(User $user, Evento $evento): bool
     {
-        if ($user->tieneRol('Administrador')) {
+        if ($user->tieneRol('Administrador') || $this->esAutor($user, $evento)) {
             return true;
         }
 
@@ -89,6 +89,11 @@ class EventoPolicy
     private function decidir(bool $permitido, string $mensaje): Response
     {
         return $permitido ? Response::allow() : Response::deny($mensaje);
+    }
+
+    private function esAutor(User $user, Evento $evento): bool
+    {
+        return $evento->id_autor !== null && (int) $evento->id_autor === (int) $user->id_user;
     }
 
     private function idTrabajador(User $user): ?int

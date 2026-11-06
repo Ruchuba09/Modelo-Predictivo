@@ -2,6 +2,7 @@ import { Head, Link, usePage, useForm } from '@inertiajs/react';
 import { FormEvent, useRef, useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import { useAuth } from '@/hooks/use-auth';
+import { useCondicionesPare } from '../../lib/condicionesPare';
 
 interface ArchivoEvidencia {
     nombre: string;
@@ -9,19 +10,6 @@ interface ArchivoEvidencia {
     extension: string;
     es_imagen: boolean;
 }
-
-const CONDICIONES_PARE: { [key: number]: string } = {
-    1: 'Si las condiciones de trabajo NO son seguras.',
-    2: 'Si NO tiene las herramientas adecuadas o están en mal estado.',
-    3: 'Si NO tiene los EPP adecuados.',
-    4: 'Si NO sabe o no está capacitado / autorizado para realizar la actividad.',
-    5: 'Si NO hay un procedimiento / instructivo asociado a la actividad o si este existe pero no ha sido difundido.',
-    6: 'NO contar con el apoyo de recursos humanos y/o materiales necesarios para realizar la actividad.',
-    7: 'NO contar con AST, VATS, ERT.',
-    8: 'NO contar con el o los permisos exigidos para realizar la actividad.',
-    9: 'NO encontrarse en condiciones físicas o emocionales para realizar la actividad.',
-    10: 'Otras condiciones no consideradas que impliquen un riesgo no controlado.',
-};
 
 const ESTADO_STYLES: { [key: string]: string } = {
     abierto: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
@@ -125,6 +113,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default function Show() {
+    const CONDICIONES_PARE = useCondicionesPare();
     const usuario = useAuth();
     const roles = usuario?.roles ?? [];
     const esAdmin = roles.some((r) => r.toLowerCase() === 'administrador');
@@ -193,7 +182,7 @@ export default function Show() {
     };
 
     // CONFIGURACIÓN DEL FORMULARIO DE CIERRE
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         _method: 'patch', // Necesario en Laravel para enviar archivos en rutas PATCH
         justificacion: '',
         fecha_reinicio: '',
@@ -233,6 +222,11 @@ export default function Show() {
 
     const handleCerrar = (e: FormEvent) => {
         e.preventDefault();
+        // El campo entrega hora local y el servidor trabaja en UTC.
+        transform((datos) => ({
+            ...datos,
+            fecha_reinicio: datos.fecha_reinicio ? new Date(datos.fecha_reinicio).toISOString() : '',
+        }));
         // Envía los datos a la ruta de cierre configurada por tu compañero
         post(route('eventos.cerrar', evento.id_evento));
     };
@@ -286,7 +280,7 @@ export default function Show() {
                             {evento.severidad && <InfoRow label="Severidad" value={evento.severidad} />}
                             {evento.dia_ciclo && <InfoRow label="Día del turno" value={String(evento.dia_ciclo)} />}
                             {evento.tipo_detencion && <InfoRow label="Detención" value={evento.tipo_detencion.replace('_', ' ')} />}
-                            {evento.fecha_reinicio && <InfoRow label="Reinicio" value={evento.fecha_reinicio.slice(0, 16).replace('T', ' ')} />}
+                            {evento.fecha_reinicio && <InfoRow label="Reinicio" value={new Date(evento.fecha_reinicio).toLocaleString('es-CL')} />}
                             <InfoRow
                                 label={`Condición #${evento.condicion}`}
                                 value={CONDICIONES_PARE[evento.condicion]}
@@ -503,6 +497,19 @@ export default function Show() {
                                                 {evento.evidencia_cierre.map((ruta, idx) => {
                                                     const nombre = ruta.split('/').pop() || `Archivo ${idx + 1}`;
                                                     const url = `/eventos/${evento.id_evento}/archivos/${nombre}`;
+                                                    if (/\.(jpe?g|png)$/i.test(nombre)) {
+                                                        return (
+                                                            <button
+                                                                key={idx}
+                                                                type="button"
+                                                                onClick={() => setImagenModal(url)}
+                                                                title={nombre}
+                                                                className="w-28 h-20 rounded-lg overflow-hidden border border-verde-3 dark:border-[#2A333E] hover:border-verde-5 transition-colors shadow-sm cursor-pointer"
+                                                            >
+                                                                <img src={url} alt={nombre} loading="lazy" className="w-full h-full object-cover" />
+                                                            </button>
+                                                        );
+                                                    }
                                                     return (
                                                         <a
                                                             key={idx}
@@ -603,7 +610,7 @@ export default function Show() {
                                                     type="file"
                                                     multiple
                                                     ref={fileInputRef}
-                                                    accept="image/*,.pdf,.doc,.docx"
+                                                    accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
                                                     onChange={handleFileChange}
                                                     className="w-full bg-verde-1 dark:bg-[#151A1F] border border-verde-3 dark:border-[#2A333E] rounded-lg px-4 py-2.5 text-sm text-gris-2 dark:text-white focus:outline-none focus:border-verde-5 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-verde-5/10 file:text-verde-6 hover:file:bg-verde-5/20 cursor-pointer transition-colors"
                                                 />
@@ -632,7 +639,9 @@ export default function Show() {
                                                 ))}
                                             </div>
                                         )}
-                                        {(errors as any).evidencia_cierre && <p className="text-red-400 text-xs mt-1">{(errors as any).evidencia_cierre}</p>}
+                                        {Object.entries(errors as Record<string, string>)
+                                            .filter(([campo]) => campo.startsWith('evidencia_cierre'))
+                                            .map(([campo, mensaje]) => <p key={campo} className="text-red-400 text-xs mt-1">{mensaje}</p>)}
                                     </div>
 
                                     <div className="flex justify-end pt-4">

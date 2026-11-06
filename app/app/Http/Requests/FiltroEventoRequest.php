@@ -56,7 +56,14 @@ class FiltroEventoRequest extends FormRequest
             ],
             'desde' => ['sometimes', 'nullable', 'date'],
             'hasta' => ['sometimes', 'nullable', 'date'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'between:1,100'],
         ];
+    }
+
+    public function porPagina(): int
+    {
+        return (int) $this->input('per_page', 30);
     }
 
     public function filtros(): array

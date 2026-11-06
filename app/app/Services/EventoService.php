@@ -19,6 +19,8 @@ use App\Models\TipoEvento;
 use App\Models\Trabajador;
 use App\Models\User;
 use App\Notifications\TarjetaPareRegistrada;
+use App\Support\CondicionesPare;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -33,19 +35,6 @@ class EventoService
     private const DEPARTAMENTOS_PREVENCION = [
         'Prevención de Riesgos',
         'Seguridad y Salud Ocupacional',
-    ];
-
-    private const CONDICIONES = [
-        1 => '1. Cond. Inseguras',
-        2 => '2. Herramientas',
-        3 => '3. Falta EPP',
-        4 => '4. Capacitación',
-        5 => '5. Procedimientos',
-        6 => '6. Recursos',
-        7 => '7. AST/VATS/ERT',
-        8 => '8. Permisos',
-        9 => '9. Est. Físico/Mental',
-        10 => '10. Otros',
     ];
 
     private ?int $idTipoPare = null;
@@ -70,7 +59,7 @@ class EventoService
             DB::raw('DATE(fecha_creacion) as fecha'),
         ];
 
-        foreach (array_keys(self::CONDICIONES) as $id) {
+        foreach (array_keys(CondicionesPare::ETIQUETAS) as $id) {
             $columnas[] = DB::raw(
                 "SUM(CASE WHEN condicion = {$id} THEN 1 ELSE 0 END) as c{$id}"
             );
@@ -96,20 +85,65 @@ class EventoService
 
     public function listarMisReportes(array $filtros = []): Collection
     {
-        $trabajador = Auth::user()?->trabajador;
-
-        abort_if(
-            ! $trabajador,
-            403,
-            'El usuario no está registrado como trabajador.'
-        );
-
-        $query = Evento::with(['tipoEvento', 'proyecto'])
-            ->where('id_trabajador', $trabajador->id_trabajador);
+        $query = $this->consultaMisReportes()->with(['tipoEvento', 'proyecto']);
 
         $this->aplicarFiltros($query, $filtros);
 
         return $query->orderByDesc('fecha_creacion')->get();
+    }
+
+    /** Listado general por páginas, para clientes de la API. */
+    public function paginar(array $filtros, int $porPagina): array
+    {
+        $base = Evento::query();
+        $this->restringirASupervisor($base);
+
+        return $this->paginarConsulta($base, $filtros, $porPagina);
+    }
+
+    /** "Mis reportes" por páginas, para clientes de la API. */
+    public function paginarMisReportes(array $filtros, int $porPagina): array
+    {
+        return $this->paginarConsulta($this->consultaMisReportes(), $filtros, $porPagina);
+    }
+
+    /** Lo que el usuario creó y lo que lo tiene como persona reportada. */
+    private function consultaMisReportes(): Builder
+    {
+        $usuario = Auth::user();
+        $idTrabajador = $usuario?->trabajador?->id_trabajador;
+
+        return Evento::query()->where(function (Builder $query) use ($usuario, $idTrabajador) {
+            $query->where('id_autor', $usuario?->id_user);
+
+            if ($idTrabajador) {
+                $query->orWhere('id_trabajador', $idTrabajador);
+            }
+        });
+    }
+
+    /**
+     * Los pendientes van primero en todas las páginas. Junto a la página se
+     * entregan los proyectos que el usuario puede filtrar, ya que el cliente
+     * no los puede deducir de una lista incompleta.
+     */
+    private function paginarConsulta(Builder $base, array $filtros, int $porPagina): array
+    {
+        $proyectos = Proyecto::whereIn('id_proyecto', (clone $base)->select('id_proyecto'))
+            ->orderBy('nombre')
+            ->get(['id_proyecto', 'nombre']);
+
+        $query = (clone $base)->with(['tipoEvento', 'proyecto']);
+        $this->aplicarFiltros($query, $filtros);
+
+        $pagina = $query
+            ->orderByRaw("CASE WHEN estado = 'cerrado' THEN 1 ELSE 0 END")
+            ->orderByDesc('fecha_creacion')
+            ->orderByDesc('id_evento')
+            ->paginate($porPagina)
+            ->withQueryString();
+
+        return [...$pagina->toArray(), 'proyectos' => $proyectos];
     }
 
     public function listarProyectos(): Collection
@@ -130,6 +164,7 @@ class EventoService
     public function obtenerDatosFormularioCrear(): array
     {
         $usuario = Auth::user();
+        $puedeVerRut = $this->puedeVerRut();
 
         $trabajadorActual = $usuario?->trabajador
             ?->loadMissing([
@@ -166,7 +201,7 @@ class EventoService
         ])
             ->where('estado', 'activo')
             ->get()
-            ->map(function (Trabajador $trabajador) {
+            ->map(function (Trabajador $trabajador) use ($puedeVerRut) {
                 $proyectos = $this->obtenerProyectosDeTrabajador(
                     $trabajador
                 );
@@ -180,7 +215,7 @@ class EventoService
                     'id_trabajador' => $trabajador->id_trabajador,
                     'nombre' => $nombre
                         ?: "Trabajador #{$trabajador->id_trabajador}",
-                    'rut' => $trabajador->persona?->rut ?? '',
+                    ...($puedeVerRut ? ['rut' => $trabajador->persona?->rut ?? ''] : []),
                     'cargo' => $trabajador->cargo ?? '',
                     'proyectos' => $proyectos
                         ->map(fn ($p) => [
@@ -199,6 +234,7 @@ class EventoService
             'trabajadores' => $trabajadores,
             'proyectos' => $this->listarProyectosParaCrear(),
             'idTipoPare' => $this->idTipoPare(),
+            'condiciones' => CondicionesPare::catalogo(),
             'areasPorProyecto' => $this->areasPorProyecto(),
             'actividadesPorProyecto' => $this->actividadesPorProyecto(),
             'catalogos' => $this->catalogos(),
@@ -268,6 +304,7 @@ class EventoService
             $evento = DB::transaction(function () use (
                 $datos,
                 $idTrabajador,
+                $usuario,
                 &$rutasArchivos
             ) {
                 $rutasArchivos = $this->evidencias->guardar(
@@ -282,6 +319,7 @@ class EventoService
                     'referencia' => $datos->referencia,
                     'id_proyecto' => $datos->idProyecto,
                     'id_area' => $datos->idArea,
+                    'id_autor' => $usuario?->id_user,
                     'id_trabajador' => $idTrabajador,
                     'id_supervisor' => $this->supervisorDelTrabajador($idTrabajador),
                     'estado' => EstadoEvento::Abierto,
@@ -370,7 +408,7 @@ class EventoService
                 proyecto: $evento->proyecto?->nombre ?? "Proyecto {$evento->id_proyecto}",
                 area: $evento->area?->descripcion ?? $evento->area?->codigo_area,
                 referencia: $evento->referencia,
-                condicion: self::CONDICIONES[(int) $evento->condicion] ?? 'Sin condición',
+                condicion: CondicionesPare::ETIQUETAS[(int) $evento->condicion] ?? 'Sin condición',
             ));
         } catch (\Throwable $e) {
             Log::error("Tarjeta PARE {$evento->id_evento}: no se pudo enviar el aviso.", [
@@ -381,7 +419,7 @@ class EventoService
 
     public function obtener(Evento $evento): Evento
     {
-        return $evento->load([
+        $evento->load([
             'tipoEvento',
             'proyecto',
             'area',
@@ -392,6 +430,26 @@ class EventoService
             'supervisor.trabajador.persona',
             'trabajador.obrero.cuadrilla.supervisor.trabajador.persona',
         ]);
+
+        if (! $this->puedeVerRut()) {
+            foreach ([
+                'autorizaReinicio.persona',
+                'administrador.trabajador.persona',
+                'trabajador.persona',
+                'supervisor.trabajador.persona',
+                'trabajador.obrero.cuadrilla.supervisor.trabajador.persona',
+            ] as $ruta) {
+                data_get($evento, $ruta)?->makeHidden('rut');
+            }
+        }
+
+        return $evento;
+    }
+
+    /** El RUT de otras personas es un dato de gestión, no de quien solo reporta. */
+    private function puedeVerRut(): bool
+    {
+        return (bool) Auth::user()?->tieneRol('Administrador', 'Supervisor');
     }
 
     public function obtenerParaEditar(Evento $evento): Evento
@@ -462,7 +520,7 @@ class EventoService
 
         $datos = [];
 
-        foreach (self::CONDICIONES as $id => $nombre) {
+        foreach (CondicionesPare::ETIQUETAS as $id => $nombre) {
             $datos[] = [
                 'id' => "c{$id}",
                 'condicion' => $nombre,
@@ -697,7 +755,9 @@ class EventoService
         $estado = strtolower(trim((string) ($filtros['estado'] ?? '')));
         if ($estado !== '') {
             $this->filtrarPorEstado($query, $estado);
-        } elseif (! empty($filtros['condicion'])) {
+        }
+
+        if (! empty($filtros['condicion'])) {
             $query->where('condicion', $filtros['condicion']);
         }
 

@@ -1,7 +1,7 @@
 import { FormEvent } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import MainLayout from '../../layouts/MainLayout';
-import { CONDICIONES_PARE } from '../../lib/condicionesPare';
+import { useCondicionesPare } from '../../lib/condicionesPare';
 
 interface Evento {
     id_evento: number;
@@ -16,6 +16,7 @@ const CAMPO =
 const ETIQUETA = 'block text-[13px] font-bold uppercase tracking-wider text-gris-1 mb-1';
 
 export default function Edit() {
+    const CONDICIONES_PARE = useCondicionesPare();
     const { evento } = usePage().props as unknown as { evento: Evento };
     const { data, setData, put, processing, errors } = useForm({
         condicion: Number(evento.condicion) || 0,

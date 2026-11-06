@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EstadoEvento;
+use App\Support\CondicionesPare;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +22,7 @@ class Evento extends Model
 
     protected $fillable = [
         'id_tipo_evento',
+        'id_autor',
         'id_administrador',
         'id_trabajador',
         'id_supervisor',
@@ -63,6 +65,19 @@ class Evento extends Model
         'evidencia_cierre' => 'array',
         'estado' => EstadoEvento::class,
     ];
+
+    protected $appends = ['condicion_nombre'];
+
+    /** Texto de la condición para los clientes de la API, según el catálogo único. */
+    public function getCondicionNombreAttribute(): ?string
+    {
+        return CondicionesPare::descripcion($this->attributes['condicion'] ?? null);
+    }
+
+    public function autor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'id_autor', 'id_user');
+    }
 
     public function tipoEvento(): BelongsTo
     {

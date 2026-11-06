@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\CondicionesPare;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -71,6 +72,7 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
             'notificaciones' => $notificaciones,
+            'condicionesPare' => CondicionesPare::DESCRIPCIONES,
         ];
     }
 }

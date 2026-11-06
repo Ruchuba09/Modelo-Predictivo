@@ -24,7 +24,7 @@ class EventoController extends Controller
     {
         $this->authorize('viewAny', Evento::class);
 
-        return response()->json($this->servicio->listar($request->filtros()));
+        return response()->json($this->servicio->paginar($request->filtros(), $request->porPagina()));
     }
 
     public function store(CrearEventoRequest $request): JsonResponse
@@ -70,7 +70,7 @@ class EventoController extends Controller
 
     public function misReportes(FiltroEventoRequest $request): JsonResponse
     {
-        return response()->json($this->servicio->listarMisReportes($request->filtros()));
+        return response()->json($this->servicio->paginarMisReportes($request->filtros(), $request->porPagina()));
     }
 
     /**
@@ -81,7 +81,7 @@ class EventoController extends Controller
     {
         $this->authorize('viewAny', Evento::class);
 
-        return response()->json($this->servicio->listar($request->filtros()));
+        return response()->json($this->servicio->paginar($request->filtros(), $request->porPagina()));
     }
 
     public function opciones(): JsonResponse

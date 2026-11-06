@@ -70,6 +70,17 @@ class RouteContractTest extends TestCase
         }
     }
 
+    public function test_pare_conditions_have_one_catalog(): void
+    {
+        $catalogo = \App\Support\CondicionesPare::catalogo();
+
+        $this->assertCount(10, $catalogo);
+        $this->assertSame(range(1, 10), array_column($catalogo, 'id_condicion'));
+        $this->assertSame('10. Otros', $catalogo[9]['etiqueta']);
+        $this->assertStringStartsWith('Otras condiciones', $catalogo[9]['nombre']);
+        $this->assertNull(\App\Support\CondicionesPare::descripcion(null));
+    }
+
     public function test_team_reports_require_management_role(): void
     {
         $ruta = Route::getRoutes()->getByName('api.v1.eventos.mi-cuadrilla');

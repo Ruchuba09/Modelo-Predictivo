@@ -24,17 +24,22 @@ class EvidenciaEventoService
 
     public function listar(Evento $evento): array
     {
-        $evidencias = $this->normalizarRutas($evento->evidencia);
+        $archivos = $this->describir($evento, $this->normalizarRutas($evento->evidencia));
 
-        $archivos = [];
+        return [
+            'total' => count($archivos),
+            'evidencias' => $archivos,
+            'evidencias_cierre' => $this->describir($evento, $this->normalizarRutas($evento->evidencia_cierre)),
+        ];
+    }
 
-        foreach ($evidencias as $ruta) {
+    private function describir(Evento $evento, array $rutas): array
+    {
+        return array_map(function (string $ruta) use ($evento) {
             $nombre = basename($ruta);
-            $extension = strtolower(
-                pathinfo($ruta, PATHINFO_EXTENSION)
-            );
+            $extension = strtolower(pathinfo($ruta, PATHINFO_EXTENSION));
 
-            $archivos[] = [
+            return [
                 'nombre' => $nombre,
                 'ruta' => route('eventos.archivo', [$evento->id_evento, $nombre], false),
                 'extension' => $extension ?: 'archivo',
@@ -44,12 +49,7 @@ class EvidenciaEventoService
                     true
                 ),
             ];
-        }
-
-        return [
-            'total' => count($archivos),
-            'evidencias' => $archivos,
-        ];
+        }, $rutas);
     }
 
     /**

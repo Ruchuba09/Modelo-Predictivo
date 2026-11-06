@@ -1,7 +1,7 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
-import { CONDICIONES_PARE } from '../../lib/condicionesPare';
+import { useCondicionesPare } from '../../lib/condicionesPare';
 
 interface ProyectoItem {
     id_proyecto: number;
@@ -61,6 +61,7 @@ function esTurnoNoche(fecha: string): boolean {
 }
 
 export default function Create() {
+    const CONDICIONES_PARE = useCondicionesPare();
     const {
         tiposEvento = [],
         usuarioTrabajador = null,
@@ -652,7 +653,7 @@ export default function Create() {
                                             type="file"
                                             multiple
                                             ref={fileInputRef}
-                                            accept="image/*,.pdf,.doc,.docx"
+                                            accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
                                             onChange={handleFileChange}
                                             className="w-full max-w-sm bg-verde-1 border border-verde-3 rounded-lg px-2 py-1.5 text-sm text-gris-2 focus:outline-none focus:border-verde-5 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[13px] file:font-bold file:bg-verde-5/10 file:text-verde-6 hover:file:bg-verde-5/20 cursor-pointer transition-colors"
                                         />
