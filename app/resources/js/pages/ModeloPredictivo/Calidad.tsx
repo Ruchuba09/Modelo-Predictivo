@@ -39,7 +39,7 @@ export default function Calidad() {
                         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                             <div>
                                 <h2 className="text-lg font-bold text-gris-2">Comparación de modelos</h2>
-                                <p className="text-xs text-gris-1 mt-1">Ordenados de mejor a peor. Una log-loss más baja significa mejores probabilidades.</p>
+                                <p className="text-xs text-gris-1 mt-1">Etapa de elección, ordenada de mejor a peor. Una log-loss más baja significa mejores probabilidades. La tabla superior muestra la confirmación del modelo publicado.</p>
                             </div>
                             <label className="text-xs font-semibold text-gris-1">
                                 Entidad

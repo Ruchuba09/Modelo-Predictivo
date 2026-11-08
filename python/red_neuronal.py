@@ -36,6 +36,7 @@ from threadpoolctl import threadpool_limits
 from modelo_predictivo import (
     OBJETIVO_INCIDENTES,
     OBJETIVO_LESIONES,
+    TIPOS_AVISO,
     TIPOS_SEGUIMIENTO,
     filtrar_objetivo,
     tasa_desde_probabilidad,
@@ -117,6 +118,7 @@ def preparar_eventos(base, h, hoy=None):
     """Panel proyecto-semana y una etiqueta por cada objetivo con suficientes ejemplos."""
     spine, eventos, _, numericas = construir_niveles(base, OBJETIVO_INCIDENTES, h, hoy)["proyecto"]
     X, meta = construir_panel(spine, eventos, h, (), numericas, hoy=hoy)
+    # Las tarjetas PARE se predicen, pero no son variables: X se arma con incidentes como objetivo.
     fuente = eventos[~eventos["tipo"].isin(TIPOS_SEGUIMIENTO)]
     objetivos = [OBJETIVO_INCIDENTES, OBJETIVO_LESIONES, *sorted(fuente["tipo"].unique())]
     Y = pd.DataFrame({
@@ -556,7 +558,8 @@ def predecir_proyecto(engine, id_proyecto, horizonte=4, hoy=None):
         for nombre in artefacto["eventos"]["salidas"]:
             serie = [acumulados({nombre: c[0][nombre]} if nombre in c[0] else {}, dias) for c, dias in zip(crudas, pasos)]
             final = plazos_coherentes(serie)[-1][nombre]
-            eventos.append({"objetivo": nombre, "prob_evento": round(probabilidad_de(final, proporcion), 6), "calidad": calidad[nombre]})
+            eventos.append({"objetivo": nombre, "prob_evento": round(probabilidad_de(final, proporcion), 6), "calidad": calidad[nombre],
+                            "aviso": nombre in TIPOS_AVISO})
         eventos.sort(key=lambda item: item["prob_evento"], reverse=True)
 
         serie_proyecto = [

@@ -53,7 +53,9 @@ VENTANAS = (1, 2, 4, 8, 13, 26)
 MIN_POSITIVOS = 20
 MIN_NEGATIVOS = 20
 MIN_ENTIDADES = 3
+# Los dos primeros cortes eligen el modelo; desde el ultimo, las semanas solo confirman y calibran.
 FOLDS = (0.55, 0.70, 0.85)
+MARGEN_MINIMO_PCT = 1.0
 PRIOR_REFERENCIA = 20
 N_EXPLICADAS = 12
 MAX_FILAS_ENTRENAMIENTO = 5000
@@ -63,7 +65,7 @@ DIRECTORIO_MODELOS = Path(os.getenv("MODELOS_DIR", Path(__file__).resolve().pare
 
 ETIQUETAS_BASE = {
     "objetivo": "incidentes", "total": "eventos", "proactivo": "reportes preventivos",
-    "pare": "tarjetas PARE", "noche": "eventos en turno noche",
+    "noche": "eventos en turno noche",
 }
 ETIQUETAS = {
     "sem_desde_ultimo": "semanas desde el último incidente",
@@ -127,14 +129,16 @@ def construir_panel(spine, eventos, h, cats=(), numericas=(), padre=None, global
     ev["semana"] = lunes(ev["fecha"])
     for columna in ("objetivo", "proactivo", "pare", "noche"):
         ev[columna] = ev[columna].fillna(False).astype(bool)
+    # Una tarjeta PARE es un aviso, no un agravante: solo cuenta si es justo lo que se predice.
+    ev = ev[~ev["pare"] | ev["objetivo"]]
     ev["severidad"] = pd.to_numeric(ev["severidad"], errors="coerce")
     claves = ["entidad", "semana"]
     semanal = ev.groupby(claves).agg(
         n_objetivo=("objetivo", "sum"), n_total=("objetivo", "size"), n_proactivo=("proactivo", "sum"),
-        n_pare=("pare", "sum"), n_noche=("noche", "sum"), n_sev=("severidad", "max"),
+        n_noche=("noche", "sum"), n_sev=("severidad", "max"),
     ).reset_index()
     df = df.merge(semanal, how="left", on=claves)
-    conteos = ["n_objetivo", "n_total", "n_proactivo", "n_pare", "n_noche"]
+    conteos = ["n_objetivo", "n_total", "n_proactivo", "n_noche"]
     df[conteos] = df[conteos].fillna(0)
 
     def rodar(serie, ventana, agg="sum"):
@@ -143,7 +147,7 @@ def construir_panel(spine, eventos, h, cats=(), numericas=(), padre=None, global
         return getattr(rodante, agg)().reset_index(level=0, drop=True).sort_index()
 
     feats = {}
-    for base in ("objetivo", "total", "proactivo", "pare", "noche"):
+    for base in ("objetivo", "total", "proactivo", "noche"):
         for w in VENTANAS if base in ("objetivo", "total", "proactivo") else (4, 13):
             feats[f"{base}_u{w}"] = rodar(df[f"n_{base}"], w)
     feats["sev_max_u13"] = rodar(df["n_sev"], 13, "max")
@@ -306,7 +310,11 @@ def calidad_discriminacion(auc):
 
 
 def seleccionar_modelo(X, meta, cats, h):
-    """Compara candidatos con validacion temporal por etapas y devuelve el resumen del nivel."""
+    """Elige un candidato, lo confirma en semanas finales que no vio y devuelve el resumen del nivel.
+
+    Solo se publica si supera a la tasa historica por un margen minimo en ambas etapas. El modelo
+    publicado es el mismo que se confirma: aprende hasta antes del tramo final y se calibra con el.
+    """
     observadas = meta["observada"]
     Xo, mo = X[observadas], meta[observadas]
     positivos = int(mo["y"].sum())
@@ -326,9 +334,9 @@ def seleccionar_modelo(X, meta, cats, h):
     utiles = [c for c in Xo.columns if c in cats or Xo[c].notna().any() and Xo[c].nunique(dropna=True) > 1]
     Xo = Xo[utiles]
     fabricas = candidatos(Xo, [c for c in cats if c in utiles])
-    cortes = [mo["semana"].quantile(q) for q in FOLDS] + [mo["semana"].max() + pd.Timedelta(days=1)]
+    inicio_final = mo["semana"].quantile(FOLDS[-1])
+    cortes = [mo["semana"].quantile(q) for q in FOLDS]
     fuera = {nombre: ([], []) for nombre in [*fabricas, "Referencia"]}
-    ultimo_tramo = None
     folds_validos = 0
     for inicio, fin in zip(cortes, cortes[1:]):
         en_train = mo["semana"] < inicio - pd.Timedelta(weeks=h)
@@ -342,8 +350,7 @@ def seleccionar_modelo(X, meta, cats, h):
             modelo = _ajustar(fabrica, Xo[en_train], mo.loc[en_train, "y"])
             fuera[nombre][0].extend(mo.loc[en_test, "y"])
             fuera[nombre][1].extend(modelo.predict_proba(Xo[en_test])[:, 1])
-        ultimo_tramo = (en_train, en_test)
-    if folds_validos < 2:
+    if folds_validos < 1:
         resumen["motivo"] = "La validación temporal no tiene ambas clases en suficientes tramos."
         return resumen, None
 
@@ -358,37 +365,78 @@ def seleccionar_modelo(X, meta, cats, h):
     tasas_finales = mo.groupby("entidad")["y"].agg(["sum", "count"])
     prior = float(mo["y"].mean())
     tasas_finales = (tasas_finales["sum"] + prior * PRIOR_REFERENCIA) / (tasas_finales["count"] + PRIOR_REFERENCIA)
-    if tabla[ganador]["log_loss"] >= referencia["log_loss"]:
+
+    def publicar_referencia(motivo):
         resumen.update({
             "metodo": "referencia", "modelo": "Tasa histórica suavizada", "publicado": True,
-            "metricas": referencia, "discriminacion": calidad_discriminacion(referencia["auc_roc"]),
-            "motivo": f"Ningún modelo superó a la tasa histórica (mejor candidato: {ganador}).",
+            "metricas": referencia, "discriminacion": calidad_discriminacion(referencia["auc_roc"]), "motivo": motivo,
         })
         return resumen, {"tasas": tasas_finales.to_dict(), "prior": prior}
 
-    y_fuera, p_fuera = map(np.array, fuera[ganador])
-    calibrador = LogisticRegression(C=10.0).fit(_logit(p_fuera), y_fuera)
-    calibradas = calibrador.predict_proba(_logit(p_fuera))[:, 1]
+    mejora_eleccion = 100 * (referencia["log_loss"] - tabla[ganador]["log_loss"]) / referencia["log_loss"]
+    if mejora_eleccion < MARGEN_MINIMO_PCT:
+        return publicar_referencia(
+            f"Ningún modelo superó a la tasa histórica por al menos {MARGEN_MINIMO_PCT:.0f} % (mejor candidato: {ganador}, {mejora_eleccion:.1f} %)."
+        )
+
+    # Tramo final: primero calibra y despues confirma, siempre con semanas que el modelo no vio.
+    en_train = mo["semana"] < inicio_final - pd.Timedelta(weeks=h)
+    en_final = mo["semana"] >= inicio_final
+    semanas_finales = np.sort(mo.loc[en_final, "semana"].unique())
+    mitad = semanas_finales[len(semanas_finales) // 2]
+    calibra = en_final & (mo["semana"] < mitad)
+    confirma = en_final & (mo["semana"] >= mitad)
+    semanas_confirma = int(mo.loc[confirma, "semana"].nunique())
+    if semanas_confirma < h:
+        # Con menos semanas que el plazo, casi todas las filas comparten los mismos eventos.
+        return publicar_referencia(
+            f"Hay {semanas_confirma} semanas para confirmar a {ganador} y este plazo necesita {h}: se usa la tasa histórica."
+        )
+    if any(mo.loc[m, "y"].nunique() < 2 for m in (en_train, calibra, confirma)):
+        return publicar_referencia(f"Las semanas finales no permiten confirmar a {ganador}: falta alguna clase.")
+
+    modelo = _ajustar(fabricas[ganador], Xo[en_train], mo.loc[en_train, "y"])
+    crudas = pd.Series(modelo.predict_proba(Xo[en_final])[:, 1], index=mo.index[en_final])
+    calibrador_previo = LogisticRegression(C=10.0).fit(_logit(crudas[calibra[en_final]].to_numpy()), mo.loc[calibra, "y"])
+    confirmadas = calibrador_previo.predict_proba(_logit(crudas[confirma[en_final]].to_numpy()))[:, 1]
+    y_confirma = mo.loc[confirma, "y"].to_numpy()
+    previas = mo["semana"] < pd.Timestamp(mitad) - pd.Timedelta(weeks=h)
+    metricas_modelo = _metricas(y_confirma, confirmadas)
+    metricas_tasa = _metricas(y_confirma, _tasa_referencia(mo[previas], mo[confirma]))
+    mejora = 100 * (metricas_tasa["log_loss"] - metricas_modelo["log_loss"]) / metricas_tasa["log_loss"]
+    resumen["confirmacion"] = {
+        "modelo": ganador, "filas": int(confirma.sum()), "positivos": int(y_confirma.sum()),
+        "metricas": metricas_modelo, "referencia": metricas_tasa, "mejora_log_loss_pct": round(mejora, 2),
+        "riesgo_predicho": round(float(confirmadas.mean()), 4), "tasa_real": round(float(y_confirma.mean()), 4),
+    }
+    # Una pendiente negativa significa que el modelo ordena el riesgo al reves.
+    if calibrador_previo.coef_[0, 0] <= 0:
+        return publicar_referencia(f"{ganador} no se confirmó en las semanas finales: ordena el riesgo al revés.")
+    if mejora < MARGEN_MINIMO_PCT:
+        return publicar_referencia(
+            f"{ganador} no se confirmó en las semanas finales: {mejora:.1f} % frente a la tasa histórica (mínimo {MARGEN_MINIMO_PCT:.0f} %)."
+        )
+
+    calibrador = LogisticRegression(C=10.0).fit(_logit(crudas.to_numpy()), mo.loc[en_final, "y"])
+    if calibrador.coef_[0, 0] <= 0:
+        return publicar_referencia(f"{ganador} no se confirmó en las semanas finales: ordena el riesgo al revés.")
     resumen.update({
-        "metodo": "modelo", "modelo": ganador, "publicado": True, "metricas": tabla[ganador],
-        "brier_calibrado": round(float(brier_score_loss(y_fuera, calibradas)), 4),
-        "mejora_log_loss_pct": round(100 * (referencia["log_loss"] - tabla[ganador]["log_loss"]) / referencia["log_loss"], 2),
-        "discriminacion": calidad_discriminacion(tabla[ganador]["auc_roc"]),
+        "metodo": "modelo", "modelo": ganador, "publicado": True, "metricas": metricas_modelo, "referencia": metricas_tasa,
+        "filas_validacion": int(confirma.sum()), "brier_calibrado": metricas_modelo["brier"],
+        "mejora_log_loss_pct": round(mejora, 2), "discriminacion": calidad_discriminacion(metricas_modelo["auc_roc"]),
     })
-    if tabla[ganador]["auc_roc"] < 0.6:
+    if metricas_modelo["auc_roc"] < 0.6:
         resumen["motivo"] = (
-            f"Capacidad de distinguir riesgo muy baja (AUC-ROC {tabla[ganador]['auc_roc']:.2f}): úsese solo como orientación."
+            f"Capacidad de distinguir riesgo muy baja (AUC-ROC {metricas_modelo['auc_roc']:.2f}): úsese solo como orientación."
         )
 
     # Importancia medida con datos futuros al entrenamiento: refleja lo que sirve para predecir
-    en_train, en_test = ultimo_tramo
-    modelo_tramo = _ajustar(fabricas[ganador], Xo[en_train], mo.loc[en_train, "y"])
-    muestra = mo.loc[en_test].sample(min(MAX_FILAS_IMPORTANCIA, int(en_test.sum())), random_state=0).index
+    muestra = mo.loc[en_final].sample(min(MAX_FILAS_IMPORTANCIA, int(en_final.sum())), random_state=0).index
     numericas = [c for c in Xo.columns if c not in cats]
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         permutacion = permutation_importance(
-            modelo_tramo, Xo.loc[muestra], mo.loc[muestra, "y"], scoring="neg_log_loss", n_repeats=3, random_state=0, n_jobs=1,
+            modelo, Xo.loc[muestra], mo.loc[muestra, "y"], scoring="neg_log_loss", n_repeats=3, random_state=0, n_jobs=1,
         )
     orden = pd.Series(permutacion.importances_mean, index=Xo.columns).sort_values(ascending=False)
     resumen["importancia"] = [
@@ -397,9 +445,8 @@ def seleccionar_modelo(X, meta, cats, h):
     ]
     explicables = [v for v in orden.index if v in numericas][:N_EXPLICADAS]
 
-    final = _ajustar(fabricas[ganador], Xo, mo["y"])
     return resumen, {
-        "modelo": final, "calibrador": calibrador, "columnas": list(Xo.columns),
+        "modelo": modelo, "calibrador": calibrador, "columnas": list(Xo.columns),
         "explicables": explicables, "medianas": Xo[numericas].median().to_dict(),
     }
 
@@ -558,7 +605,7 @@ def huella_datos(engine, tipo_obj, horizonte, hoy=None):
         "SELECT count(*), max(fecha_inicio)::text FROM public.trabajadores_cuadrillas",
         "SELECT count(*), max(codigo) FROM public.tipo_eventos WHERE es_incidente",
     ]
-    estado = [str(semana_actual(hoy).date()), tipo_obj, horizonte, 4]
+    estado = [str(semana_actual(hoy).date()), tipo_obj, horizonte, 6]
     with engine.connect() as conexion:
         estado += [list(conexion.execute(text(c)).one()) for c in consultas]
         if inspect(engine).has_table("incidentes_historicos"):

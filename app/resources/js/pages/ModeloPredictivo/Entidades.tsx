@@ -2,7 +2,8 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Download } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
-import { BarraRiesgo, ListaFactores, SelectoresModelo, DetalleRiesgo, AvisoCoherencia, AvisoHorizonte } from '@/components/modelo/Elementos';
+import { esAviso } from '@/lib/utils';
+import { BarraRiesgo, ListaFactores, SelectoresModelo, DetalleRiesgo, AvisoCoherencia, AvisoHorizonte, AvisoTarjetaPare } from '@/components/modelo/Elementos';
 import { bandaRiesgo, ESTILO_BANDA, NIVELES_ENTIDAD, porcentaje, useEntidades, useFiltrosModelo,
     type BandaRiesgo, type EntidadRiesgo, plazoHorizonte } from '@/lib/modeloPredictivo';
 
@@ -85,6 +86,7 @@ export default function Entidades() {
                 </section>
 
                 <AvisoHorizonte dias={horizonte} />
+                <AvisoTarjetaPare tipo={tipo} />
                 <AvisoCoherencia coherencia={datos?.coherencia} />
 
                 {error && <p className="rounded-lg border border-rojo-1/30 bg-red-50 p-3 text-sm text-rojo-1" role="alert">{error}</p>}
@@ -187,7 +189,7 @@ export default function Entidades() {
                                                     {fila.cliente && <span className="block text-xs text-gris-1">{fila.cliente}</span>}
                                                 </td>
                                             )}
-                                            <td className="px-4 py-3"><BarraRiesgo probabilidad={fila.prob_evento} /></td>
+                                            <td className="px-4 py-3"><BarraRiesgo probabilidad={fila.prob_evento} aviso={esAviso(tipo)} /></td>
                                             <td className="px-4 py-3 text-gris-2">{fila.indicadores?.incidentes_13_semanas ?? '—'}</td>
                                             <td className="px-4 py-3 text-gris-2">{fila.indicadores?.reportes_preventivos_13_semanas ?? '—'}</td>
                                             <td className="px-4 py-3 text-right">

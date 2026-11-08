@@ -1,2 +1,4 @@
 models/
 data/historicos*.csv
+
+data/automl/

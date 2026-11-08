@@ -4,7 +4,7 @@ import MainLayout from '@/layouts/MainLayout';
 import { AvisoCoherencia, AvisoHorizonte, BarraRiesgo, OpcionesHorizonte } from '@/components/modelo/Elementos';
 import { api } from '@/lib/api';
 import { HORIZONTE_PREDETERMINADO, etiquetaHorizonte, horizonteDerivado, NIVELES_ENTIDAD, useEntidades } from '@/lib/modeloPredictivo';
-import { etiquetaTipo } from '@/lib/utils';
+import { esAviso, etiquetaTipo } from '@/lib/utils';
 
 type Metricas = { auc_roc?: number; log_loss: number; brier: number };
 
@@ -208,7 +208,7 @@ export default function RedNeuronal() {
                                                     {etiquetaTipo(evento.objetivo)}
                                                     <Respaldo supera={evento.calidad.supera_referencias} />
                                                 </div>
-                                                <BarraRiesgo probabilidad={evento.prob_evento} />
+                                                <BarraRiesgo probabilidad={evento.prob_evento} aviso={esAviso(evento.objetivo)} />
                                             </li>
                                         ))}
                                     </ul>

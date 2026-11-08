@@ -6,8 +6,8 @@ de cada entidad: usa la prediccion del motor cuando existe y, si no, una tasa su
 import numpy as np
 import pandas as pd
 
-# Objetivo por defecto: lo que AVA pide predecir. Hallazgos, Previene y PARE quedan
-# como predictores; incluirlos en el objetivo haria predecir reportes, no incidentes.
+# Objetivo por defecto: lo que AVA pide predecir. Hallazgos y Previene quedan como
+# predictores; incluirlos en el objetivo haria predecir reportes, no incidentes.
 OBJETIVO_INCIDENTES = "incidentes_reales"
 OBJETIVO_LESIONES = "lesiones"
 # Se completa con los tipos marcados es_incidente en tipo_eventos (ver actualizar_tipos).
@@ -16,6 +16,9 @@ SQL_TIPO = "COALESCE(te.codigo, lower(regexp_replace(trim(te.nombre), '[[:space:
 SQL_CLASIFICACION = "COALESCE(ci.con_lesion, FALSE) AS con_lesion, COALESCE(ci.laboral, TRUE) AS laboral"
 # El informe documenta un incidente ya contado por su Reporte Flash.
 TIPOS_SEGUIMIENTO = frozenset({"informe_investigacion"})
+# Una tarjeta PARE avisa de un peligro antes de que pase algo. Que alguien la reporte no vuelve
+# mas riesgosa a la entidad: no cuenta como evento de riesgo ni como variable de los modelos.
+TIPOS_AVISO = frozenset({"tarjeta_pare"})
 NOMBRES_NIVEL_SEVERIDAD = {"Grave": "Crítica"}
 OBJETIVOS_AGRUPADOS = frozenset({"todos", OBJETIVO_INCIDENTES, OBJETIVO_LESIONES})
 
@@ -85,7 +88,7 @@ def sin_nulos(valor):
 def filtrar_objetivo(tabla, tipo_obj):
     """Filas de `tabla` (con columna tipo) que cuentan para el objetivo."""
     if tipo_obj == "todos":
-        return tabla[~tabla["tipo"].isin(TIPOS_SEGUIMIENTO)]
+        return tabla[~tabla["tipo"].isin(TIPOS_SEGUIMIENTO | TIPOS_AVISO)]
     if tipo_obj in (OBJETIVO_INCIDENTES, OBJETIVO_LESIONES):
         filas = tabla["tipo"].isin(TIPOS_INCIDENTE_REAL)
         # Trayecto y enfermedad comun ocurren fuera de la obra: no se predicen con sus datos.

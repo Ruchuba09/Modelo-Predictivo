@@ -4,9 +4,9 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { Activity, RefreshCw, Sparkles } from 'lucide-react';
 import MainLayout from '@/layouts/MainLayout';
 import { api } from '@/lib/api';
-import { etiquetaTipo } from '@/lib/utils';
+import { esAviso, etiquetaTipo } from '@/lib/utils';
 import type { CalidadNivel, Historial } from '@/components/CalidadModelos';
-import { BarraRiesgo, DetalleRiesgo } from '@/components/modelo/Elementos';
+import { AvisoTarjetaPare, BarraRiesgo, DetalleRiesgo } from '@/components/modelo/Elementos';
 import { NIVELES_ENTIDAD, porcentaje, useEntidades, HORIZONTE_PREDETERMINADO, horizonteDerivado, plazoHorizonte } from '@/lib/modeloPredictivo';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -289,6 +289,8 @@ export default function Index() {
                             </div>
                         </div>
 
+                        <AvisoTarjetaPare tipo={tipo} />
+
                         <section className="bg-white border border-verde-3 rounded-2xl shadow-sm overflow-hidden">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-6 py-5 border-b border-verde-3">
                                 <div>
@@ -328,7 +330,7 @@ export default function Index() {
                                                         {item.nombre_proyecto ?? proyectosPorId.get(item.id_proyecto) ?? `Proyecto #${item.id_proyecto}`}
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <BarraRiesgo probabilidad={item.prob_evento} />
+                                                        <BarraRiesgo probabilidad={item.prob_evento} aviso={esAviso(tipo)} />
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-gris-1">{item.semana}</td>
                                                     <td className="px-6 py-4">

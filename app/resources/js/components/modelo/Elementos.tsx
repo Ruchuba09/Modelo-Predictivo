@@ -1,5 +1,5 @@
 import { bandaRiesgo, ESTILO_BANDA, etiquetaHorizonte, HORIZONTES_MODELO, horizonteDerivado, porcentaje, type Factor } from '@/lib/modeloPredictivo';
-import { etiquetaTipo } from '@/lib/utils';
+import { esAviso, etiquetaTipo } from '@/lib/utils';
 
 export function OpcionesHorizonte({ desdeSemana = false }: { desdeSemana?: boolean }) {
     return (
@@ -53,17 +53,30 @@ export function SelectoresModelo({ tipo, horizonte, tipos, cambiar }: {
     );
 }
 
-export function BarraRiesgo({ probabilidad }: { probabilidad: number }) {
-    const banda = ESTILO_BANDA[bandaRiesgo(probabilidad)];
+/** Con `aviso`, la probabilidad es de un reporte preventivo: se muestra sin banda de riesgo. */
+export function BarraRiesgo({ probabilidad, aviso = false }: { probabilidad: number; aviso?: boolean }) {
+    const banda = aviso
+        ? { barra: 'bg-sky-500', chip: 'bg-sky-50 text-sky-800', etiqueta: 'Aviso' }
+        : ESTILO_BANDA[bandaRiesgo(probabilidad)];
     const valor = Math.round(probabilidad * 100);
     return (
         <div className="flex items-center gap-3 min-w-44">
             <span className="w-10 text-sm font-black text-gris-2">{valor}%</span>
-            <div className="h-2 flex-1 rounded-full bg-verde-2 overflow-hidden" role="progressbar" aria-label={`Riesgo ${valor}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={valor}>
+            <div className="h-2 flex-1 rounded-full bg-verde-2 overflow-hidden" role="progressbar" aria-label={`${aviso ? 'Probabilidad de aviso' : 'Riesgo'} ${valor}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={valor}>
                 <div className={`h-full rounded-full ${banda.barra}`} style={{ width: `${valor}%` }} />
             </div>
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${banda.chip}`}>{banda.etiqueta}</span>
         </div>
+    );
+}
+
+/** Explica que predecir tarjetas PARE no equivale a medir riesgo. */
+export function AvisoTarjetaPare({ tipo }: { tipo: string }) {
+    if (!esAviso(tipo)) return null;
+    return (
+        <p className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
+            Las tarjetas PARE son avisos preventivos: esta es la probabilidad de que se reporte una, no un nivel de riesgo. Reportarlas no aumenta el riesgo de ninguna entidad.
+        </p>
     );
 }
 

@@ -43,6 +43,9 @@ class FiltrarObjetivo(unittest.TestCase):
         self.assertNotIn("informe_investigacion", self.tipos("todos"))
         self.assertIn("hallazgo", self.tipos("todos"))
 
+    def test_todos_no_cuenta_la_tarjeta_pare_como_riesgo(self):
+        self.assertNotIn("tarjeta_pare", self.tipos("todos"))
+
     def test_tipo_puntual(self):
         self.assertEqual(self.tipos("tarjeta_pare"), {"tarjeta_pare"})
 

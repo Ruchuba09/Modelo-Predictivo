@@ -95,7 +95,7 @@ export function CalidadModelos({ modelos }: { modelos: Record<string, CalidadNiv
         <section className="bg-white border border-verde-3 rounded-2xl shadow-md p-6">
             <h2 className="text-lg font-bold text-gris-2">Calidad del modelo por entidad</h2>
             <p className="text-xs text-gris-1 mt-1">
-                Cada nivel compara cinco modelos con semanas futuras a su entrenamiento y publica el mejor solo si supera a la tasa histórica. Un AUC de 0,50 equivale al azar.
+                Cada nivel elige entre cinco modelos y lo confirma en las semanas finales, que no usó para elegir. Solo lo publica si supera a la tasa histórica por al menos 1 % en ambas etapas. Un AUC de 0,50 equivale al azar.
             </p>
             <div className="overflow-x-auto mt-4">
                 <table className="w-full text-sm">
