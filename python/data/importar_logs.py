@@ -94,7 +94,7 @@ def _buscar_columnas(encabezado):
         "contrato": r"^CONTRATO|^PROYECTO", "cliente": r"^CLIENTE|^OBRA", "lugar": r"^LUGAR",
         "clasificacion": r"^CLASIFICACION", "dia_turno": r"^DIA DE TURNO", "descripcion": r"^DESCRIPCION",
         "especialidad": r"^ESPECIALIDAD", "parte_cuerpo": r"^PARTE DEL CUERPO", "dias_perdidos": r"^DIAS PERDIDOS",
-        "fecha_cierre": r"^FECHAS? DE CIERRE",
+        "fecha_cierre": r"^FECHAS? DE CIERRE", "fecha_reporte": r"^FECHA DEL REPORTE",
     }
     for indice, celda in enumerate(encabezado):
         if celda is None:
@@ -108,12 +108,23 @@ def _buscar_columnas(encabezado):
     return columnas
 
 
+def corregir_anio(fecha, reporte):
+    """Corrige un ano mal digitado: un incidente se reporta dias despues, no un ano despues."""
+    if fecha is None or reporte is None or (reporte - fecha).days < 300:
+        return fecha
+    try:
+        candidata = fecha.replace(year=reporte.year)
+    except ValueError:
+        return fecha
+    return candidata if 0 <= (reporte - candidata).days <= 60 else fecha
+
+
 def _fecha_incidente(dato):
     """Dia, mes y ano tienen prioridad: en ese formato, FECHA corresponde a una accion."""
     try:
         return date(int(dato("anio")), int(dato("mes")), int(dato("dia")))
     except (TypeError, ValueError):
-        return a_fecha(dato("fecha"))
+        return corregir_anio(a_fecha(dato("fecha")), a_fecha(dato("fecha_reporte")))
 
 
 def leer_log(ruta):
