@@ -32,9 +32,9 @@ class UserSeeder extends Seeder
             FROM current_ids CROSS JOIN sequence_info
             SQL);
 
-        $usuario = Rol::where('nombre', 'usuario')->firstOrFail();
-        $supervisorRol = Rol::where('nombre', 'supervisor')->firstOrFail();
-        $admin = Rol::where('nombre', 'admin')->firstOrFail();
+        $usuario = Rol::where('nombre', 'Trabajador')->firstOrFail();
+        $supervisorRol = Rol::where('nombre', 'Supervisor')->firstOrFail();
+        $admin = Rol::where('nombre', 'Administrador')->firstOrFail();
 
         foreach ([
             ['rut' => '11111111-1', 'email' => 'trabajador@ejemplo.com', 'rol' => $usuario],

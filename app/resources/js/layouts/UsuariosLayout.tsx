@@ -3,13 +3,13 @@ import { useState, useEffect, PropsWithChildren } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import ThemeToggle from '@/components/ThemeToggle';
 
-const NAV_ITEMS: { href: string; label: string; roles?: string[] }[] = [
+const NAV_ITEMS: { href: string; label: string; permisos?: string[] }[] = [
     { href: '/portal', label: 'Inicio' },
-    { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'Supervisor'] },
-    { href: '/usuarios', label: 'Usuarios', roles: ['Administrador'] },
-    { href: '/roles', label: 'Roles', roles: ['Administrador'] },
-    { href: '/permisos', label: 'Permisos', roles: ['Administrador'] },
-    { href: '/departamentos', label: 'Departamentos', roles: ['Administrador'] },
+    { href: '/dashboard', label: 'Dashboard', permisos: ['dashboard.ver'] },
+    { href: '/usuarios', label: 'Usuarios', permisos: ['usuarios.gestionar'] },
+    { href: '/roles', label: 'Roles', permisos: ['roles.gestionar'] },
+    { href: '/permisos', label: 'Permisos', permisos: ['permisos.gestionar'] },
+    { href: '/departamentos', label: 'Departamentos', permisos: ['catalogos.gestionar'] },
 ];
 
 const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
@@ -21,11 +21,9 @@ const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
     '/departamentos': { title: 'Departamentos', subtitle: 'Estructura organizativa de la empresa' },
 };
 
-function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {
-    if (!rolesRequeridos || rolesRequeridos.length === 0) return true;
-    return rolesRequeridos.some((rol) =>
-        rolesUsuario.some((uRol) => uRol.toLowerCase() === rol.toLowerCase())
-    );
+function tieneAcceso(permisosUsuario: string[], permisosRequeridos?: string[]) {
+    if (!permisosRequeridos || permisosRequeridos.length === 0) return true;
+    return permisosRequeridos.some((permiso) => permisosUsuario.includes(permiso));
 }
 
 interface MainLayoutProps extends PropsWithChildren {
@@ -45,9 +43,10 @@ export default function UsuariosLayout({
     const { url, props } = usePage();
     const usuario = useAuth();
     const notificaciones = (props.notificaciones as any[]) || [];
+    const permisosUsuario = usuario?.permisos ?? [];
     const rolesUsuario = usuario?.roles ?? [];
 
-    const itemsVisibles = NAV_ITEMS.filter((item) => tieneAcceso(rolesUsuario, item.roles));
+    const itemsVisibles = NAV_ITEMS.filter((item) => tieneAcceso(permisosUsuario, item.permisos));
 
     const rutaActual = url.split('?')[0];
     const rutaNormalizada = rutaActual.endsWith('/') && rutaActual.length > 1 ? rutaActual.slice(0, -1) : rutaActual;

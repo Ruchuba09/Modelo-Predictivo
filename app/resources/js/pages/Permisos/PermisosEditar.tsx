@@ -1,74 +1,50 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import MainLayout from '../../layouts/MainLayout';
 import { FormEventHandler } from 'react';
+import MainLayout from '../../layouts/MainLayout';
+import PermisoForm, { type Permiso, type PermisoFormData } from './PermisoForm';
 
-interface Permiso {
-    id_permiso: number;
-    nombre: string;
-    nivel: string | null;
-}
-
+/** RF-24: modificar Permiso. */
 export default function PermisosEditar() {
     const { permiso } = usePage().props as unknown as { permiso: Permiso };
+    const roles = permiso.roles_count ?? 0;
 
-    const { data, setData, put, processing, errors } = useForm({
+    const form = useForm<PermisoFormData>({
         nombre: permiso.nombre,
-        nivel: permiso.nivel ?? '',
+        descripcion: permiso.descripcion ?? '',
+        nivel: permiso.nivel ? (String(permiso.nivel) as PermisoFormData['nivel']) : '',
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        put(`/permisos/${permiso.id_permiso}`);
+        form.put(`/permisos/${permiso.id_permiso}`);
     };
 
     return (
         <MainLayout>
-            <Head title={`Editar Permiso #${permiso.id_permiso} | AVA`} />
+            <Head title={`Editar Permiso ${permiso.nombre} | AVA`} />
 
-            <div className="max-w-[600px] mx-auto p-6 lg:p-8">
-
+            <div className="max-w-[640px] mx-auto p-6 lg:p-8">
                 <div className="flex items-center gap-3 mb-8">
                     <Link href="/permisos" className="text-gris-1 hover:text-gris-2 transition-colors text-sm">← Volver</Link>
                 </div>
 
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-gris-2 mb-1">Editar Permiso</h1>
-                    <p className="text-gris-1 text-sm">Modifica el permiso #{permiso.id_permiso}.</p>
+                    <p className="text-gris-1 text-sm">
+                        Lo {roles === 1 ? 'tiene asignado 1 rol' : `tienen asignado ${roles} roles`}; los cambios se aplican de inmediato.
+                    </p>
                 </div>
 
-                <form onSubmit={submit} className="bg-white border border-verde-3 rounded-xl p-6 lg:p-8 space-y-6">
-
-                    <div>
-                        <label className="block text-sm font-medium text-gris-2 mb-2">Nombre del permiso</label>
-                        <input
-                            type="text"
-                            value={data.nombre}
-                            onChange={(e) => setData('nombre', e.target.value)}
-                            className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors"
-                        />
-                        {errors.nombre && <p className="text-red-400 text-xs mt-1">{errors.nombre}</p>}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gris-2 mb-2">Nivel</label>
-                        <input
-                            type="text"
-                            value={data.nivel}
-                            onChange={(e) => setData('nivel', e.target.value)}
-                            className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5 transition-colors"
-                        />
-                        {errors.nivel && <p className="text-red-400 text-xs mt-1">{errors.nivel}</p>}
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4 border-t border-verde-3">
-                        <Link href="/permisos" className="px-5 py-2.5 rounded-lg text-sm font-medium text-gris-1 hover:text-gris-2 transition-colors">Cancelar</Link>
-                        <button type="submit" disabled={processing} className="bg-verde-5 hover:bg-verde-6 disabled:opacity-50 text-black px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-verde-5/10">
-                            {processing ? 'Guardando...' : 'Guardar Cambios'}
-                        </button>
-                    </div>
-
-                </form>
-
+                <PermisoForm
+                    data={form.data}
+                    setData={form.setData}
+                    errors={form.errors}
+                    processing={form.processing}
+                    esSistema={permiso.es_sistema}
+                    textoBoton="Guardar Cambios"
+                    textoProcesando="Guardando..."
+                    onSubmit={submit}
+                />
             </div>
         </MainLayout>
     );

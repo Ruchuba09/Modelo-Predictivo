@@ -4,17 +4,19 @@ namespace App\Policies;
 
 use App\Models\Evento;
 use App\Models\User;
+use App\Support\Permisos;
 use Illuminate\Auth\Access\Response;
 
 /**
  * Reglas de acceso a eventos. Se aplica igual en las rutas web y en la API v1.
+ * Lo deciden los permisos (CA-1); el autor siempre ve lo suyo.
  */
 class EventoPolicy
 {
     /** Listado general (no "mis reportes"). */
     public function viewAny(User $user): bool
     {
-        return $user->tieneRol('Administrador', 'Supervisor');
+        return $user->tienePermiso(Permisos::EVENTOS_VER);
     }
 
     public function view(User $user, Evento $evento): Response
@@ -30,7 +32,7 @@ class EventoPolicy
         return true;
     }
 
-    /** El administrador siempre; el autor solo mientras el evento siga abierto. */
+    /** Con eventos.editar siempre; el autor solo mientras el evento siga abierto. */
     public function update(User $user, Evento $evento): Response
     {
         $idTrabajador = $this->idTrabajador($user);
@@ -38,7 +40,7 @@ class EventoPolicy
             || ($idTrabajador && (int) $evento->id_trabajador === $idTrabajador);
 
         return $this->decidir(
-            $user->tieneRol('Administrador')
+            $user->tienePermiso(Permisos::EVENTOS_EDITAR)
                 || ($esPropio && $evento->estado?->editablePorAutor()),
             'No tienes permiso para editar este reporte.'
         );
@@ -47,30 +49,30 @@ class EventoPolicy
     public function tomar(User $user, Evento $evento): Response
     {
         return $this->decidir(
-            $user->tieneRol('Supervisor'),
-            'Solo un supervisor puede tomar un reporte.'
+            $user->tienePermiso(Permisos::EVENTOS_TOMAR),
+            'No tienes permiso para tomar este reporte.'
         );
     }
 
     public function cerrar(User $user, Evento $evento): Response
     {
         return $this->decidir(
-            $user->tieneRol('Administrador'),
-            'Solo un administrador puede cerrar un reporte.'
+            $user->tienePermiso(Permisos::EVENTOS_CERRAR),
+            'No tienes permiso para cerrar este reporte.'
         );
     }
 
     public function delete(User $user, Evento $evento): Response
     {
         return $this->decidir(
-            $user->tieneRol('Administrador'),
-            'Solo un administrador puede eliminar reportes.'
+            $user->tienePermiso(Permisos::EVENTOS_ELIMINAR),
+            'No tienes permiso para eliminar este reporte.'
         );
     }
 
     private function puedeVer(User $user, Evento $evento): bool
     {
-        if ($user->tieneRol('Administrador') || $this->esAutor($user, $evento)) {
+        if ($user->tienePermiso(Permisos::EVENTOS_VER_TODOS) || $this->esAutor($user, $evento)) {
             return true;
         }
 
@@ -83,7 +85,7 @@ class EventoPolicy
             return true;
         }
 
-        return $user->tieneRol('Supervisor') && $this->supervisaEvento($evento, $idTrabajador);
+        return $user->tienePermiso(Permisos::EVENTOS_VER) && $this->supervisaEvento($evento, $idTrabajador);
     }
 
     private function decidir(bool $permitido, string $mensaje): Response

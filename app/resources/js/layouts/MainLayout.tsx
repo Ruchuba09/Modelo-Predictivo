@@ -7,57 +7,57 @@ import AvisoFlash from '@/components/AvisoFlash';
 interface NavSubItem {
     href: string;
     label: string;
-    roles?: string[];
+    /** Basta con tener uno (CA-1). Sin permisos: visible para todos. */
+    permisos?: string[];
 }
 
 interface NavItem {
     href?: string;
     label: string;
-    roles?: string[];
+    /** Basta con tener uno (CA-1). Sin permisos: visible para todos. */
+    permisos?: string[];
     subItems?: NavSubItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
     { href: '/portal', label: 'Inicio' },
-    { href: '/dashboard', label: 'Dashboard', roles: ['Administrador', 'Supervisor'] },
+    { href: '/dashboard', label: 'Dashboard', permisos: ['dashboard.ver'] },
     {
         label: 'Reportes',
         subItems: [
-            { href: '/eventos', label: 'Listado de reportes', roles: ['Administrador', 'Supervisor'] },
+            { href: '/eventos', label: 'Listado de reportes', permisos: ['eventos.ver'] },
             { href: '/eventos/mis-reportes', label: 'Mis reportes' },
-            { href: '/eventos/estadisticas', label: 'Estadísticas', roles: ['Administrador'] },
-            { href: '/fuentes-intrava', label: 'Fuentes Intrava', roles: ['Administrador', 'Supervisor'] },
-            { href: '/situacion-criticas', label: 'Situaciones críticas', roles: ['Administrador', 'Supervisor'] },
+            { href: '/eventos/estadisticas', label: 'Estadísticas', permisos: ['estadisticas.ver'] },
+            { href: '/fuentes-intrava', label: 'Fuentes Intrava', permisos: ['intrava.ver'] },
+            { href: '/situacion-criticas', label: 'Situaciones críticas', permisos: ['situaciones.ver', 'situaciones.ver-todas'] },
         ],
     },
     {
         label: 'Operaciones',
-        roles: ['Administrador', 'Supervisor'],
         subItems: [
-            { href: '/proyectos', label: 'Proyectos', roles: ['Administrador', 'Supervisor'] },
-            { href: '/modelo-predictivo', label: 'Predicciones: resumen', roles: ['Administrador', 'Supervisor'] },
-            { href: '/modelo-predictivo/entidades', label: 'Riesgo por entidad', roles: ['Administrador', 'Supervisor'] },
-            { href: '/modelo-predictivo/calidad', label: 'Calidad del modelo', roles: ['Administrador', 'Supervisor'] },
-            { href: '/modelo-predictivo/red-neuronal', label: 'Red neuronal', roles: ['Administrador', 'Supervisor'] },
-            { href: '/modelo-predictivo/red-neuronal/entrenamiento', label: 'Entrenamiento de la red', roles: ['Administrador', 'Supervisor'] },
-            { href: '/modelo-predictivo/red-neuronal/pruebas', label: 'Pruebas de la red', roles: ['Administrador', 'Supervisor'] },
-            { href: '/modelo-predictivo/historial', label: 'Historial de incidentes', roles: ['Administrador', 'Supervisor'] },
-            { href: '/cuadrillas', label: 'Cuadrillas', roles: ['Administrador', 'Supervisor'] },
-            { href: '/actividades', label: 'Actividades', roles: ['Administrador', 'Supervisor'] },
-            { href: '/exposicion', label: 'Horas y asistencia', roles: ['Administrador', 'Supervisor'] },
-            { href: '/trabajadores', label: 'Trabajadores', roles: ['Administrador'] },
-            { href: '/faenas', label: 'Faenas y áreas', roles: ['Administrador'] },
+            { href: '/proyectos', label: 'Proyectos', permisos: ['operaciones.ver', 'operaciones.gestionar'] },
+            { href: '/modelo-predictivo', label: 'Predicciones: resumen', permisos: ['modelo-predictivo.ver'] },
+            { href: '/modelo-predictivo/entidades', label: 'Riesgo por entidad', permisos: ['modelo-predictivo.ver'] },
+            { href: '/modelo-predictivo/calidad', label: 'Calidad del modelo', permisos: ['modelo-predictivo.ver'] },
+            { href: '/modelo-predictivo/red-neuronal', label: 'Red neuronal', permisos: ['modelo-predictivo.ver'] },
+            { href: '/modelo-predictivo/red-neuronal/entrenamiento', label: 'Entrenamiento de la red', permisos: ['modelo-predictivo.entrenar'] },
+            { href: '/modelo-predictivo/red-neuronal/pruebas', label: 'Pruebas de la red', permisos: ['modelo-predictivo.ver'] },
+            { href: '/modelo-predictivo/historial', label: 'Historial de incidentes', permisos: ['modelo-predictivo.ver'] },
+            { href: '/cuadrillas', label: 'Cuadrillas', permisos: ['operaciones.ver', 'operaciones.gestionar'] },
+            { href: '/actividades', label: 'Actividades', permisos: ['operaciones.ver', 'operaciones.gestionar'] },
+            { href: '/exposicion', label: 'Horas y asistencia', permisos: ['operaciones.ver', 'operaciones.gestionar'] },
+            { href: '/trabajadores', label: 'Trabajadores', permisos: ['catalogos.gestionar'] },
+            { href: '/faenas', label: 'Faenas y áreas', permisos: ['catalogos.gestionar'] },
         ],
     },
     {
         label: 'Sistema',
-        roles: ['Administrador'],
         subItems: [
-            { href: '/usuarios', label: 'Usuarios', roles: ['Administrador'] },
-            { href: '/roles', label: 'Roles', roles: ['Administrador'] },
-            { href: '/permisos', label: 'Permisos', roles: ['Administrador'] },
-            { href: '/departamentos', label: 'Departamentos', roles: ['Administrador'] },
-            { href: '/sistema/datos-prueba', label: 'Datos de prueba', roles: ['Administrador'] },
+            { href: '/usuarios', label: 'Usuarios', permisos: ['usuarios.gestionar'] },
+            { href: '/roles', label: 'Roles', permisos: ['roles.gestionar'] },
+            { href: '/permisos', label: 'Permisos', permisos: ['permisos.gestionar'] },
+            { href: '/departamentos', label: 'Departamentos', permisos: ['catalogos.gestionar'] },
+            { href: '/sistema/datos-prueba', label: 'Datos de prueba', permisos: ['sistema.datos-prueba'] },
         ],
     },
 ];
@@ -92,11 +92,9 @@ const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
     '/sistema/datos-prueba': { title: 'Datos de prueba', subtitle: 'Poblar o limpiar la base de datos de desarrollo' },
 };
 
-function tieneAcceso(rolesUsuario: string[], rolesRequeridos?: string[]) {
-    if (!rolesRequeridos || rolesRequeridos.length === 0) return true;
-    return rolesRequeridos.some((rol) =>
-        rolesUsuario.some((uRol) => uRol.toLowerCase() === rol.toLowerCase())
-    );
+function tieneAcceso(permisosUsuario: string[], permisosRequeridos?: string[]) {
+    if (!permisosRequeridos || permisosRequeridos.length === 0) return true;
+    return permisosRequeridos.some((permiso) => permisosUsuario.includes(permiso));
 }
 
 function isRutaActiva(href: string, rutaActual: string): boolean {
@@ -137,12 +135,13 @@ export default function MainLayout({
     const { url, props } = usePage();
     const usuario = useAuth();
     const notificaciones = (props.notificaciones as any[]) || [];
+    const permisosUsuario = usuario?.permisos ?? [];
     const rolesUsuario = usuario?.roles ?? [];
 
     const itemsVisibles = NAV_ITEMS.filter((item) => {
-        if (!tieneAcceso(rolesUsuario, item.roles)) return false;
+        if (!tieneAcceso(permisosUsuario, item.permisos)) return false;
         if (item.subItems) {
-            const subVisibles = item.subItems.filter((sub) => tieneAcceso(rolesUsuario, sub.roles));
+            const subVisibles = item.subItems.filter((sub) => tieneAcceso(permisosUsuario, sub.permisos));
             return subVisibles.length > 0;
         }
         return true;
@@ -266,7 +265,7 @@ export default function MainLayout({
                 <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto custom-scrollbar">
                     {itemsVisibles.map((item) => {
                         if (item.subItems) {
-                            const subItemsVisibles = item.subItems.filter((sub) => tieneAcceso(rolesUsuario, sub.roles));
+                            const subItemsVisibles = item.subItems.filter((sub) => tieneAcceso(permisosUsuario, sub.permisos));
                             const subActivoEncontrado = subItemsVisibles.some((sub) => isRutaActiva(sub.href, rutaActual));
                             const abierto = Boolean(gruposAbiertos[item.label]);
 

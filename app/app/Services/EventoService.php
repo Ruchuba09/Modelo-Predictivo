@@ -20,6 +20,7 @@ use App\Models\Trabajador;
 use App\Models\User;
 use App\Notifications\TarjetaPareRegistrada;
 use App\Support\CondicionesPare;
+use App\Support\Permisos;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -74,7 +75,7 @@ class EventoService
     public function paginarParaPantalla(array $filtros, int $porPagina): LengthAwarePaginator
     {
         $query = Evento::query();
-        $this->restringirASupervisor($query);
+        $this->aplicarAlcance($query);
 
         return $this->paginarRecientes($query, $filtros, $porPagina);
     }
@@ -101,7 +102,7 @@ class EventoService
     public function paginar(array $filtros, int $porPagina): array
     {
         $base = Evento::query();
-        $this->restringirASupervisor($base);
+        $this->aplicarAlcance($base);
 
         return $this->paginarConsulta($base, $filtros, $porPagina);
     }
@@ -456,10 +457,10 @@ class EventoService
         return $evento;
     }
 
-    /** El RUT de otras personas es un dato de gestión, no de quien solo reporta. */
+    /** El RUT de otras personas es un dato de gestión (eventos.ver), no de quien solo reporta. */
     private function puedeVerRut(): bool
     {
-        return (bool) Auth::user()?->tieneRol('Administrador', 'Supervisor');
+        return (bool) Auth::user()?->tienePermiso(Permisos::EVENTOS_VER);
     }
 
     public function obtenerParaEditar(Evento $evento): Evento
@@ -521,7 +522,7 @@ class EventoService
             );
         }
 
-        $this->restringirASupervisor($query);
+        $this->aplicarAlcance($query);
 
         $conteos = $query
             ->select('condicion', DB::raw('COUNT(*) as total'))
@@ -818,24 +819,32 @@ class EventoService
         }
     }
 
-    private function restringirASupervisor($query): void
+    /**
+     * Alcance del listado general: con eventos.ver-todos se ven todos; si no,
+     * solo los propios, los asignados como supervisor y los de las cuadrillas
+     * que supervisa. Sin trabajador vinculado no hay alcance alguno.
+     */
+    public function aplicarAlcance(Builder $query, ?User $usuario = null): void
     {
-        $usuario = Auth::user();
-        $trabajador = $usuario?->trabajador;
+        $usuario ??= Auth::user();
 
-        if (! $usuario?->tieneRol('Supervisor')
-            || $usuario->tieneRol('Administrador')
-            || ! $trabajador) {
+        if ($usuario?->tienePermiso(Permisos::EVENTOS_VER_TODOS)) {
             return;
         }
 
-        $idTrabajador = $trabajador->id_trabajador;
-        $cuadrillaIds = Cuadrilla::where('id_supervisor', $idTrabajador)
-            ->pluck('id_cuadrilla');
-        $obreroIds = Obrero::whereIn('id_cuadrilla', $cuadrillaIds)
-            ->pluck('id_trabajador');
+        $idTrabajador = $usuario?->trabajador?->id_trabajador;
+        if (! $idTrabajador) {
+            $query->whereRaw('1 = 0');
 
-        $query->where(function ($subquery) use ($idTrabajador, $cuadrillaIds, $obreroIds) {
+            return;
+        }
+
+        $obreroIds = Obrero::whereIn(
+            'id_cuadrilla',
+            Cuadrilla::where('id_supervisor', $idTrabajador)->select('id_cuadrilla')
+        )->pluck('id_trabajador');
+
+        $query->where(function ($subquery) use ($idTrabajador, $obreroIds) {
             if ($obreroIds->isNotEmpty()) {
                 $subquery->whereIn('id_trabajador', $obreroIds);
             }

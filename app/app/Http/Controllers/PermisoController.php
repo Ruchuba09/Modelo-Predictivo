@@ -2,67 +2,105 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\PermisoNoEliminableException;
 use App\Http\Requests\PermisoRequest;
 use App\Models\Permiso;
 use App\Services\PermisoService;
+use App\Support\Permisos;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
+use Throwable;
 
+/** Administración de Permisos (RF-23 a RF-26), solo en el portal web. */
 class PermisoController extends Controller
 {
     public function __construct(
         private readonly PermisoService $servicio
     ) {}
 
-    public function index()
+    /** RF-25.2: listado con búsqueda por nombre o descripción. */
+    public function index(Request $request): Response
     {
+        $busqueda = mb_substr(trim($request->string('buscar')->toString()), 0, 100);
+
         return Inertia::render('Permisos/Index', [
-            'permisos' => $this->servicio->listarConRoles(),
+            'permisos' => $this->servicio->listar($busqueda),
+            'buscar' => $busqueda,
+            'niveles' => Permisos::NIVELES,
         ]);
     }
 
-    public function create()
+    public function create(): Response
     {
-        return Inertia::render('Permisos/PermisosCrear');
+        return Inertia::render('Permisos/PermisosCrear', [
+            'niveles' => Permisos::NIVELES,
+        ]);
     }
 
-    public function store(PermisoRequest $request)
+    /** RF-23.4 */
+    public function store(PermisoRequest $request): RedirectResponse
     {
-        $this->servicio->crear($request->toData());
+        try {
+            $this->servicio->crear($request->toData());
+        } catch (Throwable $e) {
+            report($e);
 
-        return redirect()
-            ->route('permisos.index')
-            ->with('success', 'Permiso creado correctamente.');
+            return back()->withInput()->withErrors(['general' => RolController::MENSAJE_ERROR_REGISTRO]);
+        }
+
+        return redirect()->route('permisos.index')->with('success', 'Permiso registrado exitosamente.');
     }
 
-    public function show(Permiso $permiso)
+    /** RF-25.3 */
+    public function show(Permiso $permiso): Response
     {
         return Inertia::render('Permisos/PermisosMostrar', [
             'permiso' => $this->servicio->obtenerConRoles($permiso),
+            'niveles' => Permisos::NIVELES,
         ]);
     }
 
-    public function edit(Permiso $permiso)
+    public function edit(Permiso $permiso): Response
     {
         return Inertia::render('Permisos/PermisosEditar', [
-            'permiso' => $permiso,
+            'permiso' => $permiso->loadCount('roles'),
+            'niveles' => Permisos::NIVELES,
         ]);
     }
 
-    public function update(PermisoRequest $request, Permiso $permiso)
+    /** RF-24.4 */
+    public function update(PermisoRequest $request, Permiso $permiso): RedirectResponse
     {
-        $this->servicio->actualizar($permiso, $request->toData());
+        try {
+            $this->servicio->actualizar($permiso, $request->toData());
+        } catch (Throwable $e) {
+            report($e);
 
-        return redirect()
-            ->route('permisos.index')
-            ->with('success', 'Permiso actualizado correctamente.');
+            return back()->withInput()->withErrors(['general' => RolController::MENSAJE_ERROR_ACTUALIZACION]);
+        }
+
+        return redirect()->route('permisos.index')->with('success', 'Permiso actualizado exitosamente.');
     }
 
-    public function destroy(Permiso $permiso)
+    /** RF-26: los rechazos y fallos vuelven a la pantalla desde la que se pidió. */
+    public function destroy(Permiso $permiso): RedirectResponse
     {
-        $this->servicio->eliminar($permiso);
+        try {
+            $roles = $this->servicio->eliminar($permiso);
+        } catch (PermisoNoEliminableException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            report($e);
 
-        return redirect()
-            ->route('permisos.index')
-            ->with('success', 'Permiso eliminado correctamente.');
+            return back()->with('error', RolController::MENSAJE_ERROR_ELIMINACION);
+        }
+
+        $detalle = $roles > 0
+            ? ' Se desvinculó de '.$roles.($roles === 1 ? ' rol.' : ' roles.')
+            : '';
+
+        return redirect()->route('permisos.index')->with('success', 'Permiso eliminado exitosamente.'.$detalle);
     }
 }

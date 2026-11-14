@@ -1,0 +1,182 @@
+% Requisitos funcionales de la administración de Roles (reemplazan a R14 "Ingreso y administración de Roles").
+% RF-19: Registrar Rol. RF-20: Modificar Rol. RF-21: Consultar Roles. RF-22: Eliminar Rol.
+% Los Permisos se asignan dentro de RF-19 y RF-20; su catálogo y el control de acceso (CA-1 a CA-4) están en RF-permisos.tex.
+% Requiere \usepackage{enumitem}.
+
+% ============================================================
+\subsection*{RF-19) Registrar Rol}
+El sistema permite a un usuario con el Permiso \texttt{roles.gestionar} registrar un Rol, con los Permisos que otorga a los usuarios que lo tengan asignado. Esta funci\'on es exclusiva del portal web; la aplicaci\'on m\'ovil no la ofrece.
+
+\textbf{Entradas:} Nombre -- Descripci\'on -- Estado -- Permisos
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Nombre:} cadena de caracteres, no vac\'ia, m\'aximo 100 caracteres, obligatorio. Se descartan los espacios al inicio y al final. Debe ser \'unico sin distinguir may\'usculas de min\'usculas (validado en Procesos).
+  \item \textbf{E-2) Descripci\'on:} cadena de caracteres, m\'aximo 500 caracteres. Opcional.
+  \item \textbf{E-3) Estado:} enumerado. Valores: \texttt{activo}, \texttt{inactivo}. Obligatorio. Valor por defecto: \texttt{activo}. Un Rol inactivo no otorga sus Permisos ni su acceso a los usuarios que lo tengan asignado.
+  \item \textbf{E-4) Permisos:} lista de 0 o m\'as identificadores de Permiso, sin repetidos. Opcional. Cada uno debe corresponder a un Permiso existente (validado en Procesos).
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-19.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{roles.gestionar} (CA-1).
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-19.1.1)} Si no lo es, se notificar\'a: ``No tienes permiso para acceder a esta secci\'on'' y no se mostrar\'a el formulario.
+  \end{itemize}
+  \item \textbf{RF-19.2)} El sistema solicita ingresar E-1 a E-4, mostrando el cat\'alogo de Permisos existentes para seleccionar E-4.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-19.2.1)} Si uno o m\'as datos se ingresan en un formato distinto al especificado (largo o valor), el sistema se\~nalar\'a el error en ese mismo instante y no permitir\'a el env\'io hasta que se corrija.
+  \end{itemize}
+  \item \textbf{RF-19.3)} El usuario env\'ia los datos de entrada.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-19.3.1)} Si E-1 coincide con el nombre de un Rol existente, sin distinguir may\'usculas de min\'usculas, se notificar\'a: ``Ya existe un rol con ese nombre''.
+    \item \textbf{RF-19.3.2)} Si E-1 corresponde a un nombre reservado por el sistema que no pertenece a un Rol existente (por ejemplo, \texttt{admin}, que el sistema interpreta como Administrador), se notificar\'a: ``El nombre ingresado est\'a reservado por el sistema''.
+    \item \textbf{RF-19.3.3)} Si alg\'un identificador de E-4 no corresponde a un Permiso existente, se notificar\'a: ``El registro seleccionado no es v\'alido''.
+    \item \textbf{RF-19.3.4)} En los casos RF-19.3.1 a RF-19.3.3 no se registrar\'a el Rol y se retornar\'a al ingreso de datos con los valores anteriores al env\'io.
+  \end{itemize}
+  \item \textbf{RF-19.4)} Si los datos son v\'alidos, el sistema registrar\'a el Rol y le asociar\'a los Permisos de E-4, como una sola operaci\'on.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-19.4.1)} Si la operaci\'on falla, no se registrar\'a el Rol ni sus Permisos (rollback) y se notificar\'a: ``No se pudo completar el registro, intente nuevamente''.
+    \item \textbf{RF-19.4.2)} Si se completa, se desplegar\'a el mensaje: ``Rol registrado exitosamente'' y el usuario ser\'a dirigido al listado de Roles (RF-21).
+  \end{itemize}
+  \item \textbf{RF-19.5)} El usuario puede cancelar el registro en cualquier momento previo al env\'io; en tal caso no se registrar\'a el Rol y ser\'a dirigido al listado de Roles.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-19.1.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-19.3.1: ``Ya existe un rol con ese nombre''
+  \item \textbf{S-3)} RF-19.3.2: ``El nombre ingresado est\'a reservado por el sistema''
+  \item \textbf{S-4)} RF-19.3.3: ``El registro seleccionado no es v\'alido''
+  \item \textbf{S-5)} RF-19.4.1: ``No se pudo completar el registro, intente nuevamente''
+  \item \textbf{S-6)} RF-19.4.2: ``Rol registrado exitosamente''
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-20) Modificar Rol}
+El sistema permite a un usuario con el Permiso \texttt{roles.gestionar} modificar los datos y los Permisos de un Rol existente. Los Roles del sistema (Administrador y Supervisor), de los que depende el control de acceso, conservan su nombre y su estado. El Administrador tiene todos los Permisos (CA-2), por lo que los suyos no se modifican. Esta funci\'on es exclusiva del portal web.
+
+\textbf{Entradas:} Rol -- Nombre -- Descripci\'on -- Estado -- Permisos
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Rol:} entero, valor positivo, no vac\'io. Debe corresponder a un Rol existente. Se recibe al abrir la edici\'on desde el listado o el detalle (RF-21), no lo ingresa el usuario.
+  \item \textbf{E-2) Nombre:} mismas reglas que RF-19 E-1. Obligatorio.
+  \item \textbf{E-3) Descripci\'on:} mismas reglas que RF-19 E-2. Opcional.
+  \item \textbf{E-4) Estado:} mismas reglas que RF-19 E-3. Obligatorio.
+  \item \textbf{E-5) Permisos:} mismas reglas que RF-19 E-4. Opcional. Reemplaza por completo los Permisos actuales del Rol.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-20.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{roles.gestionar}, con el mismo tratamiento de RF-19.1.1.
+  \item \textbf{RF-20.2)} El sistema solicita modificar E-2 a E-5, mostrando los valores actuales del Rol de E-1 y el cat\'alogo de Permisos con los asignados marcados.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-20.2.1)} Si E-1 es un Rol del sistema, el sistema mostrar\'a E-2 y E-4 sin permitir modificarlos. Si E-1 es el Administrador, en lugar de E-5 indicar\'a que tiene todos los Permisos.
+    \item \textbf{RF-20.2.2)} Si uno o m\'as datos se ingresan en un formato distinto al especificado, el sistema se\~nalar\'a el error en ese mismo instante y no permitir\'a el env\'io hasta que se corrija.
+  \end{itemize}
+  \item \textbf{RF-20.3)} El usuario env\'ia los datos de entrada.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-20.3.1)} Si E-2 coincide con el nombre de otro Rol, sin distinguir may\'usculas de min\'usculas, se notificar\'a: ``Ya existe un rol con ese nombre''.
+    \item \textbf{RF-20.3.2)} Si E-2 corresponde a un nombre reservado por el sistema, con el mismo tratamiento de RF-19.3.2.
+    \item \textbf{RF-20.3.3)} Si E-1 es un Rol del sistema y el env\'io cambia su nombre o su estado, se notificar\'a: ``Este rol es parte del sistema y no se puede cambiar su nombre ni su estado''.
+    \item \textbf{RF-20.3.4)} Si alg\'un identificador de E-5 no corresponde a un Permiso existente, se notificar\'a: ``El registro seleccionado no es v\'alido''.
+    \item \textbf{RF-20.3.5)} En los casos RF-20.3.1 a RF-20.3.4 no se modificar\'a el Rol y se retornar\'a al ingreso de datos con los valores anteriores al env\'io.
+  \end{itemize}
+  \item \textbf{RF-20.4)} Si los datos son v\'alidos, el sistema actualizar\'a el Rol y reemplazar\'a sus Permisos por los de E-5, como una sola operaci\'on; si E-1 es el Administrador, E-5 se ignora (CA-2). Los cambios se aplican de inmediato a todos los usuarios que tengan asignado el Rol.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-20.4.1)} Si la operaci\'on falla, no se modificar\'a nada (rollback) y se notificar\'a: ``No se pudo completar la actualizaci\'on, intente nuevamente''.
+    \item \textbf{RF-20.4.2)} Si se completa, se desplegar\'a el mensaje: ``Rol actualizado exitosamente'' y el usuario ser\'a dirigido al listado de Roles (RF-21).
+  \end{itemize}
+  \item \textbf{RF-20.5)} El usuario puede cancelar la edici\'on en cualquier momento previo al env\'io; en tal caso no se modificar\'a nada y ser\'a dirigido al listado de Roles.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-20.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-20.3.1: ``Ya existe un rol con ese nombre''
+  \item \textbf{S-3)} RF-20.3.2: ``El nombre ingresado est\'a reservado por el sistema''
+  \item \textbf{S-4)} RF-20.3.3: ``Este rol es parte del sistema y no se puede cambiar su nombre ni su estado''
+  \item \textbf{S-5)} RF-20.3.4: ``El registro seleccionado no es v\'alido''
+  \item \textbf{S-6)} RF-20.4.1: ``No se pudo completar la actualizaci\'on, intente nuevamente''
+  \item \textbf{S-7)} RF-20.4.2: ``Rol actualizado exitosamente''
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-21) Consultar Roles}
+El sistema permite a un usuario con el Permiso \texttt{roles.gestionar} listar los Roles, buscarlos por nombre y ver el detalle de cada uno con sus Permisos. Esta funci\'on es exclusiva del portal web.
+
+\textbf{Entradas:} B\'usqueda -- Rol
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) B\'usqueda:} cadena de caracteres, m\'aximo 100 caracteres. Opcional. Filtra los Roles cuyo nombre contenga el texto, sin distinguir may\'usculas de min\'usculas.
+  \item \textbf{E-2) Rol:} entero, valor positivo. Opcional. Se informa al seleccionar un Rol del listado para ver su detalle; debe corresponder a un Rol existente.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-21.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{roles.gestionar}, con el mismo tratamiento de RF-19.1.1.
+  \item \textbf{RF-21.2)} El sistema listar\'a los Roles en orden alfab\'etico, mostrando por cada uno: nombre, estado, cantidad de Permisos (``Todos'' para el Administrador), cantidad de usuarios asignados y si es un Rol del sistema.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-21.2.1)} Si se informa E-1, el listado mostrar\'a solo los Roles que cumplan la b\'usqueda.
+    \item \textbf{RF-21.2.2)} Si ning\'un Rol cumple la b\'usqueda, se desplegar\'a el mensaje: ``No se encontraron roles''.
+  \end{itemize}
+  \item \textbf{RF-21.3)} Al seleccionar un Rol (E-2), el sistema mostrar\'a su nombre, descripci\'on, estado, la lista de Permisos asignados y la cantidad de usuarios que lo tienen asignado.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-21.3.1)} Si el Rol no tiene Permisos, se desplegar\'a el mensaje: ``Sin permisos asignados''. Para el Administrador se desplegar\'a: ``Tiene todos los permisos del sistema''.
+    \item \textbf{RF-21.3.2)} Si E-2 no corresponde a un Rol existente, se notificar\'a: ``El registro seleccionado no es v\'alido''.
+  \end{itemize}
+  \item \textbf{RF-21.4)} Desde el listado o el detalle, el usuario puede iniciar la modificaci\'on (RF-20) o la eliminaci\'on (RF-22) del Rol.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-21.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-21.2: listado de Roles
+  \item \textbf{S-3)} RF-21.2.2: ``No se encontraron roles''
+  \item \textbf{S-4)} RF-21.3: detalle del Rol con sus Permisos
+  \item \textbf{S-5)} RF-21.3.1: ``Sin permisos asignados''
+  \item \textbf{S-6)} RF-21.3.2: ``El registro seleccionado no es v\'alido''
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-22) Eliminar Rol}
+El sistema permite a un usuario con el Permiso \texttt{roles.gestionar} eliminar un Rol que no tenga usuarios asignados y que no sea un Rol del sistema. Para dejar de usar un Rol con usuarios asignados se cambia su estado a \texttt{inactivo} (RF-20). Esta funci\'on es exclusiva del portal web.
+
+\textbf{Entradas:} Rol
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Rol:} entero, valor positivo, no vac\'io. Debe corresponder a un Rol existente. Se recibe al solicitar la eliminaci\'on desde el listado o el detalle (RF-21), no lo ingresa el usuario.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-22.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{roles.gestionar}, con el mismo tratamiento de RF-19.1.1.
+  \item \textbf{RF-22.2)} El sistema solicita confirmar la eliminaci\'on, mostrando el nombre del Rol y advirtiendo que la acci\'on no se puede deshacer.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-22.2.1)} Si el usuario cancela, no se eliminar\'a el Rol y permanecer\'a en la pantalla desde la que lo solicit\'o.
+  \end{itemize}
+  \item \textbf{RF-22.3)} Al confirmar, el sistema verifica que el Rol pueda eliminarse.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-22.3.1)} Si E-1 es un Rol del sistema, se notificar\'a: ``Este rol es parte del sistema y no se puede eliminar''.
+    \item \textbf{RF-22.3.2)} Si el Rol tiene uno o m\'as usuarios asignados, se notificar\'a: ``No se puede eliminar: existen usuarios con este rol asignado''.
+    \item \textbf{RF-22.3.3)} En los casos RF-22.3.1 y RF-22.3.2 no se eliminar\'a el Rol.
+  \end{itemize}
+  \item \textbf{RF-22.4)} Si el Rol puede eliminarse, el sistema lo eliminar\'a y desvincular\'a autom\'aticamente sus Permisos, como una sola operaci\'on. Los Permisos en s\'i no se eliminan.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-22.4.1)} Si un usuario recibe el Rol mientras se elimina, prevalece la operaci\'on que se complete primero: el Rol no se eliminar\'a si al momento de eliminarlo tiene usuarios asignados.
+    \item \textbf{RF-22.4.2)} Si la operaci\'on falla, no se eliminar\'a nada (rollback) y se notificar\'a: ``No se pudo completar la eliminaci\'on, intente nuevamente''.
+    \item \textbf{RF-22.4.3)} Si se completa, se desplegar\'a el mensaje: ``Rol eliminado exitosamente'' y el usuario ser\'a dirigido al listado de Roles.
+  \end{itemize}
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-22.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-22.3.1: ``Este rol es parte del sistema y no se puede eliminar''
+  \item \textbf{S-3)} RF-22.3.2: ``No se puede eliminar: existen usuarios con este rol asignado''
+  \item \textbf{S-4)} RF-22.4.2: ``No se pudo completar la eliminaci\'on, intente nuevamente''
+  \item \textbf{S-5)} RF-22.4.3: ``Rol eliminado exitosamente''
+\end{itemize}

@@ -45,8 +45,11 @@ class HandleInertiaRequests extends Middleware
         if ($user) {
             $eventos = \App\Models\Evento::query()->orderByDesc('fecha_creacion');
 
-            if (! $user->tienePermiso('eventos.ver')) {
-                $eventos->where('id_trabajador', $user->id_trabajador);
+            // Las mismas reglas de alcance que el listado de eventos.
+            if ($user->tienePermiso(\App\Support\Permisos::EVENTOS_VER)) {
+                app(\App\Services\EventoService::class)->aplicarAlcance($eventos, $user);
+            } else {
+                $eventos->where('id_trabajador', $user->id_trabajador ?? 0);
             }
 
             $notificaciones = $eventos->take(5)->get()->map(function ($evento) {

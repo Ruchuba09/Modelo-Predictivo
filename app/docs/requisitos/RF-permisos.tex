@@ -1,0 +1,219 @@
+% Requisitos funcionales de la administración de Permisos (reemplazan a R23 "Ingreso y administración de Permisos").
+% Control de acceso (CA-1 a CA-4): regla general que aplican todos los requisitos.
+% RF-23: Registrar Permiso. RF-24: Modificar Permiso. RF-25: Consultar Permisos. RF-26: Eliminar Permiso.
+% Requiere \usepackage{enumitem}.
+
+% ============================================================
+\subsection*{Control de acceso por Permisos}
+El acceso a las funciones del sistema se controla con Permisos, que los usuarios reciben a trav\'es de sus Roles (RF-19 a RF-22). Estas reglas aplican a todos los requisitos funcionales.
+
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{CA-1)} Cada funci\'on protegida exige un Permiso. Un usuario puede usarla si alguno de sus Roles en estado \texttt{activo} otorga ese Permiso. Si no lo tiene, se notificar\'a: ``No tienes permiso para acceder a esta secci\'on'' y, en el portal web, ser\'a dirigido al portal de inicio. Reportar eventos y consultar los propios no exige Permiso.
+  \item \textbf{CA-2)} El Rol Administrador tiene todos los Permisos, existentes y futuros, sin necesidad de asign\'arselos. Sus Permisos no se modifican (RF-20).
+  \item \textbf{CA-3)} Los Permisos del sistema, listados en la tabla siguiente, existen desde la instalaci\'on. El sistema depende de su nombre, por lo que no se pueden renombrar (RF-24) ni eliminar (RF-26); su descripci\'on y su nivel s\'i se pueden modificar.
+  \item \textbf{CA-4)} Cuando un requisito indica que una funci\'on corresponde al Administrador o al Supervisor, se refiere al Permiso que la controla, que esos Roles tienen por defecto. El Administrador puede otorgarlo a otros Roles o quit\'arselo al Supervisor (RF-20).
+\end{itemize}
+
+\begin{center}
+\small
+\begin{tabular}{|l|p{6.5cm}|c|c|}
+\hline
+\textbf{Permiso} & \textbf{Funci\'on que controla} & \textbf{Nivel} & \textbf{Supervisor} \\ \hline
+\texttt{dashboard.ver} & Ver el panel estad\'istico de Tarjetas PARE & 1 & S\'i \\ \hline
+\texttt{eventos.ver} & Ver el listado general de eventos de su alcance y el RUT de las personas & 1 & S\'i \\ \hline
+\texttt{eventos.ver-todos} & Ver todos los eventos, no solo los de las cuadrillas que supervisa & 2 & No \\ \hline
+\texttt{eventos.tomar} & Tomar un evento abierto para revisarlo & 2 & S\'i \\ \hline
+\texttt{eventos.editar} & Editar cualquier evento, en cualquier estado & 2 & No \\ \hline
+\texttt{eventos.cerrar} & Cerrar eventos abiertos o en revisi\'on & 2 & No \\ \hline
+\texttt{eventos.eliminar} & Eliminar eventos y sus evidencias & 3 & No \\ \hline
+\texttt{estadisticas.ver} & Ver las estad\'isticas de eventos & 1 & S\'i \\ \hline
+\texttt{situaciones.ver} & Ver las Situaciones Cr\'iticas en que figura como supervisor & 1 & S\'i \\ \hline
+\texttt{situaciones.ver-todas} & Ver todas las Situaciones Cr\'iticas & 2 & No \\ \hline
+\texttt{situaciones.gestionar} & Registrar y modificar Situaciones Cr\'iticas & 2 & No \\ \hline
+\texttt{intrava.ver} & Ver las fuentes de Intrava & 1 & S\'i \\ \hline
+\texttt{operaciones.ver} & Ver proyectos, cuadrillas, actividades, horas y asistencia & 1 & S\'i \\ \hline
+\texttt{operaciones.gestionar} & Registrar y modificar proyectos, cuadrillas, actividades, asignaciones, horas y asistencia & 2 & S\'i \\ \hline
+\texttt{modelo-predictivo.ver} & Ver las predicciones del modelo predictivo & 1 & S\'i \\ \hline
+\texttt{modelo-predictivo.entrenar} & Entrenar la red neuronal del modelo predictivo & 2 & S\'i \\ \hline
+\texttt{catalogos.ver} & Consultar personas, clientes, faenas, \'areas, departamentos, trabajadores y tipos & 1 & S\'i \\ \hline
+\texttt{catalogos.gestionar} & Registrar, modificar y eliminar esos cat\'alogos & 3 & No \\ \hline
+\texttt{usuarios.gestionar} & Administrar usuarios y sus Roles & 3 & No \\ \hline
+\texttt{roles.gestionar} & Administrar Roles (RF-19 a RF-22) & 3 & No \\ \hline
+\texttt{permisos.gestionar} & Administrar Permisos (RF-23 a RF-26) & 3 & No \\ \hline
+\texttt{sistema.datos-prueba} & Poblar y limpiar datos de prueba & 3 & No \\ \hline
+\end{tabular}
+\end{center}
+
+% ============================================================
+\subsection*{RF-23) Registrar Permiso}
+El sistema permite a un usuario con el Permiso \texttt{permisos.gestionar} registrar un Permiso, que luego podr\'a asignarse a los Roles (RF-19, RF-20). Esta funci\'on es exclusiva del portal web; la aplicaci\'on m\'ovil no la ofrece.
+
+\textbf{Entradas:} Nombre -- Descripci\'on -- Nivel
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Nombre:} cadena de caracteres, no vac\'ia, m\'aximo 100 caracteres, obligatorio. Se descartan los espacios al inicio y al final. Solo admite letras min\'usculas sin tilde, n\'umeros y los separadores punto, gui\'on y gui\'on bajo, sin espacios ni separadores al inicio, al final o seguidos (por ejemplo, \texttt{reportes.exportar}). Debe ser \'unico sin distinguir may\'usculas de min\'usculas (validado en Procesos).
+  \item \textbf{E-2) Descripci\'on:} cadena de caracteres, m\'aximo 500 caracteres. Opcional. Explica qu\'e permite hacer el Permiso.
+  \item \textbf{E-3) Nivel:} enumerado. Valores: 1 (B\'asico), 2 (Intermedio), 3 (Cr\'itico). Opcional. Indica la sensibilidad de lo que otorga el Permiso, como gu\'ia al asignarlo a un Rol.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-23.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{permisos.gestionar} (CA-1).
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-23.1.1)} Si no lo tiene, se notificar\'a: ``No tienes permiso para acceder a esta secci\'on'' y no se mostrar\'a el formulario.
+  \end{itemize}
+  \item \textbf{RF-23.2)} El sistema solicita ingresar E-1 a E-3.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-23.2.1)} Si uno o m\'as datos se ingresan en un formato distinto al especificado (largo, caracteres o valor), el sistema se\~nalar\'a el error en ese mismo instante y no permitir\'a el env\'io hasta que se corrija.
+  \end{itemize}
+  \item \textbf{RF-23.3)} El usuario env\'ia los datos de entrada.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-23.3.1)} Si E-1 no cumple el formato, se notificar\'a: ``El nombre solo puede contener letras min\'usculas, n\'umeros, puntos, guiones y guiones bajos, sin espacios''.
+    \item \textbf{RF-23.3.2)} Si E-1 coincide con el nombre de un Permiso existente, sin distinguir may\'usculas de min\'usculas, se notificar\'a: ``Ya existe un permiso con ese nombre''.
+    \item \textbf{RF-23.3.3)} Si E-3 no es uno de los valores permitidos, se notificar\'a: ``El nivel debe ser B\'asico, Intermedio o Cr\'itico''.
+    \item \textbf{RF-23.3.4)} En los casos RF-23.3.1 a RF-23.3.3 no se registrar\'a el Permiso y se retornar\'a al ingreso de datos con los valores anteriores al env\'io.
+  \end{itemize}
+  \item \textbf{RF-23.4)} Si los datos son v\'alidos, el sistema registrar\'a el Permiso sin asignarlo a ning\'un Rol, salvo al Administrador, que lo tiene de inmediato (CA-2).
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-23.4.1)} Si la operaci\'on falla, no se registrar\'a el Permiso (rollback) y se notificar\'a: ``No se pudo completar el registro, intente nuevamente''.
+    \item \textbf{RF-23.4.2)} Si se completa, se desplegar\'a el mensaje: ``Permiso registrado exitosamente'' y el usuario ser\'a dirigido al listado de Permisos (RF-25).
+  \end{itemize}
+  \item \textbf{RF-23.5)} El usuario puede cancelar el registro en cualquier momento previo al env\'io; en tal caso no se registrar\'a el Permiso y ser\'a dirigido al listado de Permisos.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-23.1.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-23.3.1: ``El nombre solo puede contener letras min\'usculas, n\'umeros, puntos, guiones y guiones bajos, sin espacios''
+  \item \textbf{S-3)} RF-23.3.2: ``Ya existe un permiso con ese nombre''
+  \item \textbf{S-4)} RF-23.3.3: ``El nivel debe ser B\'asico, Intermedio o Cr\'itico''
+  \item \textbf{S-5)} RF-23.4.1: ``No se pudo completar el registro, intente nuevamente''
+  \item \textbf{S-6)} RF-23.4.2: ``Permiso registrado exitosamente''
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-24) Modificar Permiso}
+El sistema permite a un usuario con el Permiso \texttt{permisos.gestionar} modificar los datos de un Permiso existente. Los Permisos del sistema conservan su nombre (CA-3). Esta funci\'on es exclusiva del portal web.
+
+\textbf{Entradas:} Permiso -- Nombre -- Descripci\'on -- Nivel
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Permiso:} entero, valor positivo, no vac\'io. Debe corresponder a un Permiso existente. Se recibe al abrir la edici\'on desde el listado o el detalle (RF-25), no lo ingresa el usuario.
+  \item \textbf{E-2) Nombre:} mismas reglas que RF-23 E-1. Obligatorio.
+  \item \textbf{E-3) Descripci\'on:} mismas reglas que RF-23 E-2. Opcional.
+  \item \textbf{E-4) Nivel:} mismas reglas que RF-23 E-3. Opcional.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-24.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{permisos.gestionar}, con el mismo tratamiento de RF-23.1.1.
+  \item \textbf{RF-24.2)} El sistema solicita modificar E-2 a E-4, mostrando los valores actuales del Permiso de E-1 y la cantidad de Roles que lo tienen asignado.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-24.2.1)} Si E-1 es un Permiso del sistema, el sistema mostrar\'a E-2 sin permitir modificarlo.
+    \item \textbf{RF-24.2.2)} Si uno o m\'as datos se ingresan en un formato distinto al especificado, el sistema se\~nalar\'a el error en ese mismo instante y no permitir\'a el env\'io hasta que se corrija.
+  \end{itemize}
+  \item \textbf{RF-24.3)} El usuario env\'ia los datos de entrada.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-24.3.1)} Si E-2 no cumple el formato, con el mismo tratamiento de RF-23.3.1.
+    \item \textbf{RF-24.3.2)} Si E-2 coincide con el nombre de otro Permiso, sin distinguir may\'usculas de min\'usculas, se notificar\'a: ``Ya existe un permiso con ese nombre''.
+    \item \textbf{RF-24.3.3)} Si E-1 es un Permiso del sistema y el env\'io cambia su nombre, se notificar\'a: ``Este permiso es parte del sistema y no se puede cambiar su nombre''.
+    \item \textbf{RF-24.3.4)} Si E-4 no es uno de los valores permitidos, con el mismo tratamiento de RF-23.3.3.
+    \item \textbf{RF-24.3.5)} En los casos RF-24.3.1 a RF-24.3.4 no se modificar\'a el Permiso y se retornar\'a al ingreso de datos con los valores anteriores al env\'io.
+  \end{itemize}
+  \item \textbf{RF-24.4)} Si los datos son v\'alidos, el sistema actualizar\'a el Permiso. Los Roles que lo tienen asignado lo siguen otorgando, con los nuevos datos, de inmediato.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-24.4.1)} Si la operaci\'on falla, no se modificar\'a nada (rollback) y se notificar\'a: ``No se pudo completar la actualizaci\'on, intente nuevamente''.
+    \item \textbf{RF-24.4.2)} Si se completa, se desplegar\'a el mensaje: ``Permiso actualizado exitosamente'' y el usuario ser\'a dirigido al listado de Permisos (RF-25).
+  \end{itemize}
+  \item \textbf{RF-24.5)} El usuario puede cancelar la edici\'on en cualquier momento previo al env\'io; en tal caso no se modificar\'a nada y ser\'a dirigido al listado de Permisos.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-24.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-24.3.1: ``El nombre solo puede contener letras min\'usculas, n\'umeros, puntos, guiones y guiones bajos, sin espacios''
+  \item \textbf{S-3)} RF-24.3.2: ``Ya existe un permiso con ese nombre''
+  \item \textbf{S-4)} RF-24.3.3: ``Este permiso es parte del sistema y no se puede cambiar su nombre''
+  \item \textbf{S-5)} RF-24.3.4: ``El nivel debe ser B\'asico, Intermedio o Cr\'itico''
+  \item \textbf{S-6)} RF-24.4.1: ``No se pudo completar la actualizaci\'on, intente nuevamente''
+  \item \textbf{S-7)} RF-24.4.2: ``Permiso actualizado exitosamente''
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-25) Consultar Permisos}
+El sistema permite a un usuario con el Permiso \texttt{permisos.gestionar} listar los Permisos, buscarlos y ver el detalle de cada uno con los Roles que lo otorgan. Esta funci\'on es exclusiva del portal web; la aplicaci\'on m\'ovil solo puede consultarlos.
+
+\textbf{Entradas:} B\'usqueda -- Permiso
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) B\'usqueda:} cadena de caracteres, m\'aximo 100 caracteres. Opcional. Filtra los Permisos cuyo nombre o descripci\'on contenga el texto, sin distinguir may\'usculas de min\'usculas.
+  \item \textbf{E-2) Permiso:} entero, valor positivo. Opcional. Se informa al seleccionar un Permiso del listado para ver su detalle; debe corresponder a un Permiso existente.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-25.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{permisos.gestionar}, con el mismo tratamiento de RF-23.1.1.
+  \item \textbf{RF-25.2)} El sistema listar\'a los Permisos en orden alfab\'etico, mostrando por cada uno: nombre, descripci\'on, nivel, cantidad de Roles que lo tienen asignado y si es un Permiso del sistema.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-25.2.1)} Si se informa E-1, el listado mostrar\'a solo los Permisos que cumplan la b\'usqueda.
+    \item \textbf{RF-25.2.2)} Si ning\'un Permiso cumple la b\'usqueda, se desplegar\'a el mensaje: ``No se encontraron permisos''.
+    \item \textbf{RF-25.2.3)} Si un Permiso no tiene nivel, se mostrar\'a: ``Sin nivel definido''.
+  \end{itemize}
+  \item \textbf{RF-25.3)} Al seleccionar un Permiso (E-2), el sistema mostrar\'a su nombre, descripci\'on, nivel, si es un Permiso del sistema y la lista de Roles que lo tienen asignado, indicando el estado de cada uno. Se recordar\'a que el Administrador lo tiene aunque no figure en la lista (CA-2).
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-25.3.1)} Si ning\'un Rol tiene asignado el Permiso, se desplegar\'a el mensaje: ``Sin roles asignados''.
+    \item \textbf{RF-25.3.2)} Si E-2 no corresponde a un Permiso existente, se notificar\'a: ``El registro seleccionado no es v\'alido'' y el usuario ser\'a dirigido al listado de Permisos.
+  \end{itemize}
+  \item \textbf{RF-25.4)} Desde el listado o el detalle, el usuario puede iniciar la modificaci\'on (RF-24) o la eliminaci\'on (RF-26) del Permiso.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-25.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-25.2: listado de Permisos
+  \item \textbf{S-3)} RF-25.2.2: ``No se encontraron permisos''
+  \item \textbf{S-4)} RF-25.2.3: ``Sin nivel definido''
+  \item \textbf{S-5)} RF-25.3: detalle del Permiso con sus Roles
+  \item \textbf{S-6)} RF-25.3.1: ``Sin roles asignados''
+  \item \textbf{S-7)} RF-25.3.2: ``El registro seleccionado no es v\'alido''
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-26) Eliminar Permiso}
+El sistema permite a un usuario con el Permiso \texttt{permisos.gestionar} eliminar un Permiso que no sea del sistema, desvincul\'andolo de los Roles que lo tengan asignado. Esta funci\'on es exclusiva del portal web.
+
+\textbf{Entradas:} Permiso
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Permiso:} entero, valor positivo, no vac\'io. Debe corresponder a un Permiso existente. Se recibe al solicitar la eliminaci\'on desde el listado o el detalle (RF-25), no lo ingresa el usuario.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-26.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{permisos.gestionar}, con el mismo tratamiento de RF-23.1.1.
+  \item \textbf{RF-26.2)} El sistema solicita confirmar la eliminaci\'on, mostrando el nombre del Permiso, la cantidad de Roles que lo tienen asignado y advirtiendo que esos Roles dejar\'an de otorgarlo y que la acci\'on no se puede deshacer.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-26.2.1)} Si el usuario cancela, no se eliminar\'a el Permiso y permanecer\'a en la pantalla desde la que lo solicit\'o.
+  \end{itemize}
+  \item \textbf{RF-26.3)} Al confirmar, el sistema verifica que el Permiso pueda eliminarse.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-26.3.1)} Si E-1 es un Permiso del sistema, se notificar\'a: ``Este permiso es parte del sistema y no se puede eliminar'' y no se eliminar\'a.
+  \end{itemize}
+  \item \textbf{RF-26.4)} Si el Permiso puede eliminarse, el sistema lo desvincular\'a de todos los Roles que lo tengan asignado y lo eliminar\'a, como una sola operaci\'on. Los Roles en s\'i no se modifican de otra forma.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-26.4.1)} Si la operaci\'on falla, no se eliminar\'a nada (rollback) y se notificar\'a: ``No se pudo completar la eliminaci\'on, intente nuevamente''.
+    \item \textbf{RF-26.4.2)} Si se completa, se desplegar\'a el mensaje: ``Permiso eliminado exitosamente'', indicando de cu\'antos Roles se desvincul\'o, y el usuario ser\'a dirigido al listado de Permisos.
+  \end{itemize}
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-26.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-26.3.1: ``Este permiso es parte del sistema y no se puede eliminar''
+  \item \textbf{S-3)} RF-26.4.1: ``No se pudo completar la eliminaci\'on, intente nuevamente''
+  \item \textbf{S-4)} RF-26.4.2: ``Permiso eliminado exitosamente''
+\end{itemize}

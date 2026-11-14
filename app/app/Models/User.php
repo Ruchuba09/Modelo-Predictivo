@@ -69,44 +69,57 @@ class User extends Authenticatable
     {
         return $this->rolesActivos()
             ->pluck('roles.nombre')
-            ->map(fn (string $nombre) => match (strtolower(trim($nombre))) {
-                'admin', 'administrador' => 'Administrador',
-                'supervisor' => 'Supervisor',
-                'usuario' => 'Usuario',
-                'rrhh' => 'RRHH',
-                default => $nombre,
-            })
+            ->map(fn (string $nombre) => Rol::nombreCanonico($nombre))
             ->all();
     }
 
     // PERMISOS
 
+    /** El Administrador tiene todos los permisos sin asignarlos (CA-2). */
+    public function esAdministrador(): bool
+    {
+        return $this->tieneRol('Administrador');
+    }
+
+    /** Permisos efectivos: los de sus roles activos, o todos si es Administrador. */
     public function permisosArray(): array
     {
-        return $this->permisosCache ??= $this->rolesActivos()
-            ->with('permisos')
-            ->get()
-            ->flatMap(fn ($rol) => $rol->permisos->pluck('nombre'))
-            ->unique()
-            ->values()
-            ->all();
+        return $this->permisosCache ??= $this->esAdministrador()
+            ? Permiso::orderBy('nombre')->pluck('nombre')->all()
+            : $this->rolesActivos()
+                ->with('permisos:id_permiso,nombre')
+                ->get()
+                ->flatMap(fn ($rol) => $rol->permisos->pluck('nombre'))
+                ->unique()
+                ->sort()
+                ->values()
+                ->all();
     }
 
     public function tieneRol(string ...$nombresRoles): bool
     {
-        $userRoles = array_map('strtolower', $this->rolesArray());
+        $userRoles = array_map('mb_strtolower', $this->rolesArray());
         foreach ($nombresRoles as $rol) {
-            if (in_array(strtolower($rol), $userRoles, true)) {
+            if (in_array(mb_strtolower($rol), $userRoles, true)) {
                 return true;
             }
         }
         return false;
     }
 
-    public function tienePermiso(string $permiso): bool
+    /** true si alguno de sus roles activos otorga alguno de los permisos indicados. */
+    public function tienePermiso(string ...$permisos): bool
     {
-        return $this->rolesActivos()
-            ->whereHas('permisos', fn ($q) => $q->where('permisos.nombre', $permiso))
-            ->exists();
+        if ($this->esAdministrador()) {
+            return true;
+        }
+
+        return array_intersect($permisos, $this->permisosArray()) !== [];
+    }
+
+    /** Olvida los permisos calculados (tras cambiar sus roles en la misma petición). */
+    public function olvidarPermisos(): void
+    {
+        $this->permisosCache = null;
     }
 }

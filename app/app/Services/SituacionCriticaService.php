@@ -8,6 +8,7 @@ use App\Models\SituacionCriticaHistorial;
 use App\Models\TipoEvento;
 use App\Models\Trabajador;
 use App\Models\User;
+use App\Support\Permisos;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -219,7 +220,7 @@ class SituacionCriticaService
     {
         $query = SituacionCritica::query()->with(self::RELACIONES)->orderByDesc('id');
 
-        if (! $usuario->tieneRol('Administrador')) {
+        if (! $usuario->tienePermiso(Permisos::SITUACIONES_VER_TODAS)) {
             $query->where('id_supervisor', $usuario->trabajador?->id_trabajador ?? 0);
         }
 

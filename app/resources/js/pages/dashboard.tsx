@@ -1,12 +1,11 @@
 import AuthenticatedLayout from '../layouts/MainLayout';
 import { Head, router } from '@inertiajs/react';
 import GraficoPredictivo from '../components/GraficoPredictivo';
-import { useTieneRol } from '@/hooks/use-auth';
+import { useTienePermiso } from '@/hooks/use-auth';
 import { useState } from 'react';
 
 export default function Dashboard(props: any) {
-    const esAdmin = useTieneRol('Administrador');
-    const esSupervisor = useTieneRol('supervisor');
+    const puedeVerPanel = useTienePermiso('dashboard.ver');
 
     const { proyectos, filtros, datosGrafico } = props;
 
@@ -120,7 +119,7 @@ export default function Dashboard(props: any) {
 
                 {/* Dashboard Principal */}
                 <div className="flex-1 flex flex-col min-h-0">
-                    {(esAdmin || esSupervisor) ? (
+                    {puedeVerPanel ? (
                         <div className="flex-1 w-full h-full pb-4">
                             <GraficoPredictivo datosReales={props.datosGrafico} />
                         </div>
