@@ -74,7 +74,7 @@ export default function DetalleEventoEstimado() {
     }, [horizonte, proyecto.id_proyecto, tipoObjetivo]);
 
     return (
-        <MainLayout>
+        <MainLayout title="Próximo evento estimado" subtitle="Dónde, quién y cuándo es más probable el próximo evento">
             <Head title={`Próximo evento estimado | ${proyecto.nombre}`} />
             <div className="mx-auto max-w-[1100px] space-y-6 p-6 lg:p-8">
                 <Link href="/modelo-predictivo" className="inline-flex items-center gap-2 text-sm font-bold text-verde-6 hover:underline">

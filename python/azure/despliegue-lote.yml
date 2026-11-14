@@ -1,0 +1,19 @@
+# Despliegue del modelo MLflow registrado en el endpoint por lotes.
+#   az ml batch-deployment create -f azure/despliegue-lote.yml --set-default
+$schema: https://azuremlschemas.azureedge.net/latest/modelBatchDeployment.schema.json
+name: automl-v1
+endpoint_name: ava-incidentes-lote
+type: model
+model: azureml:ava-incidentes:1
+compute: azureml:cpu-cluster
+resources:
+  instance_count: 1
+settings:
+  max_concurrency_per_instance: 1
+  mini_batch_size: 10
+  output_action: append_row
+  output_file_name: predictions.csv
+  retry_settings:
+    max_retries: 2
+    timeout: 300
+  logging_level: info

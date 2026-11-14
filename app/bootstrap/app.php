@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CerrarSesionesTrasCambioDeClave;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PermissionMiddleware;
 use App\Http\Middleware\RoleMiddleware;
@@ -24,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
 
         $middleware->web(append: [
+            // Cierra las sesiones de un usuario cuando cambia su contraseña (RF-28.4).
+            CerrarSesionesTrasCambioDeClave::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
@@ -41,12 +44,19 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request, Throwable $e) => $request->is('api/*') || $request->expectsJson()
         );
 
-        // Borrar un registro referenciado por otro (violación de FK en PostgreSQL)
+        // Borrar un registro referenciado por otro (violación de FK en PostgreSQL).
+        // Proyectos y trabajadores con historial de seguridad no se pueden borrar.
         $exceptions->render(function (QueryException $e, Request $request) {
-            if ($request->is('api/*') && $e->getCode() === '23503') {
-                return response()->json([
-                    'message' => 'No se puede eliminar: el registro está en uso por otros datos.',
-                ], 409);
+            if ($e->getCode() !== '23503') {
+                return null;
             }
+
+            $mensaje = 'No se puede eliminar: el registro está en uso por otros datos.';
+
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json(['message' => $mensaje], 409);
+            }
+
+            return back()->with('error', $mensaje.' Si ya no está vigente, cambie su estado a inactivo.');
         });
     })->create();

@@ -2,14 +2,12 @@
 
 namespace App\Http\Requests\Auth;
 
-use App\Support\Rut;
-use Illuminate\Auth\Events\Lockout;
+use App\Services\AutenticacionService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
+/** RF-31: inicio de sesión del portal web. */
 class LoginRequest extends FormRequest
 {
     public function authorize(): bool
@@ -20,71 +18,46 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'rut' => ['required', 'string'],
-            'password' => ['required', 'string'],
+            'rut' => ['required', 'string', 'max:255'],
+            'password' => ['required', 'string', 'max:255'],
+            'remember' => ['nullable', 'boolean'],
         ];
     }
 
-    protected function credentials(): array
+    public function messages(): array
     {
-        $login = trim((string) $this->input('rut'));
+        return self::mensajes();
+    }
 
-        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
-            return [
-                'email' => $login,
-                'password' => $this->input('password'),
-            ];
-        }
-
-        $rutLimpio = Rut::clean($login);
-
+    /** RF-31.2.1: mensajes comunes al portal web y a la API. */
+    public static function mensajes(): array
+    {
         return [
-            fn ($query) => $query->whereHas('trabajador.persona', function ($q) use ($rutLimpio) {
-                $q->where('rut', $rutLimpio);
-            }),
-            'password' => $this->input('password'),
+            'rut.required' => 'Debe ingresar su RUT o correo electrónico.',
+            'rut.string' => 'El RUT o correo electrónico no es válido.',
+            'rut.max' => 'El RUT o correo electrónico no puede superar los 255 caracteres.',
+            'password.required' => 'Debe ingresar su contraseña.',
+            'password.string' => 'La contraseña no es válida.',
+            'password.max' => AutenticacionService::MENSAJE_CREDENCIALES,
+            'remember.boolean' => 'El valor de "Recordarme" no es válido.',
+            'device_name.string' => 'El nombre del dispositivo no es válido.',
+            'device_name.max' => 'El nombre del dispositivo no puede superar los 100 caracteres.',
         ];
     }
 
+    /**
+     * RF-31.4 y RF-31.5: valida las credenciales e inicia la sesión web.
+     *
+     * @throws ValidationException
+     */
     public function authenticate(): void
     {
-        $this->ensureIsNotRateLimited();
+        $usuario = app(AutenticacionService::class)->autenticar(
+            (string) $this->input('rut'),
+            (string) $this->input('password'),
+            (string) $this->ip(),
+        );
 
-        if (! Auth::attempt($this->credentials(), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
-
-            throw ValidationException::withMessages([
-                'rut' => trans('auth.failed'),
-            ]);
-        }
-
-        RateLimiter::clear($this->throttleKey());
-    }
-
-    public function ensureIsNotRateLimited(): void
-    {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
-            return;
-        }
-
-        event(new Lockout($this));
-
-        $seconds = RateLimiter::availableIn($this->throttleKey());
-
-        throw ValidationException::withMessages([
-            'rut' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
-        ]);
-    }
-
-    public function throttleKey(): string
-    {
-        $login = filter_var($this->input('rut'), FILTER_VALIDATE_EMAIL)
-            ? Str::lower($this->input('rut'))
-            : Rut::clean($this->input('rut'));
-
-        return Str::transliterate($login.'|'.$this->ip());
+        Auth::guard('web')->login($usuario, $this->boolean('remember'));
     }
 }

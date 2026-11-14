@@ -4,10 +4,12 @@ import MainLayout from '@/layouts/MainLayout';
 import { CalidadModelos, EvaluacionPredicciones } from '@/components/CalidadModelos';
 import { AvisoHorizonte, SelectoresModelo } from '@/components/modelo/Elementos';
 import { NIVELES_ENTIDAD, useEntidades, useFiltrosModelo } from '@/lib/modeloPredictivo';
+import { BotonReentrenar } from '@/components/modelo/BotonReentrenar';
 
 export default function Calidad() {
     const { tipo, horizonte, tipos, cambiar } = useFiltrosModelo();
-    const { datos, cargando, error } = useEntidades(tipo, horizonte);
+    const [version, setVersion] = useState(0);
+    const { datos, cargando, error } = useEntidades(tipo, horizonte, version);
     const [nivel, setNivel] = useState('proyecto');
     const calidad = datos?.modelos[nivel];
     const candidatos = Object.entries(calidad?.candidatos ?? {}).sort(([, a], [, b]) => a.log_loss - b.log_loss);
@@ -24,13 +26,16 @@ export default function Calidad() {
                         <h1 className="text-xl font-bold text-gris-2">Calidad del modelo</h1>
                         <p className="text-sm text-gris-1 mt-1">Cuánto confiar en las predicciones, según semanas que el modelo no vio al entrenar.</p>
                     </div>
-                    <SelectoresModelo tipo={tipo} horizonte={horizonte} tipos={tipos} cambiar={cambiar} />
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                        <SelectoresModelo tipo={tipo} horizonte={horizonte} tipos={tipos} cambiar={cambiar} />
+                        <BotonReentrenar alTerminar={() => setVersion((v) => v + 1)} />
+                    </div>
                 </section>
 
                 <AvisoHorizonte dias={horizonte} />
 
                 {error && <p className="rounded-lg border border-rojo-1/30 bg-red-50 p-3 text-sm text-rojo-1" role="alert">{error}</p>}
-                {cargando && <p className="text-sm text-gris-1" role="status">Calculando. La primera vez puede tardar un par de minutos.</p>}
+                {cargando && <p className="text-sm text-gris-1" role="status">Calculando. La primera vez puede tardar alrededor de un minuto.</p>}
 
                 {datos && <CalidadModelos modelos={datos.modelos} />}
 
@@ -39,7 +44,7 @@ export default function Calidad() {
                         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                             <div>
                                 <h2 className="text-lg font-bold text-gris-2">Comparación de modelos</h2>
-                                <p className="text-xs text-gris-1 mt-1">Etapa de elección, ordenada de mejor a peor. Una log-loss más baja significa mejores probabilidades. La tabla superior muestra la confirmación del modelo publicado.</p>
+                                <p className="text-xs text-gris-1 mt-1">Validación temporal en las semanas finales, ordenada de mejor a peor. Una log-loss más baja significa mejores probabilidades de tener al menos un evento en la semana.</p>
                             </div>
                             <label className="text-xs font-semibold text-gris-1">
                                 Entidad

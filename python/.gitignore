@@ -5,3 +5,4 @@ data/automl/
 # Identifica la suscripcion y el espacio de trabajo de Azure ML
 config.json
 .venv-azure/
+__pycache__/

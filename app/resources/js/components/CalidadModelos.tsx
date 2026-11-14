@@ -95,7 +95,7 @@ export function CalidadModelos({ modelos }: { modelos: Record<string, CalidadNiv
         <section className="bg-white border border-verde-3 rounded-2xl shadow-md p-6">
             <h2 className="text-lg font-bold text-gris-2">Calidad del modelo por entidad</h2>
             <p className="text-xs text-gris-1 mt-1">
-                Cada nivel elige entre cinco modelos y lo confirma en las semanas finales, que no usó para elegir. Solo lo publica si supera a la tasa histórica por al menos 1 % en ambas etapas. Un AUC de 0,50 equivale al azar.
+                Proyectos y áreas usan modelos de tasa semanal, validados en las semanas finales que no usaron para entrenar. Cada uno se publica solo si supera a la tasa histórica por al menos 1 %. Las lesiones son la tasa de incidentes por la probabilidad de lesión, así que nunca superan a los incidentes. Cuadrillas, trabajadores y actividades reparten la tasa de su proyecto según sus eventos. Un AUC de 0,50 equivale al azar.
             </p>
             <div className="overflow-x-auto mt-4">
                 <table className="w-full text-sm">

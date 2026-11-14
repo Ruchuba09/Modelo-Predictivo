@@ -1,6 +1,6 @@
-# Modelo predictivo semanal por proyecto
+# Modelo predictivo de eventos
 
-El servicio estima la probabilidad de que un proyecto registre uno o más eventos de un tipo dentro de las próximas semanas. Usa las vistas PostgreSQL y el clasificador HistGradientBoosting; no llama a un proveedor externo.
+El servicio estima la probabilidad de que un proyecto, área, cuadrilla, trabajador o actividad registre al menos un evento en un plazo de 1 a 90 días. Usa tres modelos de tasa entrenados con scikit-learn sobre las vistas de PostgreSQL; no llama a un proveedor externo.
 
 ## Preparar PostgreSQL
 
@@ -38,26 +38,49 @@ El comando usa la conexión de Laravel, por lo que ambos leen la misma base, y t
 
 ## Cómo funciona
 
-`motor_riesgo.py` entrena un modelo por cada tipo de entidad: proyecto, área, cuadrilla, trabajador y actividad. Con el historial real también entrena uno por cliente.
+En vez de un clasificador por cada objetivo, nivel y plazo, `modelos_tasa.py` entrena tres modelos:
 
-- **Objetivos:** `incidentes_reales` excluye clasificaciones no laborales (trayecto, común) y `lesiones` predice solo incidentes con lesión. Los tipos de incidente se toman de `tipo_eventos.es_incidente`.
-- **Datos:** une `eventos`, Reporte Previene, Reportes Flash y Hallazgos. Los informes de investigación no suman porque documentan un incidente ya contado.
-- **Variables (más de 50 por entidad):** incidentes y reportes en ventanas de 1 a 26 semanas, tendencia, semanas desde el último incidente, tasa histórica, pendientes de cierre, razón preventivo/reactivo, severidad, condiciones PARE y su repetición, turno noche, riesgos detectados en el texto, personas expuestas, época del año, incidentes del proyecto y de la empresa, y los datos de la ampliación cuando existen (horas, clima, avance). Todas usan solo semanas anteriores a la predicción.
-- **Selección:** compara regresión logística, gradient boosting y bosque aleatorio con validación temporal en tres tramos, y elige el de menor log-loss. Si ninguno supera a la tasa histórica de cada entidad, publica esa tasa.
-- **Requisitos:** al menos 20 filas positivas, 20 negativas y 3 entidades. Sin ellos, el nivel usa el estimador suavizado de `modelo_predictivo.py` e informa el motivo.
-- **Calibración y explicación:** calibra las probabilidades con predicciones fuera de muestra y entrega los factores que más mueven cada predicción.
-- **Caché:** reutiliza lo entrenado mientras no cambien los datos ni la semana. El objetivo y horizonte predeterminados se entrenan al arrancar. El primer entrenamiento de otra combinación puede tardar varios minutos.
+| Modelo | Predice | Candidatos |
+|---|---|---|
+| A · `incidentes_reales` | Incidentes laborales esperados por semana en cada área de cada proyecto | Regresión de Poisson y gradient boosting de Poisson |
+| B · lesión | P(lesión \| incidente) | Regresión logística |
+| C · `todos` | Eventos esperados por semana de cualquier tipo, sin Tarjetas PARE | Regresión de Poisson y gradient boosting de Poisson |
 
-Para ver la comparación por consola o exportar los datasets en CSV:
+- **Lesiones = A × B:** la tasa de lesiones nunca supera a la de incidentes.
+- **Unidad:** proyecto-área-semana. Los eventos sin área van a un área "sin área" del proyecto, de modo que el proyecto es la suma de sus áreas. Clientes y faenas suman sus proyectos vigentes.
+- **Plazos:** cualquier plazo sale de la misma tasa semanal: P = 1 − exp(−tasa × días / 7). Un plazo más largo nunca da menos riesgo, y no hace falta entrenar un modelo por plazo.
+- **Datos:** une `eventos`, Reporte Previene, Reportes Flash y Hallazgos. Los informes de investigación no suman, porque documentan un incidente ya contado. Un incidente es laboral si su clasificación no es de trayecto ni común; tiene lesión si su clasificación lo indica o si registra lesiones en `evento_lesion`. Las Tarjetas PARE se usan como predictor, pero no como evento.
+- **Variables:** incidentes, eventos y reportes preventivos del área y del proyecto en ventanas de 4, 13 y 26 semanas; severidad máxima; semanas desde el último incidente; tasa histórica del área; pendientes de cierre; turno noche; personas, cuadrillas y actividades asignadas; actividades de riesgo crítico; incidentes en toda la empresa; época del año; y los datos de la ampliación cuando existen (horas, clima, avance). Todas usan solo semanas anteriores a la que se predice.
+- **Selección:** cada modelo compite en validación temporal (dos tramos: del 60 % al 80 % de las semanas y del 80 % al final) con una referencia: la tasa histórica de cada área, o la proporción histórica de lesiones, suavizada. Se elige por devianza de Poisson (log-loss en el modelo B) y solo se publica si mejora a la referencia en al menos 1 %; si no, se publica la referencia e informa el motivo. Se necesitan al menos 20 semanas con eventos.
+- **Cuadrillas, trabajadores y actividades** no tienen modelo propio: con pocos eventos por entidad solo aprenderían ruido. `reparto.py` les asigna una parte de la tasa del proyecto proporcional a sus eventos históricos de los últimos dos años, suavizada hacia una parte según su tamaño. Las partes nunca suman más que el proyecto.
+- **Factores:** para cada proyecto y área, cuánto cambiaría la probabilidad del plazo si cada variable importante volviera a su valor típico.
+- **Caché:** un solo entrenamiento sirve a los tres objetivos y a todos los plazos. Se reutiliza (en memoria y en `MODELOS_DIR`) mientras no cambien los datos ni la semana. Se entrena al arrancar el servicio; con la base de prueba tarda menos de un minuto.
+- **Seguimiento:** `seguimiento.py` registra en `predicciones_registradas` la primera predicción de cada semana (plazos de 1, 2, 3, 4, 9 y 13 semanas) y la compara con lo ocurrido cuando su plazo termina.
+
+Para ver la comparación de candidatos por consola:
 
 ```powershell
-python motor_riesgo.py --db postgresql+psycopg2://usuario:clave@localhost:5432/postgres --horizonte 4
-python motor_riesgo.py --db postgresql+psycopg2://usuario:clave@localhost:5432/postgres --exportar datasets
+python modelos_tasa.py --db postgresql+psycopg2://usuario:clave@localhost:5432/postgres
+```
+
+Pruebas, con datos sintéticos (no necesitan base):
+
+```powershell
+python -m unittest test_modelos_tasa
+```
+
+### Comparar con Azure AutoML
+
+`exportar_azure.py exportar` genera en `data/automl/tasa` los datasets de los tres modelos, separados por fecha en entrenamiento, validación y prueba, sin identificadores ni fechas. `exportar_azure.py evaluar` compara las predicciones de prueba de Azure con las del sistema. La configuración de Azure está en `data/automl/tasa/LEEME.md`.
+
+```powershell
+python exportar_azure.py exportar --db postgresql+psycopg2://usuario:clave@localhost:5432/postgres --salida data/automl/tasa
+python exportar_azure.py evaluar --carpeta data/automl/tasa/incidentes --predicciones predictions.csv
 ```
 
 ## Historial real de AVA
 
-`data/importar_logs.py` lee los logs Excel de incidentes (formatos 2021-2024, 2025 y 2026), une los archivos sin duplicar y crea `public.incidentes_historicos`. No guarda RUT, nombres ni descripciones: del texto solo extrae etiquetas de riesgo. Volver a ejecutarlo reemplaza la tabla.
+`data/importar_logs.py` lee los logs Excel de incidentes (formatos 2021-2024, 2025 y 2026), une los archivos sin duplicar y crea `public.incidentes_historicos`. No guarda RUT, nombres ni descripciones: del texto solo extrae etiquetas de riesgo (`riesgos_texto.py`). Volver a ejecutarlo reemplaza la tabla. Los modelos actuales no usan esta tabla.
 
 ```powershell
 python data\importar_logs.py log2024.xlsx log2025.xlsx log2026.xlsx --db postgresql+psycopg2://usuario:clave@localhost:5432/postgres
@@ -67,24 +90,15 @@ No versiones los Excel originales.
 
 ## Contrato HTTP
 
+Los objetivos (`tipo_objetivo`) son `incidentes_reales` (predeterminado), `lesiones` y `todos`. El plazo (`horizonte_dias`) acepta 1, 2, 5, 7, 14, 21, 30 (predeterminado), 60 y 90.
+
+- `GET /health`: comprueba la conexión con PostgreSQL.
+- `GET /tipos`: los tres objetivos.
+- `GET /predicciones?tipo_objetivo=incidentes_reales&horizonte_dias=30&id_proyecto=123`: probabilidad, tasa semanal y factores de cada proyecto vigente, y la calidad de cada nivel (`modelos`). Si se indica `id_proyecto`, `analisis_entidades` incluye el riesgo de sus trabajadores, trabajador por actividad, cuadrillas, actividades, áreas, factores operativos (turno, supervisor, causas, empresa, equipo), faena y cliente. `analisis_global.cuadrillas` trae las cuadrillas activas (todas, o las del proyecto indicado).
+- `analisis_entidades.contexto.evento_estimado` (o `analisis_global.proximo_evento` sin `id_proyecto`) incluye el tipo, área, actividad, cuadrilla y trabajador más probables, la espera media (1 / tasa semanal), las probabilidades a 30 y 90 días y el nivel de evidencia. La fecha es una espera media, no un pronóstico exacto.
+- `GET /predicciones/entidades?tipo_objetivo=lesiones&horizonte_dias=30`: todas las entidades vigentes por nivel (proyecto, área, cuadrilla, trabajador, actividad, cliente y faena), con nombre, ubicación, probabilidad, tasa semanal, factores e indicadores.
+- `GET /modelo/evaluacion`: aciertos de las predicciones registradas cuyo plazo ya terminó.
 - `POST /modelo/entrenar`: reentrena aunque los datos no hayan cambiado.
-- `GET /predicciones/entidades?tipo_objetivo=incidentes_reales&horizonte=4`: todas las entidades vigentes por nivel (proyecto, área, cuadrilla, trabajador, actividad, cliente y faena) con nombre, ubicación, riesgo, factores e indicadores, más la calidad de cada modelo.
-- `GET /modelo/evaluacion`: compara las predicciones registradas con lo ocurrido, cuando su plazo ya terminó.
-
-- `GET /health`: comprueba conexión con PostgreSQL.
-- `GET /tipos`: devuelve `incidentes_reales`, `todos` y los tipos encontrados en los datos.
-  `incidentes_reales` (predeterminado) agrupa accidentes, incidentes y Reportes Flash; los hallazgos, Previene y Tarjetas PARE quedan solo como predictores. Ningún total cuenta `informe_investigacion`, porque documenta un incidente ya contado por su Reporte Flash.
-- `GET /predicciones?tipo_objetivo=incidentes_reales&horizonte=4&id_proyecto=123`: devuelve la probabilidad y la semana base del proyecto, las variables usadas por el clasificador y, al indicar un proyecto, el análisis predictivo por trabajador, trabajador-actividad, configuración de cuadrilla, actividad, área, faena y cliente. El horizonte acepta de 1 a 52 semanas.
-
-La misma respuesta incluye `analisis_global.cuadrillas` con la probabilidad de cada cuadrilla activa; omitir `id_proyecto` devuelve todas las cuadrillas de todos los proyectos vigentes, y enviarlo filtra ese listado al proyecto indicado. El bloque `predicciones` conserva el ranking de todos los proyectos para la vista comparativa.
-
-`analisis_entidades.contexto.evento_estimado` (o `analisis_global.proximo_evento` al consultar todos los proyectos) incluye el tipo y ubicación más probables, tiempo/fecha esperados, probabilidades a 30/90 días, historial y nivel de evidencia. El tiempo se deriva de una tasa semanal constante calculada desde la probabilidad del horizonte; es una esperanza estadística, no una fecha cierta.
 - `GET /docs`: documentación interactiva de FastAPI.
 
-Laravel expone las rutas autenticadas `GET /api/v1/modelo-predictivo/tipos`, `GET /api/v1/modelo-predictivo/predicciones` para todos los proyectos y `GET /api/v1/proyectos/{id}/predicciones` para un proyecto. La página `/modelo-predictivo` genera una tabla ordenada; el detalle de cada proyecto también muestra su probabilidad. Ambas vistas permiten elegir el tipo de evento y el horizonte.
-
-La respuesta de `/predicciones` incluye `modelos`, con la calidad de cada nivel (candidatos, métricas, referencia y variables importantes), y `historial`, con los patrones y el riesgo por cliente si se importaron los logs.
-
-Cuando un nivel no tiene modelo, sus probabilidades usan suavizado jerárquico hacia la probabilidad del proyecto. En todos los casos, la suma de las entidades no supera el riesgo de su proyecto. La respuesta detalla el método, recuentos históricos, horizonte, exposición estimada, variables asociadas y nivel de evidencia. La configuración de cuadrilla combina los riesgos de sus miembros bajo una aproximación de independencia. Cuando no se registra asistencia/exposición histórica por entidad, se aproxima a partir de la duración de asignación/proyecto y se indica en `analisis_entidades.contexto.nota_evidencia`; estas estimaciones requieren más cautela que la probabilidad del modelo por proyecto.
-
-Si el clasificador no cumple esos mínimos, la API devuelve estimaciones históricas suavizadas para los proyectos vigentes en vez de dejar el panel vacío, e informa el método de respaldo en `modelo` y `advertencia_modelo`, con `validacion` en `null`.
+Laravel expone estas consultas en `/api/v1/modelo-predictivo/*` y `/api/v1/proyectos/{id}/predicciones`, y las muestra en `/modelo-predictivo` y en el detalle de cada proyecto.

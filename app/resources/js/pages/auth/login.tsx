@@ -106,11 +106,11 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
                     {status && <div className="mb-4 text-sm font-medium text-verde-6">{status}</div>}
 
-                    {/* ALERTA DE ERROR GLOBAL (Cuenta o contraseña errónea) */}
-                    {(errors.rut || (errors as Record<string, string>).email || errors.password) && (
-                        <div className="bg-rojo-1/10 border border-rojo-1 p-4 rounded-lg flex items-center gap-3 text-rojo-1">
+                    {/* RF-31.3.1 y RF-31.4.1: el mensaje del servidor (credenciales, bloqueo u obligatoriedad). */}
+                    {(errors.rut || errors.password) && (
+                        <div role="alert" className="bg-rojo-1/10 border border-rojo-1 p-4 rounded-lg flex items-center gap-3 text-rojo-1">
                             <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                            <span className="text-sm font-medium">Cuenta o contraseña errónea. Verifique sus credenciales.</span>
+                            <span className="text-sm font-medium">{errors.rut ?? errors.password}</span>
                         </div>
                     )}
 
@@ -131,6 +131,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                                     tabIndex={1}
                                     value={data.rut}
                                     onChange={handleRutChange}
+                                    maxLength={255}
                                     placeholder="12.345.678-9"
                                     className="w-full bg-transparent border border-verde-3 rounded-md py-2.5 pl-10 pr-4 text-gris-2 placeholder:text-[#2D3238] focus:border-verde-5 focus:ring-1 focus:ring-[#A0F700] transition-colors"
                                 />
@@ -150,6 +151,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                                     tabIndex={2}
                                     value={data.password}
                                     onChange={(e) => setData('password', e.target.value)}
+                                    maxLength={255}
                                     placeholder="••••••••"
                                     className="w-full bg-transparent border border-verde-3 rounded-md py-2.5 pl-4 pr-10 text-gris-2 placeholder:text-[#2D3238] focus:border-verde-5 focus:ring-1 focus:ring-[#A0F700] transition-colors"
                                 />

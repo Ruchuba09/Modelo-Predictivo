@@ -1,0 +1,29 @@
+# Trabajo de Azure AutoML para el dataset "incidentes". Ejecutar desde la carpeta python/:
+#   az ml job create -f azure/automl-incidentes.yml
+$schema: https://azuremlschemas.azureedge.net/latest/autoMLJob.schema.json
+type: automl
+experiment_name: ava-incidentes
+compute: azureml:cpu-cluster
+task: regression
+primary_metric: normalized_root_mean_squared_error
+target_column_name: incidentes
+training_data:
+  type: mltable
+  path: ../data/automl/tasa/incidentes/entrenamiento
+validation_data:
+  type: mltable
+  path: ../data/automl/tasa/incidentes/validacion
+test_data:
+  type: mltable
+  path: ../data/automl/tasa/incidentes/prueba
+limits:
+  timeout_minutes: 60
+  trial_timeout_minutes: 15
+  max_trials: 30
+  max_concurrent_trials: 2
+  enable_early_termination: true
+featurization:
+  mode: auto
+training:
+  enable_vote_ensemble: true
+  enable_stack_ensemble: true

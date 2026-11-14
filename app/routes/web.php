@@ -30,14 +30,19 @@ Route::middleware('auth')->group(function () use ($permiso, $registroNoValido) {
     Route::redirect('/reportes', '/tarjetas-pare/create')->name('reportes');
 
     /* ----------------------------- Usuarios ----------------------------- */
-    Route::middleware($permiso(Permisos::USUARIOS_GESTIONAR))->group(function () {
+    // RF-27 a RF-30. Un usuario inexistente vuelve al listado (RF-29.3.1).
+    Route::middleware($permiso(Permisos::USUARIOS_GESTIONAR))->group(function () use ($registroNoValido) {
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::get('/usuarios/crear', [UserController::class, 'create'])->name('usuarios.crear');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
-        Route::get('/usuarios/{usuario}', [UserController::class, 'show'])->name('usuarios.show');
-        Route::get('/usuarios/{usuario}/editar', [UserController::class, 'edit'])->name('usuarios.editar');
-        Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
-        Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
+        Route::controller(UserController::class)->whereNumber('usuario')->group(function () use ($registroNoValido) {
+            $noValido = $registroNoValido('usuarios.index');
+
+            Route::get('/usuarios/{usuario}', 'show')->name('usuarios.show')->missing($noValido);
+            Route::get('/usuarios/{usuario}/editar', 'edit')->name('usuarios.editar')->missing($noValido);
+            Route::put('/usuarios/{usuario}', 'update')->name('usuarios.update')->missing($noValido);
+            Route::delete('/usuarios/{usuario}', 'destroy')->name('usuarios.destroy')->missing($noValido);
+        });
     });
 
     /* -------- Roles (RF-19 a RF-22). Un rol inexistente vuelve al listado (RF-21.3.2). -------- */
@@ -124,14 +129,14 @@ Route::middleware('auth')->group(function () use ($permiso, $registroNoValido) {
             ->name('modelo-predictivo.index');
         Route::inertia('/modelo-predictivo/entidades', 'ModeloPredictivo/Entidades')->name('modelo-predictivo.entidades');
         Route::inertia('/modelo-predictivo/calidad', 'ModeloPredictivo/Calidad')->name('modelo-predictivo.calidad');
-        Route::inertia('/modelo-predictivo/red-neuronal', 'ModeloPredictivo/RedNeuronal')->name('modelo-predictivo.red-neuronal');
-        Route::inertia('/modelo-predictivo/red-neuronal/pruebas', 'ModeloPredictivo/PruebaRed')->name('modelo-predictivo.red-neuronal.pruebas');
+        Route::get('/modelo-predictivo/modelos', [ModeloPredictivoPaginaController::class, 'modelos'])->name('modelo-predictivo.modelos');
+        Route::get('/modelo-predictivo/evaluacion', [ModeloPredictivoPaginaController::class, 'evaluacion'])->name('modelo-predictivo.evaluacion');
+        Route::get('/modelo-predictivo/proyectos/{proyecto}', [ModeloPredictivoPaginaController::class, 'proyecto'])
+            ->whereNumber('proyecto')->name('modelo-predictivo.proyecto');
         Route::inertia('/modelo-predictivo/historial', 'ModeloPredictivo/Historial')->name('modelo-predictivo.historial');
         Route::get('/modelo-predictivo/proyectos/{proyecto}/evento-estimado', [ModeloPredictivoPaginaController::class, 'eventoEstimado'])
             ->name('modelo-predictivo.evento-estimado');
     });
-    Route::inertia('/modelo-predictivo/red-neuronal/entrenamiento', 'ModeloPredictivo/EntrenamientoRed')
-        ->middleware($permiso(Permisos::MODELO_ENTRENAR))->name('modelo-predictivo.red-neuronal.entrenamiento');
 
     /* ------------------------ Gestión operativa ------------------------ */
     // Los CRUD los consume el frontend desde /api/v1, que exige operaciones.gestionar para escribir.

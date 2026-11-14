@@ -1,0 +1,8 @@
+# Despliegue sin codigo del modelo MLflow: Azure genera el script de puntuacion y el entorno.
+#   az ml online-deployment create -f azure/despliegue-linea.yml --all-traffic
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+name: automl-v1
+endpoint_name: ava-incidentes
+model: azureml:ava-incidentes:1
+instance_type: Standard_DS3_v2
+instance_count: 1

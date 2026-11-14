@@ -1,0 +1,186 @@
+% Requisitos funcionales de la administración de Usuarios (reemplazan a R27 "Ingreso y administración de Usuarios").
+% RF-27: Registrar Usuario. RF-28: Modificar Usuario. RF-29: Consultar Usuarios. RF-30: Eliminar Usuario.
+% El control de acceso (CA-1 a CA-4) está en RF-permisos.tex.
+% Requiere \usepackage{enumitem}.
+
+% ============================================================
+\subsection*{RF-27) Registrar Usuario}
+El sistema permite a un usuario con el Permiso \texttt{usuarios.gestionar} registrar la cuenta de acceso de un Trabajador, con los Roles que determinan sus Permisos. Cada Trabajador puede tener a lo m\'as una cuenta. Esta funci\'on es exclusiva del portal web; la aplicaci\'on m\'ovil solo usa la sesi\'on ya autenticada.
+
+\textbf{Entradas:} RUT -- Correo electr\'onico -- Contrase\~na -- Confirmaci\'on de contrase\~na -- Roles
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) RUT:} cadena de caracteres, no vac\'ia, m\'aximo 20 caracteres, obligatorio. Se acepta con o sin puntos y guion; el sistema lo almacena sin puntos, con guion y con la \texttt{K} en may\'uscula (por ejemplo, \texttt{12.345.678-k} se interpreta como \texttt{12345678-K}). Debe corresponder a un Trabajador registrado que a\'un no tenga cuenta (validado en Procesos).
+  \item \textbf{E-2) Correo electr\'onico:} cadena de caracteres, no vac\'ia, m\'aximo 255 caracteres, con formato de correo v\'alido, obligatorio. Se descartan los espacios al inicio y al final y se almacena en min\'usculas. Debe ser \'unico sin distinguir may\'usculas de min\'usculas (validado en Procesos).
+  \item \textbf{E-3) Contrase\~na:} cadena de caracteres, entre 8 y 64 caracteres, con al menos una letra may\'uscula, una min\'uscula y un d\'igito, obligatoria. Se almacena cifrada; nunca se muestra.
+  \item \textbf{E-4) Confirmaci\'on de contrase\~na:} cadena de caracteres, obligatoria. Debe ser igual a E-3.
+  \item \textbf{E-5) Roles:} lista de 1 o m\'as identificadores de Rol, sin repetidos, obligatoria. Cada uno debe corresponder a un Rol existente en estado \texttt{activo} (validado en Procesos).
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-27.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{usuarios.gestionar} (CA-1).
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-27.1.1)} Si no lo tiene, se notificar\'a: ``No tienes permiso para acceder a esta secci\'on'' y no se mostrar\'a el formulario.
+  \end{itemize}
+  \item \textbf{RF-27.2)} El sistema solicita ingresar E-1 a E-5, mostrando los Roles activos para seleccionar E-5. E-3 y E-4 cuentan con un control (\'icono de ojo) para mostrar u ocultar lo digitado.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-27.2.1)} Si uno o m\'as datos se ingresan en un formato distinto al especificado (largo, formato, complejidad de la contrase\~na, confirmaci\'on distinta o ning\'un Rol seleccionado), el sistema se\~nalar\'a el error en ese mismo instante y no permitir\'a el env\'io hasta que se corrija.
+  \end{itemize}
+  \item \textbf{RF-27.3)} El usuario env\'ia los datos de entrada.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-27.3.1)} Si E-1 no corresponde a un Trabajador registrado, se notificar\'a: ``No existe un trabajador con ese RUT''.
+    \item \textbf{RF-27.3.2)} Si el Trabajador de E-1 ya tiene una cuenta, se notificar\'a: ``Este trabajador ya tiene una cuenta''.
+    \item \textbf{RF-27.3.3)} Si E-2 coincide con el correo de otro Usuario, sin distinguir may\'usculas de min\'usculas, se notificar\'a: ``Ya existe un usuario con ese correo electr\'onico''.
+    \item \textbf{RF-27.3.4)} Si E-3 no cumple la complejidad exigida, se notificar\'a: ``La contrase\~na debe tener al menos una may\'uscula, una min\'uscula y un d\'igito''; si E-4 no coincide con E-3, se notificar\'a: ``La confirmaci\'on de la contrase\~na no coincide''.
+    \item \textbf{RF-27.3.5)} Si E-5 est\'a vac\'ia, se notificar\'a: ``Debe asignar al menos un rol''; si incluye un Rol inactivo, se notificar\'a: ``No se puede asignar un rol inactivo''; si incluye un identificador que no corresponde a un Rol existente, se notificar\'a: ``El registro seleccionado no es v\'alido''.
+    \item \textbf{RF-27.3.6)} En los casos RF-27.3.1 a RF-27.3.5 no se registrar\'a el Usuario y se retornar\'a al ingreso de datos con los valores anteriores al env\'io, salvo E-3 y E-4, que se vac\'ian.
+  \end{itemize}
+  \item \textbf{RF-27.4)} Si los datos son v\'alidos, el sistema registrar\'a el Usuario vinculado al Trabajador de E-1 y le asignar\'a los Roles de E-5, como una sola operaci\'on.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-27.4.1)} Si la operaci\'on falla, no se registrar\'a el Usuario ni sus Roles (rollback) y se notificar\'a: ``No se pudo completar el registro, intente nuevamente''.
+    \item \textbf{RF-27.4.2)} Si se completa, se desplegar\'a el mensaje: ``Usuario registrado exitosamente'' y el usuario ser\'a dirigido al listado de Usuarios (RF-29).
+  \end{itemize}
+  \item \textbf{RF-27.5)} El usuario puede cancelar el registro en cualquier momento previo al env\'io; en tal caso no se registrar\'a el Usuario y ser\'a dirigido al listado de Usuarios.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-27.1.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-27.3.1: ``No existe un trabajador con ese RUT''
+  \item \textbf{S-3)} RF-27.3.2: ``Este trabajador ya tiene una cuenta''
+  \item \textbf{S-4)} RF-27.3.3: ``Ya existe un usuario con ese correo electr\'onico''
+  \item \textbf{S-5)} RF-27.3.4: ``La contrase\~na debe tener al menos una may\'uscula, una min\'uscula y un d\'igito'' / ``La confirmaci\'on de la contrase\~na no coincide''
+  \item \textbf{S-6)} RF-27.3.5: ``Debe asignar al menos un rol'' / ``No se puede asignar un rol inactivo'' / ``El registro seleccionado no es v\'alido''
+  \item \textbf{S-7)} RF-27.4.1: ``No se pudo completar el registro, intente nuevamente''
+  \item \textbf{S-8)} RF-27.4.2: ``Usuario registrado exitosamente''
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-28) Modificar Usuario}
+El sistema permite a un usuario con el Permiso \texttt{usuarios.gestionar} modificar el correo, la contrase\~na y los Roles de un Usuario existente. El RUT identifica a la persona due\~na de la cuenta y no se modifica. Esta funci\'on es exclusiva del portal web.
+
+\textbf{Entradas:} Usuario -- Correo electr\'onico -- Contrase\~na -- Confirmaci\'on de contrase\~na -- Roles
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Usuario:} entero, valor positivo, no vac\'io. Debe corresponder a un Usuario existente. Se recibe al abrir la edici\'on desde el listado o el detalle (RF-29), no lo ingresa el usuario.
+  \item \textbf{E-2) Correo electr\'onico:} mismas reglas que RF-27 E-2. Obligatorio.
+  \item \textbf{E-3) Contrase\~na:} mismas reglas que RF-27 E-3. Opcional: si se deja vac\'ia se conserva la contrase\~na actual.
+  \item \textbf{E-4) Confirmaci\'on de contrase\~na:} mismas reglas que RF-27 E-4. Obligatoria solo si se informa E-3.
+  \item \textbf{E-5) Roles:} mismas reglas que RF-27 E-5. Obligatoria. Reemplaza por completo los Roles actuales; los Roles que el Usuario ya ten\'ia pueden conservarse aunque est\'en inactivos.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-28.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{usuarios.gestionar}, con el mismo tratamiento de RF-27.1.1.
+  \item \textbf{RF-28.2)} El sistema solicita modificar E-2 a E-5, mostrando el RUT y el nombre del Usuario de E-1 sin permitir modificarlos, sus valores actuales y los Roles asignables con los asignados marcados. E-3 y E-4 cuentan con el control de RF-27.2.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-28.2.1)} Si uno o m\'as datos se ingresan en un formato distinto al especificado, el sistema se\~nalar\'a el error en ese mismo instante y no permitir\'a el env\'io hasta que se corrija.
+  \end{itemize}
+  \item \textbf{RF-28.3)} El usuario env\'ia los datos de entrada.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-28.3.1)} Si E-2 coincide con el correo de otro Usuario, con el mismo tratamiento de RF-27.3.3.
+    \item \textbf{RF-28.3.2)} Si se informa E-3 y no cumple la complejidad exigida o no coincide con E-4, con el mismo tratamiento de RF-27.3.4.
+    \item \textbf{RF-28.3.3)} Si E-5 queda vac\'ia, se notificar\'a: ``El usuario debe mantener al menos un rol asignado''; si agrega un Rol inactivo o inexistente, con el mismo tratamiento de RF-27.3.5.
+    \item \textbf{RF-28.3.4)} Si E-1 es el \'unico Usuario con el Rol Administrador activo y E-5 no lo incluye, se notificar\'a: ``No puedes quitar el rol Administrador al \'ultimo administrador''.
+    \item \textbf{RF-28.3.5)} En los casos RF-28.3.1 a RF-28.3.4 no se modificar\'a el Usuario y se retornar\'a al ingreso de datos con los valores anteriores al env\'io, salvo E-3 y E-4, que se vac\'ian.
+  \end{itemize}
+  \item \textbf{RF-28.4)} Si los datos son v\'alidos, el sistema actualizar\'a el correo, la contrase\~na si se inform\'o E-3, y reemplazar\'a sus Roles por los de E-5, como una sola operaci\'on. Los Permisos del Usuario cambian de inmediato. Si se cambi\'o la contrase\~na, se cerrar\'an las sesiones abiertas del Usuario en el portal web y en la aplicaci\'on m\'ovil; si el Usuario de E-1 es el mismo usuario autenticado, conserva la sesi\'on desde la que hizo el cambio.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-28.4.1)} Si la operaci\'on falla, no se modificar\'a nada (rollback) y se notificar\'a: ``No se pudo completar la actualizaci\'on, intente nuevamente''.
+    \item \textbf{RF-28.4.2)} Si se completa, se desplegar\'a el mensaje: ``Usuario actualizado exitosamente'' y el usuario ser\'a dirigido al listado de Usuarios (RF-29).
+  \end{itemize}
+  \item \textbf{RF-28.5)} El usuario puede cancelar la edici\'on en cualquier momento previo al env\'io; en tal caso no se modificar\'a nada y ser\'a dirigido al listado de Usuarios.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-28.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-28.3.1: ``Ya existe un usuario con ese correo electr\'onico''
+  \item \textbf{S-3)} RF-28.3.2: ``La contrase\~na debe tener al menos una may\'uscula, una min\'uscula y un d\'igito'' / ``La confirmaci\'on de la contrase\~na no coincide''
+  \item \textbf{S-4)} RF-28.3.3: ``El usuario debe mantener al menos un rol asignado''
+  \item \textbf{S-5)} RF-28.3.4: ``No puedes quitar el rol Administrador al \'ultimo administrador''
+  \item \textbf{S-6)} RF-28.4.1: ``No se pudo completar la actualizaci\'on, intente nuevamente''
+  \item \textbf{S-7)} RF-28.4.2: ``Usuario actualizado exitosamente''
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-29) Consultar Usuarios}
+El sistema permite a un usuario con el Permiso \texttt{usuarios.gestionar} listar los Usuarios, buscarlos y ver el detalle de cada uno con sus Roles. Esta funci\'on es exclusiva del portal web; la aplicaci\'on m\'ovil solo puede consultarlos.
+
+\textbf{Entradas:} B\'usqueda -- Usuario
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) B\'usqueda:} cadena de caracteres, m\'aximo 100 caracteres. Opcional. Filtra los Usuarios cuyo RUT (con o sin puntos), nombre o correo contenga el texto, sin distinguir may\'usculas de min\'usculas.
+  \item \textbf{E-2) Usuario:} entero, valor positivo. Opcional. Se informa al seleccionar un Usuario del listado para ver su detalle; debe corresponder a un Usuario existente.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-29.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{usuarios.gestionar}, con el mismo tratamiento de RF-27.1.1.
+  \item \textbf{RF-29.2)} El sistema listar\'a los Usuarios ordenados por correo, mostrando por cada uno: RUT, nombre, correo y Roles asignados, distinguiendo los Roles inactivos.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-29.2.1)} Si se informa E-1, el listado mostrar\'a solo los Usuarios que cumplan la b\'usqueda.
+    \item \textbf{RF-29.2.2)} Si ning\'un Usuario cumple la b\'usqueda, se desplegar\'a el mensaje: ``No se encontraron usuarios''.
+  \end{itemize}
+  \item \textbf{RF-29.3)} Al seleccionar un Usuario (E-2), el sistema mostrar\'a su RUT, nombre, correo, la cantidad de eventos que registr\'o y sus Roles con el estado de cada uno. Nunca se muestra la contrase\~na.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-29.3.1)} Si E-2 no corresponde a un Usuario existente, se notificar\'a: ``El registro seleccionado no es v\'alido'' y el usuario ser\'a dirigido al listado de Usuarios.
+    \item \textbf{RF-29.3.2)} Si todos los Roles del Usuario est\'an inactivos, se advertir\'a: ``Todos sus roles est\'an inactivos: no tiene acceso a ninguna funci\'on protegida''.
+  \end{itemize}
+  \item \textbf{RF-29.4)} Desde el listado o el detalle, el usuario puede iniciar la modificaci\'on (RF-28) o la eliminaci\'on (RF-30) del Usuario.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-29.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-29.2: listado de Usuarios
+  \item \textbf{S-3)} RF-29.2.2: ``No se encontraron usuarios''
+  \item \textbf{S-4)} RF-29.3: detalle del Usuario con sus Roles
+  \item \textbf{S-5)} RF-29.3.1: ``El registro seleccionado no es v\'alido''
+  \item \textbf{S-6)} RF-29.3.2: ``Todos sus roles est\'an inactivos: no tiene acceso a ninguna funci\'on protegida''
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-30) Eliminar Usuario}
+El sistema permite a un usuario con el Permiso \texttt{usuarios.gestionar} eliminar la cuenta de otro Usuario, desvincul\'andola de sus Roles. El Trabajador y su Persona no se eliminan. Esta funci\'on es exclusiva del portal web.
+
+\textbf{Entradas:} Usuario
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Usuario:} entero, valor positivo, no vac\'io. Debe corresponder a un Usuario existente. Se recibe al solicitar la eliminaci\'on desde el listado o el detalle (RF-29), no lo ingresa el usuario.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-30.1)} El sistema verifica que el usuario autenticado tenga el Permiso \texttt{usuarios.gestionar}, con el mismo tratamiento de RF-27.1.1.
+  \item \textbf{RF-30.2)} El sistema solicita confirmar la eliminaci\'on, mostrando el correo del Usuario, la cantidad de eventos que registr\'o, advirtiendo que esos eventos quedar\'an sin autor y que la acci\'on no se puede deshacer.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-30.2.1)} Si el usuario cancela, no se eliminar\'a la cuenta y permanecer\'a en la pantalla desde la que lo solicit\'o.
+  \end{itemize}
+  \item \textbf{RF-30.3)} Al confirmar, el sistema verifica que la cuenta pueda eliminarse.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-30.3.1)} Si E-1 es el mismo usuario autenticado, se notificar\'a: ``No puedes eliminar tu propia cuenta''.
+    \item \textbf{RF-30.3.2)} Si E-1 es el \'unico Usuario con el Rol Administrador activo, se notificar\'a: ``No puedes eliminar al \'ultimo administrador''.
+    \item \textbf{RF-30.3.3)} En los casos RF-30.3.1 y RF-30.3.2 no se eliminar\'a la cuenta.
+  \end{itemize}
+  \item \textbf{RF-30.4)} Si la cuenta puede eliminarse, el sistema cerrar\'a sus sesiones en el portal web y en la aplicaci\'on m\'ovil, la desvincular\'a de sus Roles y la eliminar\'a, como una sola operaci\'on. Los eventos que registr\'o se conservan sin autor.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-30.4.1)} Si dos administradores se eliminan o se quitan el Rol Administrador al mismo tiempo, el sistema procesa una operaci\'on a la vez, de modo que siempre quede al menos un administrador.
+    \item \textbf{RF-30.4.2)} Si la operaci\'on falla, no se eliminar\'a nada (rollback) y se notificar\'a: ``No se pudo completar la eliminaci\'on, intente nuevamente''.
+    \item \textbf{RF-30.4.3)} Si se completa, se desplegar\'a el mensaje: ``Usuario eliminado exitosamente'' y el usuario ser\'a dirigido al listado de Usuarios.
+  \end{itemize}
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-30.1: ``No tienes permiso para acceder a esta secci\'on''
+  \item \textbf{S-2)} RF-30.3.1: ``No puedes eliminar tu propia cuenta''
+  \item \textbf{S-3)} RF-30.3.2: ``No puedes eliminar al \'ultimo administrador''
+  \item \textbf{S-4)} RF-30.4.2: ``No se pudo completar la eliminaci\'on, intente nuevamente''
+  \item \textbf{S-5)} RF-30.4.3: ``Usuario eliminado exitosamente''
+\end{itemize}

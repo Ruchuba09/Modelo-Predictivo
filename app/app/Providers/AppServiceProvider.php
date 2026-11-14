@@ -31,14 +31,9 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by((string) $key);
         });
 
-        // Login de la API: 5 intentos por minuto por IP y por cuenta (rut/email).
-        RateLimiter::for('login', function (Request $request) {
-            $cuenta = mb_strtolower(trim((string) $request->input('rut')));
-
-            return [
-                Limit::perMinute(5)->by('login-cuenta:'.$cuenta.'|'.$request->ip()),
-                Limit::perMinute(20)->by('login-ip:'.$request->ip()),
-            ];
-        });
+        // Login de la API: tope de peticiones por IP contra el abuso masivo. El
+        // límite de RF-31.3 (5 intentos fallidos por cuenta e IP, compartido con
+        // el portal web) lo aplica AutenticacionService.
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(20)->by('login-ip:'.$request->ip()));
     }
 }

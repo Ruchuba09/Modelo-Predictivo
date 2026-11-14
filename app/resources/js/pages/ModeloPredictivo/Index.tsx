@@ -335,7 +335,8 @@ export default function Index() {
                                                     <td className="px-6 py-4 text-sm text-gris-1">{item.semana}</td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col items-start gap-1">
-                                                            <Link href={`/proyectos/${item.id_proyecto}`} className="text-sm font-bold text-verde-6 hover:underline">Ver proyecto</Link>
+                                                            <Link href={`/modelo-predictivo/proyectos/${item.id_proyecto}`} className="text-sm font-bold text-verde-6 hover:underline">Ver riesgo del proyecto</Link>
+                                                            <Link href={`/proyectos/${item.id_proyecto}`} className="text-xs font-bold text-verde-6 hover:underline">Ver ficha del proyecto</Link>
                                                             {item.factores_principales && item.factores_principales.length > 0 && (
                                                                 <ul className="text-xs text-gris-1">
                                                                     {item.factores_principales.map((factor) => (

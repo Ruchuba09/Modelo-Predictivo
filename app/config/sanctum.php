@@ -50,7 +50,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    // RF-31.5: el token de la aplicación móvil vence a los 30 días (en minutos).
+    'expiration' => env('SANCTUM_EXPIRATION', 60 * 24 * 30),
 
     /*
     |--------------------------------------------------------------------------

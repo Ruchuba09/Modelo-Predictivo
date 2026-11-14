@@ -1,0 +1,91 @@
+% Requisitos funcionales de inicio y cierre de sesión (reemplazan a R31 "Inicio y cierre de sesión").
+% RF-31: Iniciar sesión. RF-32: Cerrar sesión.
+% Requiere \usepackage{enumitem}.
+
+% ============================================================
+\subsection*{RF-31) Iniciar sesi\'on}
+El sistema permite a un Usuario registrado (RF-27) iniciar sesi\'on identific\'andose con su RUT o su correo electr\'onico y su contrase\~na. En el portal web se abre una sesi\'on; en la aplicaci\'on m\'ovil se entrega un token de acceso. Ambos canales aplican las mismas reglas y comparten el l\'imite de intentos.
+
+\textbf{Entradas:} RUT o correo electr\'onico -- Contrase\~na -- Recordarme -- Nombre del dispositivo
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) RUT o correo electr\'onico:} cadena de caracteres, no vac\'ia, m\'aximo 255 caracteres, obligatorio. Se descartan los espacios al inicio y al final.
+  \item \textbf{E-2) Contrase\~na:} cadena de caracteres, no vac\'ia, m\'aximo 255 caracteres, obligatoria. Cuenta con un control (\'icono de ojo) para mostrar u ocultar lo digitado.
+  \item \textbf{E-3) Recordarme:} booleano. Opcional, solo en el portal web. Valor por defecto: falso. Si es verdadero, la sesi\'on se mantiene al cerrar el navegador.
+  \item \textbf{E-4) Nombre del dispositivo:} cadena de caracteres, m\'aximo 100 caracteres. Opcional, solo en la aplicaci\'on m\'ovil. Identifica el token entregado; valor por defecto: \texttt{api}.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-31.1)} El sistema solicita ingresar E-1 y E-2 (y E-3 en el portal web).
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-31.1.1)} En el portal web, si E-1 no tiene formato de correo ni de RUT, el sistema lo se\~nalar\'a en ese mismo instante: ``Ingrese un correo corporativo v\'alido o RUT correcto'' y no permitir\'a el env\'io.
+  \end{itemize}
+  \item \textbf{RF-31.2)} El usuario env\'ia los datos de entrada. El sistema determina el tipo de E-1: si tiene formato de correo v\'alido se compara en min\'usculas; en otro caso se interpreta como RUT, sin puntos, con guion y con la \texttt{K} en may\'uscula (por ejemplo, \texttt{12.345.678-k} equivale a \texttt{12345678-K}).
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-31.2.1)} Si E-1 o E-2 est\'an vac\'ios, se notificar\'a: ``Debe ingresar su RUT o correo electr\'onico'' o ``Debe ingresar su contrase\~na'', seg\'un corresponda.
+  \end{itemize}
+  \item \textbf{RF-31.3)} El sistema verifica que la combinaci\'on de la cuenta de E-1 (ya normalizada seg\'un RF-31.2) y la direcci\'on IP de origen no est\'e bloqueada. Se bloquea al acumular 5 intentos fallidos, en el portal web y la aplicaci\'on m\'ovil en conjunto, dentro de un plazo de 60 segundos contados desde el primer fallo; el bloqueo dura hasta que se cumple ese plazo. Los inicios de sesi\'on exitosos no cuentan como intentos.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-31.3.1)} Si est\'a bloqueada, se notificar\'a: ``Demasiados intentos fallidos. Intente nuevamente en N segundos'', donde N es el tiempo de espera restante, y no se validar\'an las credenciales.
+    \item \textbf{RF-31.3.2)} Adem\'as, la aplicaci\'on m\'ovil admite a lo m\'as 20 solicitudes de inicio de sesi\'on por minuto desde una misma direcci\'on IP, cualquiera sea la cuenta.
+  \end{itemize}
+  \item \textbf{RF-31.4)} El sistema valida que E-1 corresponda a un Usuario y que E-2 sea su contrase\~na.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-31.4.1)} Si la cuenta no existe o la contrase\~na no corresponde, se notificar\'a: ``Las credenciales ingresadas no son correctas'' y se sumar\'a un intento fallido. El mensaje y el tiempo de respuesta son los mismos en ambos casos, para no revelar qu\'e cuentas existen.
+  \end{itemize}
+  \item \textbf{RF-31.5)} Si las credenciales son v\'alidas, el sistema reiniciar\'a el contador de intentos fallidos de esa cuenta e IP y:
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-31.5.1)} En el portal web, iniciar\'a la sesi\'on con un identificador de sesi\'on nuevo y dirigir\'a al usuario a la p\'agina que intentaba abrir o, en su defecto, al portal de inicio.
+    \item \textbf{RF-31.5.2)} En la aplicaci\'on m\'ovil, generar\'a un token de acceso que vence a los 30 d\'ias y entregar\'a el token, su fecha de vencimiento y los datos del Usuario: RUT, nombre, correo, Roles y Permisos efectivos (CA-1, CA-2). La contrase\~na nunca se entrega ni se almacena en el dispositivo.
+  \end{itemize}
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-31.1.1: ``Ingrese un correo corporativo v\'alido o RUT correcto''
+  \item \textbf{S-2)} RF-31.2.1: ``Debe ingresar su RUT o correo electr\'onico'' / ``Debe ingresar su contrase\~na''
+  \item \textbf{S-3)} RF-31.3.1: ``Demasiados intentos fallidos. Intente nuevamente en N segundos''
+  \item \textbf{S-4)} RF-31.4.1: ``Las credenciales ingresadas no son correctas''
+  \item \textbf{S-5)} RF-31.5.1: sesi\'on web iniciada y redirecci\'on
+  \item \textbf{S-6)} RF-31.5.2: token de acceso con su vencimiento y datos del Usuario
+\end{itemize}
+
+\textbf{Requisito de la aplicaci\'on m\'ovil:} el token se guarda en el almacenamiento seguro nativo del dispositivo (Keystore en Android, Keychain en iOS) y se descarta al cerrar sesi\'on (RF-32) o al vencer.
+
+% ============================================================
+\subsection*{RF-32) Cerrar sesi\'on}
+El sistema permite a un Usuario autenticado cerrar su sesi\'on del portal web o revocar el token de la aplicaci\'on m\'ovil con que se identific\'o, y opcionalmente revocar todos sus tokens de la aplicaci\'on m\'ovil.
+
+\textbf{Entradas:} Todas
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Todas:} booleano. Opcional, solo en la aplicaci\'on m\'ovil. Valor por defecto: falso. Si es verdadero, se revocan todos los tokens del Usuario y no solo el actual.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-32.1)} El sistema verifica que el usuario est\'e autenticado.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-32.1.1)} Si no lo est\'a, en el portal web ser\'a dirigido al inicio de sesi\'on y en la aplicaci\'on m\'ovil recibir\'a un rechazo por falta de autenticaci\'on.
+  \end{itemize}
+  \item \textbf{RF-32.2)} En el portal web, el sistema cerrar\'a la sesi\'on, invalidar\'a sus datos y el token de protecci\'on de formularios, y dirigir\'a al usuario a la p\'agina de inicio.
+  \item \textbf{RF-32.3)} En la aplicaci\'on m\'ovil, el sistema revocar\'a el token con que se hizo la solicitud; desde ese momento ese token deja de ser v\'alido. Si la solicitud viene con la sesi\'on del portal web en lugar de un token, cerrar\'a esa sesi\'on.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-32.3.1)} Si se completa, se notificar\'a: ``Sesi\'on cerrada correctamente''.
+  \end{itemize}
+  \item \textbf{RF-32.4)} Si E-1 es verdadero, el sistema revocar\'a todos los tokens de la aplicaci\'on m\'ovil del Usuario y anular\'a su opci\'on ``Recordarme'' del portal web.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-32.4.1)} Si se completa, se notificar\'a: ``Se cerraron todas las sesiones de la aplicaci\'on m\'ovil''.
+  \end{itemize}
+  \item \textbf{RF-32.5)} Los tokens vencidos (RF-31.5.2) dejan de ser v\'alidos sin intervenci\'on del usuario, y el sistema los elimina diariamente.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-32.2: sesi\'on web cerrada y redirecci\'on a la p\'agina de inicio
+  \item \textbf{S-2)} RF-32.3.1: ``Sesi\'on cerrada correctamente''
+  \item \textbf{S-3)} RF-32.4.1: ``Se cerraron todas las sesiones de la aplicaci\'on m\'ovil''
+\end{itemize}

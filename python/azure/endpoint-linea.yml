@@ -1,0 +1,5 @@
+# Endpoint en linea (tiempo real). Cobra cada hora que la maquina esta encendida: borrarlo al terminar.
+#   az ml online-endpoint create -f azure/endpoint-linea.yml
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json
+name: ava-incidentes
+auth_mode: key

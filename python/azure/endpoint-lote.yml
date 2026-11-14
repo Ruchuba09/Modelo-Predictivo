@@ -1,0 +1,5 @@
+# Endpoint por lotes: se paga solo mientras corre cada lote (las predicciones del sistema son semanales).
+#   az ml batch-endpoint create -f azure/endpoint-lote.yml
+$schema: https://azuremlschemas.azureedge.net/latest/batchEndpoint.schema.json
+name: ava-incidentes-lote
+description: Tasa semanal de incidentes por proyecto-area (modelo A entrenado con AutoML).

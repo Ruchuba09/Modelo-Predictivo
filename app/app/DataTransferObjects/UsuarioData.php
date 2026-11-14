@@ -2,22 +2,28 @@
 
 namespace App\DataTransferObjects;
 
-final class UsuarioData
+/** Datos de un Usuario (RF-27, RF-28). En la edición no hay RUT: no se modifica. */
+final readonly class UsuarioData
 {
+    /**
+     * @param  array<int, int>  $roles
+     */
     public function __construct(
-        public readonly string $rut,
-        public readonly string $email,
-        public readonly ?string $password,
-        public readonly array $roles,
+        public ?string $rut,
+        public string $email,
+        public ?string $password,
+        public array $roles,
     ) {}
 
     public static function fromArray(array $validated): self
     {
+        $password = $validated['password'] ?? null;
+
         return new self(
-            rut: $validated['rut'],
+            rut: $validated['rut'] ?? null,
             email: $validated['email'],
-            password: $validated['password'] ?? null,
-            roles: $validated['roles'],
+            password: $password === '' ? null : $password,
+            roles: array_values(array_unique(array_map('intval', $validated['roles']))),
         );
     }
 }

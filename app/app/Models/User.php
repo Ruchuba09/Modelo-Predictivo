@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -51,6 +52,12 @@ class User extends Authenticatable
         return $this->trabajador ?? throw new \Illuminate\Auth\Access\AuthorizationException(
             'El usuario autenticado no está vinculado a un trabajador.'
         );
+    }
+
+    /** Eventos que registró; si se elimina la cuenta quedan sin autor (RF-30.2). */
+    public function eventosRegistrados(): HasMany
+    {
+        return $this->hasMany(Evento::class, 'id_autor', 'id_user');
     }
 
     // ROLES

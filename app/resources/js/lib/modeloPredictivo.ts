@@ -74,7 +74,8 @@ export const ESTILO_BANDA: Record<BandaRiesgo, { etiqueta: string; chip: string;
 
 export const porcentaje = (valor: number | null | undefined) => `${Math.round((valor ?? 0) * 100)}%`;
 
-const CLAVE_FILTROS = 'ava.modelo.filtros.v2';
+// v3: solo quedan los objetivos incidentes_reales, lesiones y todos; los filtros guardados antes se descartan.
+const CLAVE_FILTROS = 'ava.modelo.filtros.v3';
 
 function filtrosGuardados(): { tipo: string; horizonte: number } {
     try {
@@ -112,7 +113,8 @@ export function useFiltrosModelo() {
     return { ...filtros, tipos, cambiar };
 }
 
-export function useEntidades(tipo: string, horizonte: number) {
+/** `version` cambia para volver a pedir los datos, por ejemplo después de reentrenar. */
+export function useEntidades(tipo: string, horizonte: number, version = 0) {
     const [datos, setDatos] = useState<RespuestaEntidades | null>(null);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState('');
@@ -131,7 +133,84 @@ export function useEntidades(tipo: string, horizonte: number) {
             })
             .finally(() => vigente && setCargando(false));
         return () => { vigente = false; };
-    }, [tipo, horizonte]);
+    }, [tipo, horizonte, version]);
+
+    return { datos, cargando, error };
+}
+
+/* ------------------------------------------------------------------ tres modelos de tasa */
+
+export const OBJETIVOS = ['incidentes_reales', 'lesiones', 'todos'] as const;
+export type Objetivo = (typeof OBJETIVOS)[number];
+
+/** Color fijo por objetivo, el mismo en todas las vistas y gráficos. */
+export const COLOR_OBJETIVO: Record<Objetivo, string> = {
+    incidentes_reales: '#3FAE29',
+    lesiones: '#C2410C',
+    todos: '#0369A1',
+};
+
+/** Los modelos predicen una tasa semanal: cualquier plazo sale de P = 1 − e^(−tasa·días/7). */
+export const probabilidadDesdeTasa = (tasaSemanal: number, dias: number) => 1 - Math.exp(-Math.max(tasaSemanal, 0) * dias / 7);
+
+/** Espera media hasta el próximo evento, en días, con una tasa semanal constante. */
+export const esperaMediaDias = (tasaSemanal: number) => (tasaSemanal > 0 ? 7 / tasaSemanal : null);
+
+export type ObjetivoResumen = {
+    tipo_objetivo: Objetivo;
+    nombre: string;
+    clave: string;
+    predice: string;
+    tasa_semanal_total?: number;
+    eventos_esperados_30_dias?: number;
+    calidad: Record<string, CalidadNivel>;
+};
+
+export type ResumenModelos = {
+    version?: string;
+    semana_base?: string;
+    entrenado_en?: string;
+    proyectos_vigentes?: number;
+    horizontes_dias?: number[];
+    objetivos: ObjetivoResumen[];
+    modelo_lesion: { nombre?: string; clave?: string; predice?: string; probabilidad_media?: number; calidad: CalidadNivel };
+};
+
+export type FilaEvaluacion = {
+    nivel: string;
+    tipo_objetivo: Objetivo;
+    etiqueta_objetivo?: string;
+    horizonte: number;
+    predicciones: number;
+    ocurrieron: number;
+    riesgo_predicho: number;
+    tasa_real: number;
+    brier: number;
+    auc_roc?: number;
+};
+
+/** Mensaje legible de un error de la API (Laravel usa "message"; FastAPI, "detail"). */
+export function mensajeError(error: unknown, porDefecto = 'No fue posible consultar el modelo predictivo.'): string {
+    const datos = (error as { response?: { data?: { message?: string; detail?: string } } })?.response?.data;
+    return datos?.message ?? datos?.detail ?? porDefecto;
+}
+
+/** Resumen de los tres modelos; `version` cambia para volver a pedirlo, por ejemplo después de reentrenar. */
+export function useResumenModelos(version = 0) {
+    const [datos, setDatos] = useState<ResumenModelos | null>(null);
+    const [cargando, setCargando] = useState(true);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        let vigente = true;
+        setCargando(true);
+        setError('');
+        api.get<ResumenModelos>('/modelo-predictivo/modelos')
+            .then(({ data }) => vigente && setDatos(data))
+            .catch((err) => vigente && setError(mensajeError(err)))
+            .finally(() => vigente && setCargando(false));
+        return () => { vigente = false; };
+    }, [version]);
 
     return { datos, cargando, error };
 }

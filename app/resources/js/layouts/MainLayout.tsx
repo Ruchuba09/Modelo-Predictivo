@@ -38,10 +38,9 @@ const NAV_ITEMS: NavItem[] = [
             { href: '/proyectos', label: 'Proyectos', permisos: ['operaciones.ver', 'operaciones.gestionar'] },
             { href: '/modelo-predictivo', label: 'Predicciones: resumen', permisos: ['modelo-predictivo.ver'] },
             { href: '/modelo-predictivo/entidades', label: 'Riesgo por entidad', permisos: ['modelo-predictivo.ver'] },
+            { href: '/modelo-predictivo/modelos', label: 'Los tres modelos', permisos: ['modelo-predictivo.ver'] },
             { href: '/modelo-predictivo/calidad', label: 'Calidad del modelo', permisos: ['modelo-predictivo.ver'] },
-            { href: '/modelo-predictivo/red-neuronal', label: 'Red neuronal', permisos: ['modelo-predictivo.ver'] },
-            { href: '/modelo-predictivo/red-neuronal/entrenamiento', label: 'Entrenamiento de la red', permisos: ['modelo-predictivo.entrenar'] },
-            { href: '/modelo-predictivo/red-neuronal/pruebas', label: 'Pruebas de la red', permisos: ['modelo-predictivo.ver'] },
+            { href: '/modelo-predictivo/evaluacion', label: '¿Acertó el modelo?', permisos: ['modelo-predictivo.ver'] },
             { href: '/modelo-predictivo/historial', label: 'Historial de incidentes', permisos: ['modelo-predictivo.ver'] },
             { href: '/cuadrillas', label: 'Cuadrillas', permisos: ['operaciones.ver', 'operaciones.gestionar'] },
             { href: '/actividades', label: 'Actividades', permisos: ['operaciones.ver', 'operaciones.gestionar'] },
@@ -73,9 +72,9 @@ const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
     '/proyectos': { title: 'Proyectos', subtitle: 'Gestión y control de proyectos' },
     '/modelo-predictivo/entidades': { title: 'Riesgo por entidad', subtitle: 'Todas las predicciones, con filtros y factores' },
     '/modelo-predictivo/calidad': { title: 'Calidad del modelo', subtitle: 'Qué tan confiables son las predicciones' },
-    '/modelo-predictivo/red-neuronal/pruebas': { title: 'Pruebas de la red', subtitle: 'Nivel de acierto en semanas no vistas' },
-    '/modelo-predictivo/red-neuronal/entrenamiento': { title: 'Entrenamiento de la red', subtitle: 'Entradas, pesos y capas de la red, época a época' },
-    '/modelo-predictivo/red-neuronal': { title: 'Red neuronal', subtitle: 'Eventos y entidades, solo con información del proyecto' },
+    '/modelo-predictivo/modelos': { title: 'Los tres modelos', subtitle: 'Incidentes, lesiones y todos los eventos' },
+    '/modelo-predictivo/evaluacion': { title: 'Evaluación del modelo', subtitle: 'Lo predicho comparado con lo ocurrido' },
+    '/modelo-predictivo/proyectos': { title: 'Riesgo del proyecto', subtitle: 'Los tres modelos para un proyecto' },
     '/modelo-predictivo/historial': { title: 'Historial de incidentes', subtitle: 'Patrones de los logs reales de AVA' },
     '/modelo-predictivo': { title: 'Modelo Predictivo', subtitle: 'Predicciones de eventos para los proyectos vigentes' },
     '/cuadrillas': { title: 'Cuadrillas', subtitle: 'Gestión de equipos de trabajo' },
@@ -105,9 +104,6 @@ function isRutaActiva(href: string, rutaActual: string): boolean {
                 !rutaActual.startsWith('/eventos/mis-reportes') &&
                 !rutaActual.startsWith('/eventos/estadisticas'))
         );
-    }
-    if (href === '/modelo-predictivo/red-neuronal') {
-        return rutaActual === href;
     }
     if (href === '/portal') {
         return rutaActual === '/portal';

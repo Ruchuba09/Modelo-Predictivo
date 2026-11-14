@@ -13,7 +13,9 @@ SELECT e.id_proyecto,
        'eventos'::text AS origen,
        e.id_evento::text AS id_origen,
        e.id_area,
-       COALESCE(ci.con_lesion, FALSE) AS con_lesion,
+       -- La clasificacion puede quedar vacia: tambien cuenta si el evento registra lesiones.
+       COALESCE(ci.con_lesion, FALSE)
+           OR EXISTS (SELECT 1 FROM public.evento_lesion l WHERE l.id_evento = e.id_evento) AS con_lesion,
        COALESCE(ci.laboral, TRUE) AS laboral
 FROM public.eventos e
 JOIN public.tipo_eventos te USING (id_tipo_evento)
@@ -33,9 +35,11 @@ LEFT JOIN public.cat_clasificacion_incidente ci ON ci.id_clasificacion_incidente
 WHERE r.id_proyecto IS NOT NULL AND r.fecha IS NOT NULL
 UNION ALL
 SELECT i.id_proyecto, f.fecha, 'informe_investigacion', NULL,
-       'informes_investigacion_intrava', i.id_local::text, f.id_area, FALSE, TRUE
+       'informes_investigacion_intrava', i.id_local::text, f.id_area,
+       COALESCE(ci.con_lesion, FALSE), COALESCE(ci.laboral, TRUE)
 FROM public.informes_investigacion_intrava i
 JOIN public.reportes_flash_intrava f ON f.id_intrava = i.id_reporte_flash_intrava
+LEFT JOIN public.cat_clasificacion_incidente ci ON ci.id_clasificacion_incidente = i.id_clasificacion_incidente
 WHERE i.id_proyecto IS NOT NULL AND f.fecha IS NOT NULL
 UNION ALL
 SELECT id_proyecto, COALESCE(fecha_deteccion, fecha_creacion), 'hallazgo', NULL,
@@ -51,8 +55,12 @@ WITH rango AS (
                (SELECT min(u.fecha) FROM public.v_eventos_unificados u
                 WHERE u.id_proyecto = p.id_proyecto)
            ))::date AS ini,
+           -- Termina en la ultima fecha con datos: si la sincronizacion esta atrasada,
+           -- no se generan semanas vacias que el modelo aprenderia como "sin incidentes".
            date_trunc('week', LEAST(COALESCE(p.fecha_termino, CURRENT_DATE),
-                                    CURRENT_DATE))::date AS fin
+                                    CURRENT_DATE,
+                                    (SELECT max(u.fecha) FROM public.v_eventos_unificados u
+                                     WHERE u.fecha <= CURRENT_DATE)))::date AS fin
     FROM public.proyectos p
 )
 SELECT r.id_proyecto, s::date AS semana

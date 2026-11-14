@@ -22,7 +22,7 @@ use App\Http\Controllers\Api\V1\TrabajadorController;
 use App\Http\Controllers\Api\V1\UsuarioController;
 use App\Http\Controllers\AsignacionController;
 use App\Http\Controllers\CuadrillaController;
-use App\Http\Controllers\ModeloPredictivoController;
+use App\Http\Controllers\Api\V1\ModeloPredictivoController;
 use App\Http\Controllers\ProyectoController;
 use App\Http\Resources\UsuarioResource;
 use App\Support\Permisos;
@@ -76,18 +76,16 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($permiso, $lectura,
 
         /* -------------------------- Modelo predictivo -------------------------- */
         Route::middleware($permiso(Permisos::MODELO_VER))->group(function () {
+            Route::get('modelo-predictivo/estado', [ModeloPredictivoController::class, 'estado'])->name('modelo-predictivo.estado');
             Route::get('modelo-predictivo/tipos', [ModeloPredictivoController::class, 'tipos'])->name('modelo-predictivo.tipos');
+            Route::get('modelo-predictivo/modelos', [ModeloPredictivoController::class, 'modelos'])->name('modelo-predictivo.modelos');
             Route::get('modelo-predictivo/predicciones', [ModeloPredictivoController::class, 'index'])->name('modelo-predictivo.index');
             Route::get('proyectos/{proyecto}/predicciones', [ModeloPredictivoController::class, 'show'])->name('proyectos.predicciones');
             Route::get('modelo-predictivo/entidades', [ModeloPredictivoController::class, 'entidades'])->name('modelo-predictivo.entidades');
             Route::get('modelo-predictivo/evaluacion', [ModeloPredictivoController::class, 'evaluacion'])->name('modelo-predictivo.evaluacion');
-            Route::get('modelo-predictivo/red-neuronal', [ModeloPredictivoController::class, 'redNeuronal'])->name('modelo-predictivo.red-neuronal');
-            Route::get('modelo-predictivo/red-neuronal/prueba', [ModeloPredictivoController::class, 'pruebaRedNeuronal'])->name('modelo-predictivo.red-neuronal.prueba');
-            Route::get('modelo-predictivo/red-neuronal/traza', [ModeloPredictivoController::class, 'trazaRedNeuronal'])->name('modelo-predictivo.red-neuronal.traza');
-            Route::get('proyectos/{proyecto}/red-neuronal', [ModeloPredictivoController::class, 'prediccionRedNeuronal'])->whereNumber('proyecto')->name('proyectos.red-neuronal');
         });
-        Route::post('modelo-predictivo/red-neuronal/entrenar', [ModeloPredictivoController::class, 'entrenarRedNeuronal'])
-            ->middleware($permiso(Permisos::MODELO_ENTRENAR))->name('modelo-predictivo.red-neuronal.entrenar');
+        Route::post('modelo-predictivo/entrenar', [ModeloPredictivoController::class, 'entrenar'])
+            ->middleware($permiso(Permisos::MODELO_ENTRENAR))->name('modelo-predictivo.entrenar');
 
         /* ------------------------------ Intrava ------------------------------ */
         Route::middleware($permiso(Permisos::INTRAVA_VER))->group(function () {
@@ -158,9 +156,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($permiso, $lectura,
             ->middlewareFor(['store', 'update'], $permiso(Permisos::SITUACIONES_GESTIONAR));
 
         /* -------------------------- Administración -------------------------- */
-        Route::apiResource('usuarios', UsuarioController::class)->parameters(['usuarios' => 'usuario'])
+        // Solo consulta: Usuarios, Roles y Permisos se administran en el portal web (RF-19 a RF-30).
+        Route::apiResource('usuarios', UsuarioController::class)->only(['index', 'show'])->parameters(['usuarios' => 'usuario'])
             ->middleware($permiso(Permisos::USUARIOS_GESTIONAR));
-        // Solo consulta: Roles y Permisos se administran en el portal web (RF-19 a RF-26).
         Route::apiResource('roles', RolController::class)->only(['index', 'show'])->parameters(['roles' => 'rol'])
             ->middleware($permiso(Permisos::ROLES_GESTIONAR));
         Route::apiResource('permisos', PermisoController::class)->only(['index', 'show'])->parameters(['permisos' => 'permiso'])

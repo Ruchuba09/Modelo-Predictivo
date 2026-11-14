@@ -1,0 +1,29 @@
+# Trabajo de Azure AutoML para el dataset "lesion". Ejecutar desde la carpeta python/:
+#   az ml job create -f azure/automl-lesion.yml
+$schema: https://azuremlschemas.azureedge.net/latest/autoMLJob.schema.json
+type: automl
+experiment_name: ava-lesion
+compute: azureml:cpu-cluster
+task: classification
+primary_metric: AUC_weighted
+target_column_name: lesion
+training_data:
+  type: mltable
+  path: ../data/automl/tasa/lesion/entrenamiento
+validation_data:
+  type: mltable
+  path: ../data/automl/tasa/lesion/validacion
+test_data:
+  type: mltable
+  path: ../data/automl/tasa/lesion/prueba
+limits:
+  timeout_minutes: 60
+  trial_timeout_minutes: 15
+  max_trials: 30
+  max_concurrent_trials: 2
+  enable_early_termination: true
+featurization:
+  mode: auto
+training:
+  enable_vote_ensemble: true
+  enable_stack_ensemble: true
