@@ -32,6 +32,8 @@ class EventoService
 {
     private const NOMBRE_TIPO_PARE = 'Tarjeta PARE';
 
+    public const MENSAJE_ERROR_REGISTRO = 'No se pudo completar el registro, intente nuevamente.';
+
     /** Departamentos que reciben el aviso de PARE además del supervisor. */
     private const DEPARTAMENTOS_PREVENCION = [
         'Prevención de Riesgos',
@@ -302,9 +304,10 @@ class EventoService
     {
         $usuario = Auth::user();
 
+        // "Para mí" usa siempre el trabajador del usuario; la validación ya
+        // exige que exista, así que no se acepta el que mande el cliente.
         $idTrabajador = $datos->esParaMi
-            ? ($usuario?->trabajador?->id_trabajador
-                ?? $datos->idTrabajador)
+            ? $usuario?->trabajador?->id_trabajador
             : $datos->idTrabajador;
 
         $rutasArchivos = [];

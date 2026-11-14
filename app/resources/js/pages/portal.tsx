@@ -42,7 +42,7 @@ export default function Portal() {
                 ),
             },
             {
-                href: '/eventos/create',
+                href: '/tarjetas-pare/create',
                 title: 'Nueva Tarjeta PARE',
                 description: 'Registra un nuevo hallazgo o reporte de seguridad.',
                 icon: (
@@ -96,7 +96,7 @@ export default function Portal() {
                 ),
             },
             {
-                href: '/eventos/create',
+                href: '/tarjetas-pare/create',
                 title: 'Nueva Tarjeta PARE',
                 description: 'Registra un nuevo hallazgo o reporte de seguridad.',
                 icon: (
@@ -130,7 +130,7 @@ export default function Portal() {
         // Opciones para Trabajador / Obrero
         cards.push(
             {
-                href: '/eventos/create',
+                href: '/tarjetas-pare/create',
                 title: 'Nueva Tarjeta PARE',
                 description: 'Registra un evento detallando el riesgo o condición detectada.',
                 icon: (

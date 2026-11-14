@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ActualizarEventoRequest;
 use App\Http\Requests\CerrarEventoRequest;
 use App\Http\Requests\CrearEventoRequest;
+use App\Http\Requests\CrearTarjetaPareRequest;
 use App\Http\Requests\FiltroEventoRequest;
+use App\Http\Requests\RegistrarEventoRequest;
 use App\Models\Evento;
 use App\Services\EventoService;
 use App\Services\EvidenciaEventoService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class EventoController extends Controller
@@ -27,11 +30,28 @@ class EventoController extends Controller
         return response()->json($this->servicio->paginar($request->filtros(), $request->porPagina()));
     }
 
-    public function store(CrearEventoRequest $request): JsonResponse
+    /**
+     * Un único endpoint para la app móvil: si el tipo es Tarjeta PARE se
+     * aplican las reglas de RF-9 (CrearTarjetaPareRequest); si no, las de
+     * RF-10 (CrearEventoRequest). Resolver el FormRequest lo valida.
+     */
+    public function store(Request $request): JsonResponse
     {
         $this->authorize('create', Evento::class);
 
-        $evento = $this->servicio->crear($request->toData());
+        $esPare = $request->filled('id_tipo_evento')
+            && $request->integer('id_tipo_evento') === $this->servicio->idTipoPare();
+
+        /** @var RegistrarEventoRequest $registro */
+        $registro = app($esPare ? CrearTarjetaPareRequest::class : CrearEventoRequest::class);
+
+        try {
+            $evento = $this->servicio->crear($registro->toData());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['message' => EventoService::MENSAJE_ERROR_REGISTRO], 500);
+        }
 
         return response()->json($this->servicio->obtener($evento), 201);
     }

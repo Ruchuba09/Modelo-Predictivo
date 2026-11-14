@@ -112,7 +112,7 @@ export default function UsuariosLayout({
                 {/* Botón Principal: Nueva Tarjeta PARE */}
                 <div className="p-4 border-b border-verde-3 dark:border-[#262E37] shrink-0">
                     <Link
-                        href="/eventos/create"
+                        href="/tarjetas-pare/create"
                         className={`flex items-center justify-center gap-2 bg-verde-5 hover:bg-verde-6 text-black rounded-lg font-bold transition-colors shadow-lg shadow-verde-5/20 ${colapsado ? 'h-10 w-10 p-0 rounded-full mx-auto' : 'px-4 py-3'}`}
                         title="Nueva Tarjeta PARE"
                     >

@@ -67,7 +67,8 @@ const RUTA_TITULOS: Record<string, { title: string; subtitle?: string }> = {
     '/eventos': { title: 'Listado de Reportes', subtitle: 'Registro general de eventos y hallazgos' },
     '/eventos/mis-reportes': { title: 'Mis Reportes', subtitle: 'Eventos registrados por ti' },
     '/eventos/estadisticas': { title: 'Estadísticas', subtitle: 'Métricas predictivas y análisis de seguridad' },
-    '/eventos/create': { title: 'Ingreso de Reporte', subtitle: 'Registra un evento detallando la condición y descripción' },
+    '/eventos/create': { title: 'Registro de Evento', subtitle: 'Registra un incidente, hallazgo u otro evento de seguridad' },
+    '/tarjetas-pare/create': { title: 'Nueva Tarjeta PARE', subtitle: 'Registra la condición que obligó a detener el trabajo' },
     '/proyectos': { title: 'Proyectos', subtitle: 'Gestión y control de proyectos' },
     '/modelo-predictivo/entidades': { title: 'Riesgo por entidad', subtitle: 'Todas las predicciones, con filtros y factores' },
     '/modelo-predictivo/calidad': { title: 'Calidad del modelo', subtitle: 'Qué tan confiables son las predicciones' },
@@ -247,7 +248,7 @@ export default function MainLayout({
                 {/* Botón Principal: Nueva Tarjeta PARE */}
                 <div className="p-4 border-b border-verde-3 dark:border-[#262E37] shrink-0">
                     <Link
-                        href="/eventos/create"
+                        href="/tarjetas-pare/create"
                         className={`flex items-center justify-center gap-2 bg-verde-5 hover:bg-verde-6 text-black rounded-lg font-bold transition-colors shadow-lg shadow-verde-5/20 ${
                             colapsado ? 'h-10 w-10 p-0 rounded-full mx-auto' : 'px-4 py-3'
                         }`}

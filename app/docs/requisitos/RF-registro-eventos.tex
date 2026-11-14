@@ -1,0 +1,197 @@
+% Requisitos funcionales del registro de eventos.
+% RF-9: Registrar Tarjeta PARE. RF-10: Registrar Evento (tipos distintos de Tarjeta PARE).
+% El seguimiento queda como plantilla (RF-X) hasta definir su numeración.
+% Requiere \usepackage{enumitem}.
+
+% ============================================================
+\subsection*{RF-9) Registrar Tarjeta PARE}
+El sistema permite a cualquier usuario autenticado registrar una Tarjeta PARE sobre s\'i mismo o sobre un tercero, asign\'andole autom\'aticamente el supervisor de la cuadrilla del trabajador reportado, generando la Situaci\'on Cr\'itica asociada y notificando a los responsables de seguridad.
+
+\textbf{Entradas:} Proyecto -- EsParaM\'i -- Trabajador -- \'Area -- Actividad -- Condici\'on -- Referencia -- Descripci\'on -- TipoDetenci\'on -- FechaOcurrencia -- Evidencias -- PotencialSeveridad -- Turno -- D\'iaCiclo
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Proyecto:} entero, valor positivo, obligatorio. Debe corresponder a un proyecto existente en el sistema (validado en Procesos).
+  \item \textbf{E-2) EsParaM\'i:} booleano. Valor por defecto: \texttt{true}. Obligatorio (siempre toma un valor \texttt{true}/\texttt{false}).
+  \item \textbf{E-3) Trabajador:} entero, valor positivo. Obligatorio solo si E-2 es \texttt{false}; si E-2 es \texttt{true}, el sistema lo completa autom\'aticamente con el trabajador asociado al usuario autenticado (no lo ingresa el usuario). Debe corresponder a un trabajador existente (validado en Procesos).
+  \item \textbf{E-4) \'Area:} entero, valor positivo. Obligatorio solo si la faena del proyecto de E-1 tiene \'areas definidas; en tal caso debe pertenecer a dicha faena (validado en Procesos).
+  \item \textbf{E-5) Actividad:} entero, valor positivo. Opcional. Si se informa, debe pertenecer al proyecto de E-1 (validado en Procesos).
+  \item \textbf{E-6) Condici\'on:} enumerado (entero entre 1 y 10, no cadena libre). Obligatorio. Valores: 1.~Condiciones inseguras, 2.~Herramientas, 3.~Falta de EPP, 4.~Capacitaci\'on, 5.~Procedimientos, 6.~Recursos, 7.~AST/VATS/ERT, 8.~Permisos, 9.~Estado f\'isico o mental, 10.~Otros.
+  \item \textbf{E-7) Referencia:} cadena de caracteres, no vac\'ia, m\'aximo 255 caracteres. Obligatorio. Corresponde a la ubicaci\'on del hallazgo.
+  \item \textbf{E-8) Descripci\'on:} cadena de caracteres, no vac\'ia, m\'aximo 500 caracteres. Obligatorio.
+  \item \textbf{E-9) TipoDetenci\'on:} enumerado. Valores: \texttt{sin\_detenci\'on}, \texttt{parcial}, \texttt{total}. Opcional. Valor por defecto: \texttt{sin\_detenci\'on}.
+  \item \textbf{E-10) FechaOcurrencia:} fecha y hora. Opcional. Valor por defecto: fecha y hora actual. No puede ser posterior al d\'ia siguiente a la fecha actual.
+  \item \textbf{E-11) Evidencias:} lista de 0 a 3 archivos. Opcional. Formatos permitidos: \texttt{jpg, jpeg, png, pdf, doc, docx}. Tama\~no m\'aximo: 5.120~KB (5~MB) por archivo.
+  \item \textbf{E-12) PotencialSeveridad:} entero, valor positivo. Opcional. Debe corresponder a una severidad del cat\'alogo de severidades (validado en Procesos). Representa lo que pudo haber pasado de no detenerse el trabajo.
+  \item \textbf{E-13) Turno:} entero, valor positivo. Opcional. Debe corresponder a un turno del cat\'alogo de turnos (validado en Procesos). Si E-10 est\'a vac\'io, E-13 queda vac\'io y no puede ingresarse.
+  \item \textbf{E-14) D\'iaCiclo:} entero entre 1 y 30. Opcional. Corresponde al d\'ia del ciclo de trabajo del trabajador (por ejemplo, d\'ia 10 de un sistema 14x14).
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-9.1)} El sistema solicita al usuario autenticado ingresar los datos especificados en E-1 a E-14.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-9.1.1)} Si E-2 es \texttt{true}, el sistema completar\'a E-3 con el trabajador asociado al usuario autenticado y ocultar\'a dicho campo.
+  \end{itemize}
+  \item \textbf{RF-9.2)} El usuario ingresa los datos de entrada en sus respectivos campos.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-9.2.1)} Si uno o m\'as datos se ingresan en un formato distinto al especificado (largo, rango, fecha, cantidad, formato o tama\~no de archivo), el sistema se\~nalar\'a el error en ese mismo instante, y el usuario deber\'a corregirlo antes de enviar. Mientras no se corrija, no se permitir\'a el env\'io de informaci\'on.
+    \item \textbf{RF-9.2.2)} Cada vez que el usuario ingresa o modifica E-10, el sistema propondr\'a E-13 seg\'un la hora: turno de noche entre las 20:00 y las 05:59, y turno de d\'ia en el resto. El usuario puede cambiar el turno propuesto.
+    \item \textbf{RF-9.2.3)} Si el usuario deja E-10 vac\'io, el sistema vaciar\'a E-13 y lo deshabilitar\'a.
+  \end{itemize}
+  \item \textbf{RF-9.3)} El usuario env\'ia los datos de entrada.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-9.3.1)} Si los datos de entrada son v\'alidos, el sistema crear\'a la Tarjeta PARE con estado \texttt{abierto} (no editable manualmente), generar\'a autom\'aticamente la Fecha de Creaci\'on y la Fecha de Actualizaci\'on, y asignar\'a como supervisor al supervisor de la cuadrilla actual del trabajador de E-3.
+    \item \textbf{RF-9.3.2)} Se notificar\'a al usuario desplegando el mensaje: ``Tarjeta PARE registrada exitosamente''.
+    \begin{itemize}[label={}, leftmargin=1.5em]
+      \item \textbf{RF-9.3.2.1)} Tras desplegar el mensaje, el sistema limpiar\'a el formulario y redirigir\'a al usuario a ``Mis Reportes'', mostrando la Tarjeta PARE reci\'en creada.
+    \end{itemize}
+    \item \textbf{RF-9.3.3)} Si los datos de entrada son inv\'alidos seg\'un las especificaciones de las variables de entrada, se desplegar\'a el mensaje: ``Informaci\'on mal ingresada, no se complet\'o el registro de la Tarjeta PARE''.
+    \begin{itemize}[label={}, leftmargin=1.5em]
+      \item \textbf{RF-9.3.3.1)} Si E-1, E-3, E-4, E-5, E-12 o E-13 no corresponden a un registro existente, se notificar\'a: ``El registro seleccionado no es v\'alido'', no se completar\'a el registro y se retornar\'a al ingreso de datos con los valores anteriores al env\'io.
+      \item \textbf{RF-9.3.3.2)} Si el \'Area de E-4 no pertenece a la faena del proyecto de E-1, se notificar\'a: ``El \'area seleccionada no pertenece a la faena del proyecto'', no se completar\'a el registro y se retornar\'a al ingreso de datos con los valores anteriores al env\'io.
+      \item \textbf{RF-9.3.3.3)} Si la Actividad de E-5 no pertenece al proyecto de E-1, se notificar\'a: ``La actividad seleccionada no pertenece al proyecto'', no se completar\'a el registro y se retornar\'a al ingreso de datos con los valores anteriores al env\'io.
+    \end{itemize}
+  \end{itemize}
+  \item \textbf{RF-9.4)} Al completarse exitosamente RF-9.3.1, el sistema invoca autom\'aticamente RF-11 (Registrar Situaci\'on Cr\'itica), enviando el ID de la Tarjeta PARE creada.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-9.4.1)} Si la invocaci\'on a RF-11 falla, el sistema revertir\'a la creaci\'on de la Tarjeta PARE y de sus evidencias (rollback), notificar\'a: ``No se pudo completar el registro, intente nuevamente'' y no dejar\'a Tarjetas PARE sin Situaci\'on Cr\'itica asociada.
+  \end{itemize}
+  \item \textbf{RF-9.5)} Al completarse exitosamente RF-9.4, el sistema enviar\'a una notificaci\'on por correo al supervisor asignado y a los usuarios de los departamentos de Prevenci\'on de Riesgos y de Seguridad y Salud Ocupacional.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-9.5.1)} Si el env\'io del correo falla, el registro no se revertir\'a; el sistema dejar\'a constancia del fallo para su reintento.
+  \end{itemize}
+  \item \textbf{RF-9.6)} El usuario puede cancelar la operaci\'on en cualquier momento previo al env\'io.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-9.6.1)} Si se cancela, la Tarjeta PARE no se crear\'a, se borrar\'an los datos de entrada y el usuario ser\'a dirigido a la p\'agina de inicio.
+  \end{itemize}
+  \item \textbf{RF-9.7)} \textit{(M\'ovil)} Antes de adjuntar evidencia fotogr\'afica en E-11, la aplicaci\'on solicitar\'a permisos de c\'amara y almacenamiento.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-9.7.1)} Si el usuario niega los permisos, no se podr\'a capturar evidencia fotogr\'afica, pero se permitir\'a continuar el registro sin ella.
+  \end{itemize}
+  \item \textbf{RF-9.8)} \textit{(M\'ovil)} Si al enviar (RF-9.3) no hay conexi\'on, la aplicaci\'on almacenar\'a la Tarjeta PARE localmente y notificar\'a: ``Sin conexi\'on, la Tarjeta PARE se sincronizar\'a al recuperar conectividad''.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-9.8.1)} Al recuperar la conectividad, la aplicaci\'on enviar\'a autom\'aticamente en segundo plano las Tarjetas PARE pendientes, que se procesar\'an seg\'un RF-9.3 a RF-9.5.
+  \end{itemize}
+  \item \textbf{RF-9.9)} \textit{(M\'ovil)} Al completarse exitosamente RF-9.3.1, la aplicaci\'on generar\'a un c\'odigo QR de la Tarjeta PARE que, al escanearse desde otro dispositivo, abre el detalle del reporte.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-9.3.2: ``Tarjeta PARE registrada exitosamente''
+  \item \textbf{S-2)} RF-9.3.3: ``Informaci\'on mal ingresada, no se complet\'o el registro de la Tarjeta PARE''
+  \item \textbf{S-3)} RF-9.3.3.1: ``El registro seleccionado no es v\'alido''
+  \item \textbf{S-4)} RF-9.3.3.2: ``El \'area seleccionada no pertenece a la faena del proyecto''
+  \item \textbf{S-5)} RF-9.3.3.3: ``La actividad seleccionada no pertenece al proyecto''
+  \item \textbf{S-6)} RF-9.4.1: ``No se pudo completar el registro, intente nuevamente''
+  \item \textbf{S-7)} RF-9.8: ``Sin conexi\'on, la Tarjeta PARE se sincronizar\'a al recuperar conectividad''
+  \item \textbf{S-8)} RF-9.4: ID de la Tarjeta PARE $\rightarrow$ hacia RF-11
+  \item \textbf{S-9)} RF-9.5: correo de notificaci\'on $\rightarrow$ supervisor asignado y departamentos de Prevenci\'on de Riesgos y SSO
+  \item \textbf{S-10)} RF-9.9: c\'odigo QR de la Tarjeta PARE
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-10) Registrar Evento}
+El sistema permite a cualquier usuario autenticado registrar un evento de seguridad de un tipo distinto a Tarjeta PARE (incidente, accidente, hallazgo, no conformidad u observaci\'on preventiva) sobre s\'i mismo o sobre un tercero, asign\'andole autom\'aticamente el supervisor de la cuadrilla del trabajador reportado. Las Tarjetas PARE se registran mediante RF-9.
+
+\textbf{Entradas:} TipoEvento -- EsParaM\'i -- Trabajador -- Proyecto -- \'Area -- Actividad -- Referencia -- Descripci\'on -- FechaOcurrencia -- Turno -- Severidad -- PotencialSeveridad -- Categor\'iaEvento -- D\'iaCiclo -- Clasificaci\'onIncidente -- Evidencias
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) TipoEvento:} enumerado (cat\'alogo de tipos de evento, no cadena libre). Obligatorio. Valores registrables: Incidente, Accidente, Hallazgo, No conformidad, Observaci\'on preventiva. El cat\'alogo muestra tambi\'en Tarjeta PARE, pero su selecci\'on no se registra por este requisito (ver RF-10.2.2). Valor por defecto: el primer tipo del cat\'alogo distinto de Tarjeta PARE.
+  \item \textbf{E-2) EsParaM\'i:} booleano. Valor por defecto: \texttt{true}. Obligatorio (siempre toma un valor \texttt{true}/\texttt{false}).
+  \item \textbf{E-3) Trabajador:} entero, valor positivo. Obligatorio solo si E-2 es \texttt{false}; si E-2 es \texttt{true}, el sistema lo completa autom\'aticamente con el trabajador asociado al usuario autenticado (no lo ingresa el usuario). Debe corresponder a un trabajador existente (validado en Procesos).
+  \item \textbf{E-4) Proyecto:} entero, valor positivo, obligatorio. Debe corresponder a un proyecto existente en el sistema (validado en Procesos).
+  \item \textbf{E-5) \'Area:} entero, valor positivo. Obligatorio solo si la faena del proyecto de E-4 tiene \'areas definidas; en tal caso debe pertenecer a dicha faena (validado en Procesos).
+  \item \textbf{E-6) Actividad:} entero, valor positivo. Opcional. Si se informa, debe pertenecer al proyecto de E-4 (validado en Procesos).
+  \item \textbf{E-7) Referencia:} cadena de caracteres, no vac\'ia, m\'aximo 255 caracteres. Obligatorio. Corresponde al lugar exacto del evento.
+  \item \textbf{E-8) Descripci\'on:} cadena de caracteres, no vac\'ia, m\'aximo 500 caracteres. Obligatorio.
+  \item \textbf{E-9) FechaOcurrencia:} fecha y hora. Opcional. Valor por defecto: fecha y hora actual. No puede ser posterior al d\'ia siguiente a la fecha actual.
+  \item \textbf{E-10) Turno:} entero, valor positivo. Opcional. Debe corresponder a un turno del cat\'alogo de turnos (validado en Procesos). Si E-9 est\'a vac\'io, E-10 queda vac\'io y no puede ingresarse.
+  \item \textbf{E-11) Severidad:} entero, valor positivo. Opcional. Debe corresponder a una severidad del cat\'alogo de severidades (validado en Procesos). Representa la severidad real del evento.
+  \item \textbf{E-12) PotencialSeveridad:} entero, valor positivo. Opcional. Debe corresponder a una severidad del cat\'alogo de severidades (validado en Procesos). Representa lo que pudo haber pasado.
+  \item \textbf{E-13) Categor\'iaEvento:} entero, valor positivo. Opcional. Debe corresponder a una categor\'ia del cat\'alogo de categor\'ias de evento (tipo de contacto) (validado en Procesos).
+  \item \textbf{E-14) D\'iaCiclo:} entero entre 1 y 30. Opcional.
+  \item \textbf{E-15) Clasificaci\'onIncidente:} entero, valor positivo. Opcional. Solo se solicita y se registra si el tipo de E-1 es un incidente (Incidente o Accidente); en otro caso se descarta. Debe corresponder a una clasificaci\'on del cat\'alogo de clasificaciones de incidente (validado en Procesos).
+  \item \textbf{E-16) Evidencias:} lista de 0 a 3 archivos. Opcional. Formatos permitidos: \texttt{jpg, jpeg, png, pdf, doc, docx}. Tama\~no m\'aximo: 5.120~KB (5~MB) por archivo.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-10.1)} El sistema solicita al usuario autenticado ingresar los datos especificados en E-1 a E-16.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-10.1.1)} Si E-2 es \texttt{true}, el sistema completar\'a E-3 con el trabajador asociado al usuario autenticado y ocultar\'a dicho campo.
+  \end{itemize}
+  \item \textbf{RF-10.2)} El usuario ingresa los datos de entrada en sus respectivos campos.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-10.2.1)} Si uno o m\'as datos se ingresan en un formato distinto al especificado (largo, rango, fecha, cantidad, formato o tama\~no de archivo), el sistema se\~nalar\'a el error en ese mismo instante, y el usuario deber\'a corregirlo antes de enviar. Mientras no se corrija, no se permitir\'a el env\'io de informaci\'on.
+    \item \textbf{RF-10.2.2)} Si el usuario selecciona Tarjeta PARE en E-1, el sistema descartar\'a los datos ingresados y redirigir\'a al usuario al formulario de RF-9.
+    \item \textbf{RF-10.2.3)} Cada vez que el usuario ingresa o modifica E-9, el sistema propondr\'a E-10 seg\'un la hora: turno de noche entre las 20:00 y las 05:59, y turno de d\'ia en el resto. El usuario puede cambiar el turno propuesto. Si el usuario deja E-9 vac\'io, el sistema vaciar\'a E-10 y lo deshabilitar\'a.
+    \item \textbf{RF-10.2.4)} El sistema mostrar\'a E-15 solo si el tipo de E-1 es un incidente.
+  \end{itemize}
+  \item \textbf{RF-10.3)} El usuario env\'ia los datos de entrada.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-10.3.1)} Si los datos de entrada son v\'alidos, el sistema crear\'a el evento con estado \texttt{abierto} (no editable manualmente), generar\'a autom\'aticamente la Fecha de Creaci\'on y la Fecha de Actualizaci\'on, y asignar\'a como supervisor al supervisor de la cuadrilla actual del trabajador de E-3. No se generar\'a Situaci\'on Cr\'itica ni notificaci\'on por correo.
+    \item \textbf{RF-10.3.2)} Se notificar\'a al usuario desplegando el mensaje: ``Evento registrado exitosamente''.
+    \begin{itemize}[label={}, leftmargin=1.5em]
+      \item \textbf{RF-10.3.2.1)} Tras desplegar el mensaje, el sistema limpiar\'a el formulario y redirigir\'a al usuario al listado general de eventos si tiene permiso para verlo, o a ``Mis Reportes'' en caso contrario, mostrando el evento reci\'en creado.
+    \end{itemize}
+    \item \textbf{RF-10.3.3)} Si los datos de entrada son inv\'alidos seg\'un las especificaciones de las variables de entrada, se desplegar\'a el mensaje: ``Informaci\'on mal ingresada, no se complet\'o el registro del evento''.
+    \begin{itemize}[label={}, leftmargin=1.5em]
+      \item \textbf{RF-10.3.3.1)} Si E-1, E-3, E-4, E-5, E-6, E-10, E-11, E-12, E-13 o E-15 no corresponden a un registro existente, se notificar\'a: ``El registro seleccionado no es v\'alido'', no se completar\'a el registro y se retornar\'a al ingreso de datos con los valores anteriores al env\'io.
+      \item \textbf{RF-10.3.3.2)} Si el \'Area de E-5 no pertenece a la faena del proyecto de E-4, se notificar\'a: ``El \'area seleccionada no pertenece a la faena del proyecto'', con el mismo tratamiento de RF-10.3.3.1.
+      \item \textbf{RF-10.3.3.3)} Si la Actividad de E-6 no pertenece al proyecto de E-4, se notificar\'a: ``La actividad seleccionada no pertenece al proyecto'', con el mismo tratamiento de RF-10.3.3.1.
+      \item \textbf{RF-10.3.3.4)} Si E-1 es Tarjeta PARE (env\'io directo, sin pasar por RF-10.2.2), el registro se procesar\'a seg\'un RF-9.3 y no seg\'un este requisito.
+    \end{itemize}
+    \item \textbf{RF-10.3.4)} Si ocurre un error interno al guardar, el sistema revertir\'a la creaci\'on del evento y de sus evidencias (rollback) y notificar\'a: ``No se pudo completar el registro, intente nuevamente''.
+  \end{itemize}
+  \item \textbf{RF-10.4)} El usuario puede cancelar la operaci\'on en cualquier momento previo al env\'io.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-10.4.1)} Si se cancela, el evento no se crear\'a, se borrar\'an los datos de entrada y el usuario ser\'a dirigido a la p\'agina de inicio.
+  \end{itemize}
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-10.3.2: ``Evento registrado exitosamente''
+  \item \textbf{S-2)} RF-10.3.3: ``Informaci\'on mal ingresada, no se complet\'o el registro del evento''
+  \item \textbf{S-3)} RF-10.3.3.1: ``El registro seleccionado no es v\'alido''
+  \item \textbf{S-4)} RF-10.3.3.2: ``El \'area seleccionada no pertenece a la faena del proyecto''
+  \item \textbf{S-5)} RF-10.3.3.3: ``La actividad seleccionada no pertenece al proyecto''
+  \item \textbf{S-6)} RF-10.3.4: ``No se pudo completar el registro, intente nuevamente''
+  \item \textbf{S-7)} RF-10.2.2: redirecci\'on $\rightarrow$ hacia RF-9
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-X) Seguimiento de Tarjeta PARE}
+\textit{Por definir: descripci\'on general del requisito.}
+
+\textbf{Entradas:} \textit{Por definir.}
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1)} \textit{Por definir.}
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-X.1)} \textit{Por definir.}
+  % --- Candidatos tomados de la versión anterior (descomentar/ajustar al decidir) ---
+  % - Transición abierto -> en_revisión -> cerrado.
+  %   * Solo el Supervisor de la cuadrilla del trabajador reportado puede "tomar" una tarjeta abierta (pasa a en_revisión, queda como responsable).
+  %   * Solo un Administrador puede "cerrar" una tarjeta abierta o en_revisión.
+  %   * Bloqueo de fila al tomar/cerrar; el segundo usuario concurrente recibe "El evento ya fue tomado o cerrado".
+  % - Al cerrar: Justificación obligatoria (máx. 500 caracteres), hasta 3 archivos de Evidencia de Cierre (mismas reglas que RF-9 E-11);
+  %   Fecha de Reinicio obligatoria si TipoDetención es parcial o total.
+  % - Edición (condición, descripción, referencia): el autor mientras el estado sea abierto, o un Administrador en cualquier momento.
+  % - Eliminación permitida solo al Administrador, preservando la trazabilidad.
+  % - Listado descendente por fecha de creación; visibilidad: Administrador ve todo; Supervisor ve las de sus cuadrillas,
+  %   las asignadas a él y las propias; todo usuario ve "Mis Reportes".
+  % - Consulta de tarjetas sin Administrador asignado (pendientes de revisión administrativa).
+  % - (Móvil) Escáner QR integrado para abrir directamente el detalle de una Tarjeta PARE.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} \textit{Por definir.}
+\end{itemize}

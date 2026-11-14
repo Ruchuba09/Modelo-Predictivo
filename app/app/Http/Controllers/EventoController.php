@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ActualizarEventoRequest;
 use App\Http\Requests\CerrarEventoRequest;
 use App\Http\Requests\CrearEventoRequest;
+use App\Http\Requests\CrearTarjetaPareRequest;
 use App\Http\Requests\FiltroEventoRequest;
+use App\Http\Requests\RegistrarEventoRequest;
 use App\Models\Evento;
 use App\Services\EventoService;
 use App\Services\EvidenciaEventoService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -67,20 +70,64 @@ class EventoController extends Controller
         );
     }
 
+    /** RF-10: registro de eventos de tipo distinto a Tarjeta PARE. */
     public function store(CrearEventoRequest $request)
     {
         $this->authorize('create', Evento::class);
 
-        $this->servicio->crear($request->toData());
+        if ($error = $this->registrar($request)) {
+            return $error;
+        }
 
         $destino = $request->user()->can('viewAny', Evento::class)
             ? 'eventos.index'
             : 'eventos.mis-reportes';
 
-        return redirect()->route($destino)->with(
-            'success',
-            'Reporte creado con éxito'
+        return redirect()->route($destino)->with('success', 'Evento registrado exitosamente');
+    }
+
+    /** RF-9: formulario de registro de Tarjeta PARE. */
+    public function createTarjetaPare()
+    {
+        $this->authorize('create', Evento::class);
+
+        return Inertia::render(
+            'TarjetasPare/Create',
+            $this->servicio->obtenerDatosFormularioCrear()
         );
+    }
+
+    /** RF-9: registro de Tarjeta PARE. */
+    public function storeTarjetaPare(CrearTarjetaPareRequest $request)
+    {
+        $this->authorize('create', Evento::class);
+
+        if ($error = $this->registrar($request)) {
+            return $error;
+        }
+
+        return redirect()->route('eventos.mis-reportes')
+            ->with('success', 'Tarjeta PARE registrada exitosamente');
+    }
+
+    /**
+     * Crea el evento. La creación es transaccional (incluida la Situación
+     * Crítica de una PARE), así que ante un fallo no queda nada a medias y se
+     * vuelve al formulario con los datos ingresados.
+     */
+    private function registrar(RegistrarEventoRequest $request): ?RedirectResponse
+    {
+        try {
+            $this->servicio->crear($request->toData());
+
+            return null;
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->withInput()->withErrors([
+                'general' => EventoService::MENSAJE_ERROR_REGISTRO,
+            ]);
+        }
     }
 
     public function show(Evento $evento)

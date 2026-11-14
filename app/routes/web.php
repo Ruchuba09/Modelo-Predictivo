@@ -17,7 +17,7 @@ Route::get('/', InicioController::class)->name('inicio');
 
 Route::middleware('auth')->group(function () {
     Route::inertia('/portal', 'portal')->name('portal');
-    Route::redirect('/reportes', '/eventos/create')->name('reportes');
+    Route::redirect('/reportes', '/tarjetas-pare/create')->name('reportes');
 
     // Rutas exclusivas para Administradores
     Route::middleware('role:Administrador')->group(function () {
@@ -109,6 +109,12 @@ Route::middleware('auth')->group(function () {
     // Eventos y reportes
     Route::get('/eventos/mis-reportes', [EventoController::class, 'misReportes'])
         ->name('eventos.mis-reportes');
+
+    // Registro de Tarjeta PARE (RF-9); los demás tipos usan eventos.create (RF-10).
+    Route::get('/tarjetas-pare/create', [EventoController::class, 'createTarjetaPare'])
+        ->name('tarjetas-pare.create');
+    Route::post('/tarjetas-pare', [EventoController::class, 'storeTarjetaPare'])
+        ->name('tarjetas-pare.store');
 
     Route::resource('eventos', EventoController::class)
         ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'])
