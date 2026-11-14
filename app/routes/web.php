@@ -55,18 +55,22 @@ Route::middleware('auth')->group(function () {
 
         Route::inertia('/sistema/datos-prueba', 'Sistema/DatosPrueba')->name('sistema.datos-prueba');
 
-        Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
+        // Situaciones Críticas: registro y edición manual (RF-14.2, RF-15.2). Sin eliminación (RF-15.6).
+        // Se registran antes que la consulta para que '/crear' no la capture '{situacionCritica}'.
         Route::get('/situacion-criticas/crear', [SituacionCriticaController::class, 'create'])->name('situacion-criticas.crear');
         Route::post('/situacion-criticas', [SituacionCriticaController::class, 'store'])->name('situacion-criticas.store');
-        Route::get('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'show'])->name('situacion-criticas.show');
         Route::get('/situacion-criticas/{situacionCritica}/editar', [SituacionCriticaController::class, 'edit'])->name('situacion-criticas.editar');
         Route::put('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'update'])->name('situacion-criticas.update');
-        Route::delete('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'destroy'])->name('situacion-criticas.destroy');
 
     });
 
     // Rutas para Administradores y Supervisores
     Route::middleware('role:Administrador,Supervisor')->group(function () {
+        // Situaciones Críticas: consulta (RF-16); el Supervisor solo ve las suyas (política).
+        Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
+        Route::get('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'show'])
+            ->whereNumber('situacionCritica')->name('situacion-criticas.show');
+
         // Estadísticas
         Route::get('/eventos/estadisticas', [EventoEstadisticaController::class, 'pagina'])
             ->name('eventos.estadisticas');

@@ -11,6 +11,7 @@ use App\Models\Area;
 use App\Models\Asignacion;
 use App\Models\Cuadrilla;
 use App\Models\Evento;
+use App\Models\Evidencia;
 use App\Models\Obrero;
 use App\Models\Proyecto;
 use App\Models\SituacionCritica;
@@ -43,7 +44,8 @@ class EventoService
     private ?int $idTipoPare = null;
 
     public function __construct(
-        private readonly EvidenciaEventoService $evidencias
+        private readonly EvidenciaEventoService $evidencias,
+        private readonly SituacionCriticaService $situaciones,
     ) {}
 
     /**
@@ -319,11 +321,6 @@ class EventoService
                 $usuario,
                 &$rutasArchivos
             ) {
-                $rutasArchivos = $this->evidencias->guardar(
-                    $datos->evidencias,
-                    'evidencias'
-                );
-
                 $campos = [
                     'id_tipo_evento' => $datos->idTipoEvento,
                     'condicion' => $datos->condicion,
@@ -335,7 +332,7 @@ class EventoService
                     'id_trabajador' => $idTrabajador,
                     'id_supervisor' => $this->supervisorDelTrabajador($idTrabajador),
                     'estado' => EstadoEvento::Abierto,
-                    'evidencia' => $rutasArchivos,
+                    'evidencia' => [],
                 ];
 
                 if ($datos->severidad !== null
@@ -350,6 +347,17 @@ class EventoService
                 }
 
                 $evento = Evento::create($campos);
+
+                // RF-12: si falla, la excepción revierte también el evento.
+                $rutasArchivos = $this->evidencias->registrar(
+                    $evento,
+                    $datos->evidencias,
+                    Evidencia::ORIGEN_REPORTE
+                );
+                if ($rutasArchivos !== []) {
+                    $evento->update(['evidencia' => $rutasArchivos]);
+                }
+
                 if ($idTrabajador) {
                     $evento->trabajadores()->sync([$idTrabajador]);
                 }
@@ -371,13 +379,7 @@ class EventoService
     private function registrarSituacionCritica(Evento $evento): void
     {
         if ((int) $evento->id_tipo_evento === $this->idTipoPare() && $evento->id_trabajador && $evento->condicion) {
-            SituacionCritica::create([
-                'id_trabajador' => $evento->id_trabajador,
-                'id_supervisor' => $evento->id_supervisor,
-                'id_evento' => $evento->id_evento,
-                'referencia' => $evento->referencia,
-                'condicion' => $evento->condicion,
-            ]);
+            $this->situaciones->registrarAutomatica($evento);
         }
     }
 
@@ -473,7 +475,12 @@ class EventoService
         Evento $evento,
         ActualizarEventoData $datos
     ): Evento {
-        $evento->update($datos->toArray());
+        // RF-15.1: si cambia un campo compartido, se sincroniza su Situación
+        // Crítica; si eso falla, la edición tampoco se guarda (RF-15.4.1).
+        DB::transaction(function () use ($evento, $datos) {
+            $evento->update($datos->toArray());
+            $this->situaciones->sincronizarDesdeEvento($evento, Auth::user());
+        });
 
         return $evento->refresh();
     }
@@ -579,6 +586,9 @@ class EventoService
                 'estado' => EstadoEvento::EnRevision,
             ]);
 
+            // Tomar el evento puede cambiar su supervisor (RF-15.1).
+            $this->situaciones->sincronizarDesdeEvento($bloqueado, Auth::user());
+
             $evento->setRawAttributes($bloqueado->getAttributes(), true);
         });
     }
@@ -608,9 +618,11 @@ class EventoService
                     'El evento debe estar abierto o en revisión antes de cerrarse.'
                 );
 
-                $rutasArchivos = $this->evidencias->guardar(
+                // RF-12: si falla, la excepción revierte también el cierre.
+                $rutasArchivos = $this->evidencias->registrar(
+                    $bloqueado,
                     $datos->evidenciasCierre,
-                    'evidencias_cierre'
+                    Evidencia::ORIGEN_CIERRE
                 );
 
                 $bloqueado->update([

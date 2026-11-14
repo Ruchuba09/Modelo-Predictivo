@@ -1,46 +1,21 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import MainLayout from '../../layouts/MainLayout';
 import SituacionCriticaForm from './SituacionCriticaForm';
-
-interface Trabajador {
-    id_trabajador: number;
-    nombre_1: string;
-    apellido_1: string;
-}
-
-interface Supervisor {
-    id_trabajador: number;
-    trabajador?: Trabajador;
-}
-
-interface Evento {
-    id_evento: number;
-    descripcion: string;
-}
-
-interface SituacionCritica {
-    id: number;
-    id_trabajador: number;
-    id_supervisor: number | null;
-    id_evento: number;
-    referencia: string;
-    condicion: string;
-}
+import type { SituacionCritica, Supervisor, Trabajador } from './tipos';
 
 interface EditProps {
     situacionCritica: SituacionCritica;
     trabajadores: Trabajador[];
     supervisores: Supervisor[];
-    eventos: Evento[];
 }
 
-export default function Edit({ situacionCritica, trabajadores, supervisores, eventos }: EditProps) {
+/** RF-15.2: edición manual. Los cambios se aplican también a la Tarjeta PARE y quedan en el historial. */
+export default function Edit({ situacionCritica, trabajadores, supervisores }: EditProps) {
     const form = useForm({
         id_trabajador: String(situacionCritica.id_trabajador ?? ''),
         id_supervisor: situacionCritica.id_supervisor ? String(situacionCritica.id_supervisor) : '',
-        id_evento: String(situacionCritica.id_evento ?? ''),
         referencia: situacionCritica.referencia ?? '',
-        condicion: String(situacionCritica.condicion ?? '1'),
+        condicion: String(situacionCritica.condicion ?? ''),
     });
 
     const submit = (e: React.FormEvent) => {
@@ -55,16 +30,23 @@ export default function Edit({ situacionCritica, trabajadores, supervisores, eve
             <div className="mx-auto max-w-2xl p-6 lg:p-8">
                 <div className="mb-8">
                     <h1 className="mb-1 text-2xl font-bold text-gris-2">Editar situación crítica</h1>
-                    <p className="text-sm text-gris-1">Actualiza los datos del evento crítico.</p>
+                    <p className="text-sm text-gris-1">
+                        Los cambios se aplican también a la Tarjeta PARE{' '}
+                        <Link href={`/eventos/${situacionCritica.id_evento}`} className="text-verde-6 hover:underline">
+                            #{situacionCritica.id_evento}
+                        </Link>{' '}
+                        y quedan registrados en el historial.
+                    </p>
                 </div>
 
                 <div className="rounded-xl border border-verde-3 bg-white p-6">
                     <SituacionCriticaForm
                         trabajadores={trabajadores}
                         supervisores={supervisores}
-                        eventos={eventos}
+                        idEvento={situacionCritica.id_evento}
                         form={form}
                         onSubmit={submit}
+                        cancelarHref={`/situacion-criticas/${situacionCritica.id}`}
                     />
                 </div>
             </div>

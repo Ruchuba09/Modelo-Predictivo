@@ -1,44 +1,36 @@
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '../../layouts/MainLayout';
+import { etiquetaCondicion, useCondicionesPare } from '../../lib/condicionesPare';
+import { botonPrimario, nombreTrabajador, type SituacionCritica } from './tipos';
 
-interface Trabajador {
-    id_trabajador: number;
-    nombre_1: string;
-    apellido_1: string;
-}
-
-interface Supervisor {
-    id_trabajador: number;
-    trabajador?: Trabajador;
-}
-
-interface Evento {
-    id_evento: number;
-    descripcion: string;
-}
-
-interface SituacionCritica {
-    id: number;
-    referencia: string;
-    condicion: string;
-    trabajador?: Trabajador;
-    supervisor?: Supervisor;
-    evento?: Evento;
+interface EntradaHistorial {
+    id_historial: number;
+    origen: 'creacion' | 'sincronizacion' | 'edicion_manual' | string;
+    campo: string | null;
+    valor_anterior: string | null;
+    valor_nuevo: string | null;
+    usuario: string;
+    fecha: string | null;
 }
 
 interface ShowProps {
     situacionCritica: SituacionCritica;
+    historial: EntradaHistorial[];
+    puedeGestionar: boolean;
 }
 
-const CONDICION_LABEL: Record<string, string> = {
-    '1': 'Leve',
-    '2': 'Grave',
+const ORIGENES: Record<string, string> = {
+    creacion: 'Creación',
+    sincronizacion: 'Sincronización desde la Tarjeta PARE',
+    edicion_manual: 'Edición manual',
 };
 
-function nombreTrabajador(trabajador?: Trabajador) {
-    if (!trabajador) return '—';
-    return `${trabajador.nombre_1} ${trabajador.apellido_1}`;
-}
+const CAMPOS: Record<string, string> = {
+    id_trabajador: 'Trabajador',
+    id_supervisor: 'Supervisor',
+    referencia: 'Referencia',
+    condicion: 'Condición',
+};
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -49,27 +41,43 @@ function Campo({ label, children }: { label: string; children: React.ReactNode }
     );
 }
 
-export default function Show({ situacionCritica }: ShowProps) {
+function formatearFecha(fecha: string | null): string {
+    return fecha ? new Date(fecha).toLocaleString('es-CL') : '—';
+}
+
+/** RF-16.4: detalle y historial de cambios. */
+export default function Show({ situacionCritica, historial, puedeGestionar }: ShowProps) {
+    const condiciones = useCondicionesPare();
+    const valor = (campo: string | null, v: string | null) => {
+        if (v === null || v === '') return '—';
+        return campo === 'condicion' ? etiquetaCondicion(condiciones, v) : v;
+    };
+
     return (
         <MainLayout>
             <Head title="Detalle de situación crítica | AVA" />
 
-            <div className="mx-auto max-w-2xl p-6 lg:p-8">
+            <div className="mx-auto max-w-4xl p-6 lg:p-8">
                 <div className="mb-8">
                     <h1 className="mb-1 text-2xl font-bold text-gris-2">Detalle de situación crítica</h1>
-                    <p className="text-sm text-gris-1">Información completa del evento crítico registrado.</p>
+                    <p className="text-sm text-gris-1">Copia sincronizada de la Tarjeta PARE asociada.</p>
                 </div>
 
                 <div className="rounded-xl border border-verde-3 bg-white p-6">
                     <dl className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <Campo label="Tarjeta PARE">
+                            <Link href={`/eventos/${situacionCritica.id_evento}`} className="text-verde-6 hover:underline">
+                                Evento #{situacionCritica.id_evento}
+                            </Link>
+                            {situacionCritica.evento?.descripcion && (
+                                <span className="block text-gris-1">{situacionCritica.evento.descripcion}</span>
+                            )}
+                        </Campo>
+                        <Campo label="Condición">{etiquetaCondicion(condiciones, situacionCritica.condicion)}</Campo>
                         <Campo label="Trabajador">{nombreTrabajador(situacionCritica.trabajador)}</Campo>
                         <Campo label="Supervisor">{nombreTrabajador(situacionCritica.supervisor?.trabajador)}</Campo>
-                        <Campo label="Evento">{situacionCritica.evento?.descripcion ?? '—'}</Campo>
-                        <Campo label="Condición">
-                            {CONDICION_LABEL[situacionCritica.condicion] ?? situacionCritica.condicion}
-                        </Campo>
                         <div className="sm:col-span-2">
-                            <Campo label="Referencia">{situacionCritica.referencia}</Campo>
+                            <Campo label="Referencia">{situacionCritica.referencia ?? '—'}</Campo>
                         </div>
                     </dl>
 
@@ -77,12 +85,46 @@ export default function Show({ situacionCritica }: ShowProps) {
                         <Link href="/situacion-criticas" className="text-sm text-gris-1 hover:text-gris-2">
                             ← Volver al listado
                         </Link>
-                        <Link
-                            href={`/situacion-criticas/${situacionCritica.id}/editar`}
-                            className="rounded-lg bg-verde-5 px-5 py-2.5 text-sm font-bold text-black shadow-lg shadow-verde-5/10 transition-colors hover:bg-verde-6"
-                        >
-                            Editar
-                        </Link>
+                        {puedeGestionar && (
+                            <Link href={`/situacion-criticas/${situacionCritica.id}/editar`} className={botonPrimario}>
+                                Editar
+                            </Link>
+                        )}
+                    </div>
+                </div>
+
+                <div className="mt-8 rounded-xl border border-verde-3 bg-white">
+                    <h2 className="border-b border-verde-3 px-6 py-4 text-lg font-semibold text-gris-2">Historial de cambios</h2>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-verde-3 text-left text-gris-1">
+                                    <th className="px-6 py-3 font-medium">Fecha</th>
+                                    <th className="px-6 py-3 font-medium">Origen</th>
+                                    <th className="px-6 py-3 font-medium">Campo</th>
+                                    <th className="px-6 py-3 font-medium">Valor anterior</th>
+                                    <th className="px-6 py-3 font-medium">Valor nuevo</th>
+                                    <th className="px-6 py-3 font-medium">Usuario</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {historial.map((h) => (
+                                    <tr key={h.id_historial} className="border-b border-verde-3 last:border-0">
+                                        <td className="whitespace-nowrap px-6 py-3 text-gris-2">{formatearFecha(h.fecha)}</td>
+                                        <td className="px-6 py-3 text-gris-2">{ORIGENES[h.origen] ?? h.origen}</td>
+                                        <td className="px-6 py-3 text-gris-2">{h.campo ? (CAMPOS[h.campo] ?? h.campo) : '—'}</td>
+                                        <td className="px-6 py-3 text-gris-1">{valor(h.campo, h.valor_anterior)}</td>
+                                        <td className="px-6 py-3 text-gris-2">{valor(h.campo, h.valor_nuevo)}</td>
+                                        <td className="px-6 py-3 text-gris-2">{h.usuario}</td>
+                                    </tr>
+                                ))}
+                                {historial.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-gris-1">Sin cambios registrados</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

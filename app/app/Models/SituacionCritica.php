@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SituacionCritica extends Model
 {
@@ -35,5 +36,10 @@ class SituacionCritica extends Model
     public function evento(): BelongsTo
     {
         return $this->belongsTo(Evento::class, 'id_evento', 'id_evento');
+    }
+
+    public function historial(): HasMany
+    {
+        return $this->hasMany(SituacionCriticaHistorial::class, 'id_situacion_critica', 'id');
     }
 }

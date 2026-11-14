@@ -2,103 +2,136 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SituacionCritica\ActualizarSituacionCriticaRequest;
+use App\Http\Requests\SituacionCritica\CrearSituacionCriticaRequest;
+use App\Http\Requests\SituacionCritica\FiltroSituacionCriticaRequest;
 use App\Models\SituacionCritica;
-use App\Models\Evento;
 use App\Models\Supervisor;
 use App\Models\Trabajador;
-use Illuminate\Http\Request;
+use App\Services\SituacionCriticaService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Inertia\Response;
+use Throwable;
 
+/**
+ * Situaciones Críticas (RF-14 a RF-16). No se eliminan manualmente (RF-15.6):
+ * solo desaparecen junto con su Tarjeta PARE.
+ */
 class SituacionCriticaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public const MENSAJE_ERROR_REGISTRO = 'No se pudo completar el registro, intente nuevamente.';
+    public const MENSAJE_ERROR_ACTUALIZACION = 'No se pudo completar la actualización, intente nuevamente.';
+
+    public function __construct(private readonly SituacionCriticaService $servicio) {}
+
+    /** RF-16.1 a 16.3: listado según el rol, con filtros. */
+    public function index(FiltroSituacionCriticaRequest $request): Response
     {
+        Gate::authorize('viewAny', SituacionCritica::class);
+
+        $usuario = $request->user();
+        $filtros = $request->filtros();
+
         return Inertia::render('SituacionCriticas/Index', [
-            'situacionCriticas' => SituacionCritica::with(['trabajador.persona', 'supervisor.trabajador.persona', 'evento'])
-                ->orderByDesc('id')->get()->map(fn ($item) => $this->presentar($item)),
+            'situacionCriticas' => $this->servicio->consulta($usuario, $filtros)->get()
+                ->map(fn (SituacionCritica $s) => $this->presentar($s)),
+            'filtros' => (object) $filtros,
+            'trabajadores' => $this->trabajadores(),
+            'supervisores' => $this->supervisores(),
+            'eventos' => $this->servicio->consulta($usuario, [])->reorder()
+                ->orderByDesc('id_evento')->pluck('id_evento'),
+            'puedeGestionar' => $usuario->can('create', SituacionCritica::class),
         ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    /** RF-14.2: el Administrador elige una Tarjeta PARE sin Situación Crítica. */
+    public function create(): Response
     {
-        return Inertia::render('SituacionCriticas/Create', $this->opciones());
-    }
+        Gate::authorize('create', SituacionCritica::class);
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        SituacionCritica::create($this->validar($request));
-        return redirect()->route('situacion-criticas.index')->with('success', 'Situación crítica registrada.');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(SituacionCritica $situacionCritica)
-    {
-        return Inertia::render('SituacionCriticas/Show', [
-            'situacionCritica' => $this->presentar($situacionCritica->load(['trabajador.persona', 'supervisor.trabajador.persona', 'evento'])),
-        ]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(SituacionCritica $situacionCritica)
-    {
-        return Inertia::render('SituacionCriticas/Edit', array_merge(
-            $this->opciones(),
-            ['situacionCritica' => $this->presentar($situacionCritica->load(['trabajador.persona', 'supervisor.trabajador.persona', 'evento']))]
-        ));
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, SituacionCritica $situacionCritica)
-    {
-        $situacionCritica->update($this->validar($request));
-        return redirect()->route('situacion-criticas.index')->with('success', 'Situación crítica actualizada.');
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(SituacionCritica $situacionCritica)
-    {
-        $situacionCritica->delete();
-        return redirect()->route('situacion-criticas.index')->with('success', 'Situación crítica eliminada.');
-    }
-
-    private function opciones(): array
-    {
-        return [
-            'trabajadores' => Trabajador::with('persona')->where('estado', 'activo')->get()
-                ->map(fn ($trabajador) => $this->trabajadorPlano($trabajador)),
-            'supervisores' => Supervisor::with('trabajador.persona')->get()->map(fn ($supervisor) => [
-                'id_trabajador' => $supervisor->id_trabajador,
-                'trabajador' => $this->trabajadorPlano($supervisor->trabajador),
+        return Inertia::render('SituacionCriticas/Create', [
+            'tarjetas' => $this->servicio->tarjetasSinSituacion()->map(fn ($evento) => [
+                'id_evento' => $evento->id_evento,
+                'descripcion' => $evento->descripcion,
+                'referencia' => $evento->referencia,
+                'condicion' => $evento->condicion,
+                'id_supervisor' => $evento->id_supervisor,
+                'trabajador' => $this->trabajadorPlano($evento->trabajador),
             ]),
-            'eventos' => Evento::select('id_evento', 'descripcion')->orderByDesc('id_evento')->get(),
-        ];
+            'supervisores' => $this->supervisores(),
+        ]);
     }
 
-    private function validar(Request $request): array
+    public function store(CrearSituacionCriticaRequest $request): RedirectResponse
     {
-        return $request->validate([
-            'id_trabajador' => ['required', 'integer', 'exists:trabajadores,id_trabajador'],
-            'id_supervisor' => ['nullable', 'integer', 'exists:supervisores,id_trabajador'],
-            'id_evento' => ['required', 'integer', 'exists:eventos,id_evento'],
-            'referencia' => ['required', 'string', 'max:255'],
-            'condicion' => ['required', 'integer', 'in:1,2'],
+        Gate::authorize('create', SituacionCritica::class);
+
+        try {
+            $situacion = $this->servicio->registrarManual($request->evento(), $request->user());
+        } catch (Throwable $e) {
+            Log::error('Error al registrar situación crítica', ['error' => $e->getMessage()]);
+
+            return back()->withInput()->withErrors(['general' => self::MENSAJE_ERROR_REGISTRO]);
+        }
+
+        return redirect()->route('situacion-criticas.show', $situacion)
+            ->with('success', 'Situación crítica registrada.');
+    }
+
+    /** RF-16.4: detalle con historial de cambios. */
+    public function show(SituacionCritica $situacionCritica): Response
+    {
+        Gate::authorize('view', $situacionCritica);
+
+        return Inertia::render('SituacionCriticas/Show', [
+            'situacionCritica' => $this->presentar($situacionCritica->load(SituacionCriticaService::RELACIONES)),
+            'historial' => $this->servicio->historialDe($situacionCritica),
+            'puedeGestionar' => request()->user()->can('update', $situacionCritica),
+        ]);
+    }
+
+    /** RF-15.2: edición manual; el evento asociado no se puede cambiar. */
+    public function edit(SituacionCritica $situacionCritica): Response
+    {
+        Gate::authorize('update', $situacionCritica);
+
+        return Inertia::render('SituacionCriticas/Edit', [
+            'situacionCritica' => $this->presentar($situacionCritica->load(SituacionCriticaService::RELACIONES)),
+            'trabajadores' => $this->trabajadores(),
+            'supervisores' => $this->supervisores(),
+        ]);
+    }
+
+    public function update(ActualizarSituacionCriticaRequest $request, SituacionCritica $situacionCritica): RedirectResponse
+    {
+        Gate::authorize('update', $situacionCritica);
+
+        try {
+            $this->servicio->editarManual($situacionCritica, $request->validated(), $request->user());
+        } catch (Throwable $e) {
+            Log::error('Error al actualizar situación crítica', ['id' => $situacionCritica->id, 'error' => $e->getMessage()]);
+
+            return back()->withInput()->withErrors(['general' => self::MENSAJE_ERROR_ACTUALIZACION]);
+        }
+
+        return redirect()->route('situacion-criticas.show', $situacionCritica)
+            ->with('success', 'Situación crítica actualizada.');
+    }
+
+    private function trabajadores()
+    {
+        return Trabajador::with('persona')->where('estado', 'activo')->get()
+            ->map(fn ($trabajador) => $this->trabajadorPlano($trabajador));
+    }
+
+    private function supervisores()
+    {
+        return Supervisor::with('trabajador.persona')->get()->map(fn ($supervisor) => [
+            'id_trabajador' => $supervisor->id_trabajador,
+            'trabajador' => $this->trabajadorPlano($supervisor->trabajador),
         ]);
     }
 
@@ -115,7 +148,10 @@ class SituacionCriticaController extends Controller
 
     private function trabajadorPlano(?Trabajador $trabajador): ?array
     {
-        if (!$trabajador) return null;
+        if (! $trabajador) {
+            return null;
+        }
+
         return array_merge($trabajador->toArray(), $trabajador->persona?->only([
             'rut', 'nombre_1', 'nombre_2', 'apellido_1', 'apellido_2',
         ]) ?? []);

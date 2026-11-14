@@ -1,6 +1,8 @@
 % Requisitos funcionales del registro de eventos.
 % RF-9: Registrar Tarjeta PARE. RF-10: Registrar Evento (tipos distintos de Tarjeta PARE).
-% El seguimiento queda como plantilla (RF-X) hasta definir su numeración.
+% RF-12: Registrar evidencias de evento. RF-13: Consultar evidencias de evento (reemplazan a R12).
+% RF-14: Registrar, RF-15: Modificar y RF-16: Consultar Situación Crítica (reemplazan a R14).
+% El seguimiento queda como plantilla (RF-11).
 % Requiere \usepackage{enumitem}.
 
 % ============================================================
@@ -42,6 +44,10 @@ El sistema permite a cualquier usuario autenticado registrar una Tarjeta PARE so
   \item \textbf{RF-9.3)} El usuario env\'ia los datos de entrada.
   \begin{itemize}[label={}, leftmargin=1.5em]
     \item \textbf{RF-9.3.1)} Si los datos de entrada son v\'alidos, el sistema crear\'a la Tarjeta PARE con estado \texttt{abierto} (no editable manualmente), generar\'a autom\'aticamente la Fecha de Creaci\'on y la Fecha de Actualizaci\'on, y asignar\'a como supervisor al supervisor de la cuadrilla actual del trabajador de E-3.
+    \begin{itemize}[label={}, leftmargin=1.5em]
+      \item \textbf{RF-9.3.1.1)} Si E-11 contiene archivos, el sistema invoca autom\'aticamente RF-12 (Registrar evidencias de evento), enviando el ID de la Tarjeta PARE creada, los archivos de E-11 y el origen \texttt{reporte}.
+      \item \textbf{RF-9.3.1.2)} Si RF-12 notifica un fallo, el sistema revertir\'a la creaci\'on de la Tarjeta PARE (rollback), notificar\'a: ``No se pudo completar el registro, intente nuevamente'' y retornar\'a al ingreso de datos con los valores anteriores al env\'io.
+    \end{itemize}
     \item \textbf{RF-9.3.2)} Se notificar\'a al usuario desplegando el mensaje: ``Tarjeta PARE registrada exitosamente''.
     \begin{itemize}[label={}, leftmargin=1.5em]
       \item \textbf{RF-9.3.2.1)} Tras desplegar el mensaje, el sistema limpiar\'a el formulario y redirigir\'a al usuario a ``Mis Reportes'', mostrando la Tarjeta PARE reci\'en creada.
@@ -53,9 +59,9 @@ El sistema permite a cualquier usuario autenticado registrar una Tarjeta PARE so
       \item \textbf{RF-9.3.3.3)} Si la Actividad de E-5 no pertenece al proyecto de E-1, se notificar\'a: ``La actividad seleccionada no pertenece al proyecto'', no se completar\'a el registro y se retornar\'a al ingreso de datos con los valores anteriores al env\'io.
     \end{itemize}
   \end{itemize}
-  \item \textbf{RF-9.4)} Al completarse exitosamente RF-9.3.1, el sistema invoca autom\'aticamente RF-11 (Registrar Situaci\'on Cr\'itica), enviando el ID de la Tarjeta PARE creada.
+  \item \textbf{RF-9.4)} Al completarse exitosamente RF-9.3.1, el sistema invoca autom\'aticamente RF-14 (Registrar Situaci\'on Cr\'itica), enviando el ID de la Tarjeta PARE creada.
   \begin{itemize}[label={}, leftmargin=1.5em]
-    \item \textbf{RF-9.4.1)} Si la invocaci\'on a RF-11 falla, el sistema revertir\'a la creaci\'on de la Tarjeta PARE y de sus evidencias (rollback), notificar\'a: ``No se pudo completar el registro, intente nuevamente'' y no dejar\'a Tarjetas PARE sin Situaci\'on Cr\'itica asociada.
+    \item \textbf{RF-9.4.1)} Si RF-14 notifica un fallo, el sistema revertir\'a la creaci\'on de la Tarjeta PARE y de sus evidencias (rollback), notificar\'a: ``No se pudo completar el registro, intente nuevamente'' y no dejar\'a Tarjetas PARE sin Situaci\'on Cr\'itica asociada.
   \end{itemize}
   \item \textbf{RF-9.5)} Al completarse exitosamente RF-9.4, el sistema enviar\'a una notificaci\'on por correo al supervisor asignado y a los usuarios de los departamentos de Prevenci\'on de Riesgos y de Seguridad y Salud Ocupacional.
   \begin{itemize}[label={}, leftmargin=1.5em]
@@ -68,6 +74,7 @@ El sistema permite a cualquier usuario autenticado registrar una Tarjeta PARE so
   \item \textbf{RF-9.7)} \textit{(M\'ovil)} Antes de adjuntar evidencia fotogr\'afica en E-11, la aplicaci\'on solicitar\'a permisos de c\'amara y almacenamiento.
   \begin{itemize}[label={}, leftmargin=1.5em]
     \item \textbf{RF-9.7.1)} Si el usuario niega los permisos, no se podr\'a capturar evidencia fotogr\'afica, pero se permitir\'a continuar el registro sin ella.
+    \item \textbf{RF-9.7.2)} Las fotograf\'ias se capturan con la c\'amara nativa del dispositivo y se comprimen autom\'aticamente antes de adjuntarlas. La validaci\'on de tama\~no de E-11 se aplica sobre la imagen ya comprimida.
   \end{itemize}
   \item \textbf{RF-9.8)} \textit{(M\'ovil)} Si al enviar (RF-9.3) no hay conexi\'on, la aplicaci\'on almacenar\'a la Tarjeta PARE localmente y notificar\'a: ``Sin conexi\'on, la Tarjeta PARE se sincronizar\'a al recuperar conectividad''.
   \begin{itemize}[label={}, leftmargin=1.5em]
@@ -83,11 +90,12 @@ El sistema permite a cualquier usuario autenticado registrar una Tarjeta PARE so
   \item \textbf{S-3)} RF-9.3.3.1: ``El registro seleccionado no es v\'alido''
   \item \textbf{S-4)} RF-9.3.3.2: ``El \'area seleccionada no pertenece a la faena del proyecto''
   \item \textbf{S-5)} RF-9.3.3.3: ``La actividad seleccionada no pertenece al proyecto''
-  \item \textbf{S-6)} RF-9.4.1: ``No se pudo completar el registro, intente nuevamente''
+  \item \textbf{S-6)} RF-9.3.1.2 y RF-9.4.1: ``No se pudo completar el registro, intente nuevamente''
   \item \textbf{S-7)} RF-9.8: ``Sin conexi\'on, la Tarjeta PARE se sincronizar\'a al recuperar conectividad''
-  \item \textbf{S-8)} RF-9.4: ID de la Tarjeta PARE $\rightarrow$ hacia RF-11
-  \item \textbf{S-9)} RF-9.5: correo de notificaci\'on $\rightarrow$ supervisor asignado y departamentos de Prevenci\'on de Riesgos y SSO
-  \item \textbf{S-10)} RF-9.9: c\'odigo QR de la Tarjeta PARE
+  \item \textbf{S-8)} RF-9.3.1.1: ID de la Tarjeta PARE, archivos de E-11 y origen \texttt{reporte} $\rightarrow$ hacia RF-12
+  \item \textbf{S-9)} RF-9.4: ID de la Tarjeta PARE $\rightarrow$ hacia RF-14
+  \item \textbf{S-10)} RF-9.5: correo de notificaci\'on $\rightarrow$ supervisor asignado y departamentos de Prevenci\'on de Riesgos y SSO
+  \item \textbf{S-11)} RF-9.9: c\'odigo QR de la Tarjeta PARE
 \end{itemize}
 
 % ============================================================
@@ -132,6 +140,10 @@ El sistema permite a cualquier usuario autenticado registrar un evento de seguri
   \item \textbf{RF-10.3)} El usuario env\'ia los datos de entrada.
   \begin{itemize}[label={}, leftmargin=1.5em]
     \item \textbf{RF-10.3.1)} Si los datos de entrada son v\'alidos, el sistema crear\'a el evento con estado \texttt{abierto} (no editable manualmente), generar\'a autom\'aticamente la Fecha de Creaci\'on y la Fecha de Actualizaci\'on, y asignar\'a como supervisor al supervisor de la cuadrilla actual del trabajador de E-3. No se generar\'a Situaci\'on Cr\'itica ni notificaci\'on por correo.
+    \begin{itemize}[label={}, leftmargin=1.5em]
+      \item \textbf{RF-10.3.1.1)} Si E-16 contiene archivos, el sistema invoca autom\'aticamente RF-12 (Registrar evidencias de evento), enviando el ID del evento creado, los archivos de E-16 y el origen \texttt{reporte}.
+      \item \textbf{RF-10.3.1.2)} Si RF-12 notifica un fallo, el sistema revertir\'a la creaci\'on del evento (rollback), notificar\'a: ``No se pudo completar el registro, intente nuevamente'' y retornar\'a al ingreso de datos con los valores anteriores al env\'io.
+    \end{itemize}
     \item \textbf{RF-10.3.2)} Se notificar\'a al usuario desplegando el mensaje: ``Evento registrado exitosamente''.
     \begin{itemize}[label={}, leftmargin=1.5em]
       \item \textbf{RF-10.3.2.1)} Tras desplegar el mensaje, el sistema limpiar\'a el formulario y redirigir\'a al usuario al listado general de eventos si tiene permiso para verlo, o a ``Mis Reportes'' en caso contrario, mostrando el evento reci\'en creado.
@@ -158,12 +170,13 @@ El sistema permite a cualquier usuario autenticado registrar un evento de seguri
   \item \textbf{S-3)} RF-10.3.3.1: ``El registro seleccionado no es v\'alido''
   \item \textbf{S-4)} RF-10.3.3.2: ``El \'area seleccionada no pertenece a la faena del proyecto''
   \item \textbf{S-5)} RF-10.3.3.3: ``La actividad seleccionada no pertenece al proyecto''
-  \item \textbf{S-6)} RF-10.3.4: ``No se pudo completar el registro, intente nuevamente''
+  \item \textbf{S-6)} RF-10.3.1.2 y RF-10.3.4: ``No se pudo completar el registro, intente nuevamente''
   \item \textbf{S-7)} RF-10.2.2: redirecci\'on $\rightarrow$ hacia RF-9
+  \item \textbf{S-8)} RF-10.3.1.1: ID del evento, archivos de E-16 y origen \texttt{reporte} $\rightarrow$ hacia RF-12
 \end{itemize}
 
 % ============================================================
-\subsection*{RF-X) Seguimiento de Tarjeta PARE}
+\subsection*{RF-11) Seguimiento de Tarjeta PARE}
 \textit{Por definir: descripci\'on general del requisito.}
 
 \textbf{Entradas:} \textit{Por definir.}
@@ -175,7 +188,7 @@ El sistema permite a cualquier usuario autenticado registrar un evento de seguri
 
 \textbf{Procesos:}
 \begin{itemize}[label={}, leftmargin=1.5em]
-  \item \textbf{RF-X.1)} \textit{Por definir.}
+  \item \textbf{RF-11.1)} \textit{Por definir.}
   % --- Candidatos tomados de la versión anterior (descomentar/ajustar al decidir) ---
   % - Transición abierto -> en_revisión -> cerrado.
   %   * Solo el Supervisor de la cuadrilla del trabajador reportado puede "tomar" una tarjeta abierta (pasa a en_revisión, queda como responsable).
@@ -183,7 +196,10 @@ El sistema permite a cualquier usuario autenticado registrar un evento de seguri
   %   * Bloqueo de fila al tomar/cerrar; el segundo usuario concurrente recibe "El evento ya fue tomado o cerrado".
   % - Al cerrar: Justificación obligatoria (máx. 500 caracteres), hasta 3 archivos de Evidencia de Cierre (mismas reglas que RF-9 E-11);
   %   Fecha de Reinicio obligatoria si TipoDetención es parcial o total.
+  %   Las evidencias de cierre se registran invocando RF-12 con origen "cierre"; si RF-12 falla, se revierte el cierre.
+  % - Al eliminar un evento se eliminan también sus archivos y registros de evidencia (hoy el código ya borra los archivos).
   % - Edición (condición, descripción, referencia): el autor mientras el estado sea abierto, o un Administrador en cualquier momento.
+  %   Si cambia un campo compartido con la Situación Crítica, se invoca RF-15.1 (sincronización); si RF-15 falla, la edición no se guarda.
   % - Eliminación permitida solo al Administrador, preservando la trazabilidad.
   % - Listado descendente por fecha de creación; visibilidad: Administrador ve todo; Supervisor ve las de sus cuadrillas,
   %   las asignadas a él y las propias; todo usuario ve "Mis Reportes".
@@ -194,4 +210,202 @@ El sistema permite a cualquier usuario autenticado registrar un evento de seguri
 \textbf{Salidas:}
 \begin{itemize}[label={}, leftmargin=1.5em]
   \item \textbf{S-1)} \textit{Por definir.}
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-12) Registrar evidencias de evento}
+El sistema almacena los archivos de evidencia de un evento y registra sus datos, cuando lo invoca el registro de una Tarjeta PARE (RF-9), el registro de un evento (RF-10) o el cierre de un evento (RF-11). El usuario no interact\'ua directamente con este requisito.
+
+\textbf{Entradas:} Evento -- Archivos -- Origen
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Evento:} entero, valor positivo, no vac\'io. Debe corresponder a un evento existente (recibido autom\'aticamente desde RF-9.3.1.1, RF-10.3.1.1 o el cierre de RF-11, no lo ingresa el usuario).
+  \item \textbf{E-2) Archivos:} lista de 1 a 3 archivos (recibida autom\'aticamente junto con E-1). Los archivos llegan ya validados en cantidad, formato y tama\~no por el requisito que invoca (RF-9 E-11, RF-10 E-16 o el cierre de RF-11).
+  \item \textbf{E-3) Origen:} enumerado. Valores: \texttt{reporte}, \texttt{cierre}. Recibido autom\'aticamente: \texttt{reporte} desde RF-9 y RF-10, \texttt{cierre} desde RF-11.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-12.1)} El sistema recibe E-1, E-2 y E-3 desde el requisito que lo invoca.
+  \item \textbf{RF-12.2)} Por cada archivo de E-2, el sistema lo almacenar\'a en un almacenamiento privado, no accesible p\'ublicamente, separado seg\'un E-3.
+  \item \textbf{RF-12.3)} Por cada archivo almacenado, el sistema registrar\'a la evidencia asociada al evento de E-1 con: nombre del archivo, ruta de almacenamiento, tipo de archivo, origen (E-3) y fecha de creaci\'on (generada autom\'aticamente).
+  \item \textbf{RF-12.4)} Si el almacenamiento o el registro de alg\'un archivo falla, el sistema eliminar\'a los archivos ya almacenados en esta invocaci\'on, no registrar\'a ninguna evidencia y notificar\'a el fallo al requisito que lo invoc\'o, que revertir\'a su operaci\'on (RF-9.3.1.2, RF-10.3.1.2 o el cierre de RF-11).
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-12.3: evidencias registradas $\rightarrow$ hacia el requisito que invoc\'o (RF-9, RF-10 o RF-11)
+  \item \textbf{S-2)} RF-12.4: aviso de fallo $\rightarrow$ hacia el requisito que invoc\'o (RF-9, RF-10 o RF-11)
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-13) Consultar evidencias de evento}
+El sistema permite a un usuario autenticado ver las evidencias de un evento que tiene permitido ver, separadas en evidencias del reporte y evidencias del cierre, y abrir cada archivo.
+
+\textbf{Entradas:} Evento -- Archivo
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Evento:} entero, valor positivo, no vac\'io. Debe corresponder a un evento existente (recibido autom\'aticamente al abrir el detalle del evento, no lo ingresa el usuario).
+  \item \textbf{E-2) Archivo:} cadena de caracteres. Nombre de una evidencia del evento de E-1. Opcional: solo se informa cuando el usuario selecciona una evidencia para abrirla.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-13.1)} Al abrir el detalle de un evento, el sistema recibe E-1 y verifica que el usuario autenticado pueda ver dicho evento, seg\'un las reglas de visibilidad de eventos (RF-11).
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-13.1.1)} Si el usuario no puede ver el evento, se notificar\'a: ``No tiene permiso para ver este evento'' y no se mostrar\'an sus evidencias.
+  \end{itemize}
+  \item \textbf{RF-13.2)} El sistema listar\'a las evidencias del evento en dos grupos, evidencias del reporte y evidencias del cierre, indicando por cada una su nombre y tipo de archivo, y mostrando una vista previa si es una imagen.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-13.2.1)} Si un grupo no tiene evidencias, se desplegar\'a el mensaje: ``Sin evidencias''.
+  \end{itemize}
+  \item \textbf{RF-13.3)} El usuario selecciona una evidencia (E-2) y el sistema verifica que pertenezca al evento de E-1.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-13.3.1)} Si pertenece y el archivo existe, el sistema lo entregar\'a desde el almacenamiento privado: las im\'agenes y los PDF se visualizan en el navegador y los archivos \texttt{doc} y \texttt{docx} se descargan.
+    \item \textbf{RF-13.3.2)} Si no pertenece al evento o el archivo no existe, se notificar\'a: ``Archivo no encontrado''.
+  \end{itemize}
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-13.1.1: ``No tiene permiso para ver este evento''
+  \item \textbf{S-2)} RF-13.2: listado de evidencias del reporte y del cierre
+  \item \textbf{S-3)} RF-13.2.1: ``Sin evidencias''
+  \item \textbf{S-4)} RF-13.3.1: archivo de evidencia
+  \item \textbf{S-5)} RF-13.3.2: ``Archivo no encontrado''
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-14) Registrar Situaci\'on Cr\'itica}
+El sistema registra una Situaci\'on Cr\'itica por cada Tarjeta PARE: autom\'aticamente al crearse la tarjeta (RF-9) o, para una tarjeta que no la tenga, manualmente por un usuario Administrador. Los datos de la Situaci\'on Cr\'itica se copian de su Tarjeta PARE y se mantienen sincronizados con ella (RF-15).
+
+\textbf{Entradas:} Evento -- Trabajador -- Supervisor -- Referencia -- Condici\'on
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Evento:} entero, valor positivo, no vac\'io. Debe corresponder a una Tarjeta PARE existente que a\'un no tenga Situaci\'on Cr\'itica (validado en Procesos). Se recibe autom\'aticamente desde RF-9.4 o lo selecciona el Administrador en el registro manual.
+  \item \textbf{E-2) Trabajador:} entero, valor positivo, no vac\'io. Copiado del trabajador reportado en la Tarjeta PARE de E-1 (no lo ingresa el usuario).
+  \item \textbf{E-3) Supervisor:} entero, valor positivo. Copiado del supervisor asignado a la Tarjeta PARE de E-1 (no lo ingresa el usuario). Puede quedar vac\'io si el trabajador no tiene cuadrilla.
+  \item \textbf{E-4) Referencia:} cadena de caracteres, no vac\'ia, m\'aximo 255 caracteres. Copiada de la Tarjeta PARE de E-1 (no la ingresa el usuario).
+  \item \textbf{E-5) Condici\'on:} enumerado (entero entre 1 y 10), seg\'un el cat\'alogo de condiciones PARE de RF-9 E-6. Copiada de la Tarjeta PARE de E-1 (no la ingresa el usuario).
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-14.1)} \textit{Registro autom\'atico:} el sistema recibe E-1 desde RF-9.4 y copia E-2 a E-5 de la Tarjeta PARE, sin intervenci\'on del usuario.
+  \item \textbf{RF-14.2)} \textit{Registro manual:} el sistema solicita al usuario Administrador seleccionar E-1 entre las Tarjetas PARE que no tienen Situaci\'on Cr\'itica, y muestra E-2 a E-5 copiados de la tarjeta, sin permitir modificarlos.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-14.2.1)} Si E-1 no corresponde a un evento existente, se notificar\'a: ``El registro seleccionado no es v\'alido''.
+    \item \textbf{RF-14.2.2)} Si E-1 no es una Tarjeta PARE, se notificar\'a: ``El evento seleccionado no es una Tarjeta PARE''.
+    \item \textbf{RF-14.2.3)} Si E-1 ya tiene una Situaci\'on Cr\'itica, se notificar\'a: ``La Tarjeta PARE ya tiene una Situaci\'on Cr\'itica asociada''.
+    \item \textbf{RF-14.2.4)} El Administrador puede cancelar el registro manual en cualquier momento previo al env\'io; en tal caso no se crear\'a la Situaci\'on Cr\'itica y ser\'a dirigido al listado de Situaciones Cr\'iticas.
+  \end{itemize}
+  \item \textbf{RF-14.3)} Si los datos son v\'alidos, el sistema crear\'a la Situaci\'on Cr\'itica asociada a la Tarjeta PARE de E-1 y registrar\'a en su historial una entrada de creaci\'on con el usuario responsable (el autor de la Tarjeta PARE en el registro autom\'atico, o el Administrador en el manual) y la fecha y hora.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-14.3.1)} En el registro autom\'atico, el sistema informar\'a a RF-9 el ID de la Situaci\'on Cr\'itica creada.
+    \item \textbf{RF-14.3.2)} En el registro manual, se desplegar\'a el mensaje: ``Situaci\'on cr\'itica registrada'' y el usuario ser\'a dirigido al listado de Situaciones Cr\'iticas.
+  \end{itemize}
+  \item \textbf{RF-14.4)} Si el registro falla, el sistema no crear\'a la Situaci\'on Cr\'itica ni la entrada de historial.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-14.4.1)} En el registro autom\'atico, notificar\'a el fallo a RF-9, que revertir\'a la creaci\'on de la Tarjeta PARE (RF-9.4.1).
+    \item \textbf{RF-14.4.2)} En el registro manual, se notificar\'a: ``No se pudo completar el registro, intente nuevamente''.
+  \end{itemize}
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-14.2.1: ``El registro seleccionado no es v\'alido''
+  \item \textbf{S-2)} RF-14.2.2: ``El evento seleccionado no es una Tarjeta PARE''
+  \item \textbf{S-3)} RF-14.2.3: ``La Tarjeta PARE ya tiene una Situaci\'on Cr\'itica asociada''
+  \item \textbf{S-4)} RF-14.3.2: ``Situaci\'on cr\'itica registrada''
+  \item \textbf{S-5)} RF-14.4.2: ``No se pudo completar el registro, intente nuevamente''
+  \item \textbf{S-6)} RF-14.3.1: ID de la Situaci\'on Cr\'itica $\rightarrow$ hacia RF-9
+  \item \textbf{S-7)} RF-14.4.1: aviso de fallo $\rightarrow$ hacia RF-9
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-15) Modificar Situaci\'on Cr\'itica}
+El sistema mantiene sincronizada cada Situaci\'on Cr\'itica con su Tarjeta PARE: un cambio en la tarjeta se refleja en la situaci\'on y un cambio manual en la situaci\'on, hecho por un Administrador, se refleja en la tarjeta. Cada cambio queda registrado en el historial de la Situaci\'on Cr\'itica, indicando qu\'e cambi\'o, qui\'en lo hizo y cu\'ando.
+
+\textbf{Entradas:} Situaci\'onCr\'itica -- Trabajador -- Supervisor -- Referencia -- Condici\'on
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Situaci\'onCr\'itica:} entero, valor positivo, no vac\'io. Debe corresponder a una Situaci\'on Cr\'itica existente. Se recibe autom\'aticamente desde la edici\'on de la Tarjeta PARE (RF-11) o al abrir la edici\'on desde el listado (RF-16). Su Evento asociado no se puede modificar.
+  \item \textbf{E-2) Trabajador:} entero, valor positivo, obligatorio. Debe corresponder a un trabajador existente (validado en Procesos).
+  \item \textbf{E-3) Supervisor:} entero, valor positivo. Opcional. Si se informa, debe corresponder a un supervisor existente (validado en Procesos).
+  \item \textbf{E-4) Referencia:} cadena de caracteres, no vac\'ia, m\'aximo 255 caracteres. Obligatorio.
+  \item \textbf{E-5) Condici\'on:} enumerado (entero entre 1 y 10), seg\'un el cat\'alogo de condiciones PARE de RF-9 E-6. Obligatorio.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-15.1)} \textit{Sincronizaci\'on desde la Tarjeta PARE:} cada vez que se modifica en la Tarjeta PARE alguno de los campos E-2 a E-5 (RF-11), el sistema actualizar\'a autom\'aticamente esos campos en su Situaci\'on Cr\'itica, sin intervenci\'on del usuario.
+  \item \textbf{RF-15.2)} \textit{Edici\'on manual:} el sistema solicita al usuario Administrador modificar E-2 a E-5 de la Situaci\'on Cr\'itica de E-1, mostrando sus valores actuales.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-15.2.1)} Si uno o m\'as datos se ingresan en un formato distinto al especificado, el sistema se\~nalar\'a el error en ese mismo instante y no permitir\'a el env\'io hasta que se corrija.
+    \item \textbf{RF-15.2.2)} Si E-2 o E-3 no corresponden a un registro existente, se notificar\'a: ``El registro seleccionado no es v\'alido''.
+    \item \textbf{RF-15.2.3)} Si E-5 est\'a fuera del cat\'alogo, se notificar\'a: ``La condici\'on debe ser un valor del cat\'alogo PARE (1 a 10)''.
+    \item \textbf{RF-15.2.4)} Si los datos son v\'alidos, el sistema actualizar\'a la Situaci\'on Cr\'itica y aplicar\'a los mismos valores a su Tarjeta PARE.
+    \item \textbf{RF-15.2.5)} El Administrador puede cancelar la edici\'on en cualquier momento previo al env\'io; en tal caso no se modificar\'a nada y ser\'a dirigido al listado de Situaciones Cr\'iticas.
+  \end{itemize}
+  \item \textbf{RF-15.3)} Por cada campo que cambie en RF-15.1 o RF-15.2, el sistema registrar\'a en el historial de la Situaci\'on Cr\'itica: el campo modificado, el valor anterior, el valor nuevo, el usuario que hizo el cambio, la fecha y hora, y el origen del cambio (\texttt{sincronizaci\'on desde Tarjeta PARE} o \texttt{edici\'on manual}). Si ning\'un campo cambia, no se registra nada.
+  \item \textbf{RF-15.4)} La actualizaci\'on de la Situaci\'on Cr\'itica, de la Tarjeta PARE y del historial se realiza como una sola operaci\'on: si alguna falla, el sistema revertir\'a todas (rollback).
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-15.4.1)} En la sincronizaci\'on, el fallo se notificar\'a a la edici\'on de la Tarjeta PARE (RF-11), que tampoco se guardar\'a.
+    \item \textbf{RF-15.4.2)} En la edici\'on manual, se notificar\'a: ``No se pudo completar la actualizaci\'on, intente nuevamente''.
+  \end{itemize}
+  \item \textbf{RF-15.5)} Si la edici\'on manual se completa, se desplegar\'a el mensaje: ``Situaci\'on cr\'itica actualizada'' y el usuario ser\'a dirigido al listado de Situaciones Cr\'iticas.
+  \item \textbf{RF-15.6)} Una Situaci\'on Cr\'itica no se puede eliminar manualmente, ya que toda Tarjeta PARE debe tener una (RF-9.4.1). Solo se elimina junto con su Tarjeta PARE; su historial se conserva.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-15.2.2: ``El registro seleccionado no es v\'alido''
+  \item \textbf{S-2)} RF-15.2.3: ``La condici\'on debe ser un valor del cat\'alogo PARE (1 a 10)''
+  \item \textbf{S-3)} RF-15.4.2: ``No se pudo completar la actualizaci\'on, intente nuevamente''
+  \item \textbf{S-4)} RF-15.5: ``Situaci\'on cr\'itica actualizada''
+  \item \textbf{S-5)} RF-15.2.4: nuevos valores $\rightarrow$ hacia la Tarjeta PARE asociada
+  \item \textbf{S-6)} RF-15.3: entradas de historial (campo, valor anterior, valor nuevo, usuario, fecha y hora, origen)
+  \item \textbf{S-7)} RF-15.4.1: aviso de fallo $\rightarrow$ hacia la edici\'on de la Tarjeta PARE (RF-11)
+\end{itemize}
+
+% ============================================================
+\subsection*{RF-16) Consultar Situaciones Cr\'iticas}
+El sistema permite a los usuarios Administrador y Supervisor consultar las Situaciones Cr\'iticas, filtrarlas por trabajador, supervisor o evento, y ver el detalle de cada una con su historial de cambios.
+
+\textbf{Entradas:} Trabajador -- Supervisor -- Evento -- Situaci\'onCr\'itica
+
+\textbf{Descripci\'on de entradas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{E-1) Trabajador:} entero, valor positivo. Opcional. Filtro por trabajador; debe corresponder a un trabajador existente.
+  \item \textbf{E-2) Supervisor:} entero, valor positivo. Opcional. Filtro por supervisor; debe corresponder a un supervisor existente.
+  \item \textbf{E-3) Evento:} entero, valor positivo. Opcional. Filtro por Tarjeta PARE asociada; debe corresponder a un evento existente.
+  \item \textbf{E-4) Situaci\'onCr\'itica:} entero, valor positivo. Opcional. Se informa al seleccionar una Situaci\'on Cr\'itica del listado para ver su detalle.
+\end{itemize}
+
+\textbf{Procesos:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{RF-16.1)} El sistema verifica el rol del usuario autenticado: el Administrador ve todas las Situaciones Cr\'iticas y el Supervisor ve solo aquellas en que figura como supervisor.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-16.1.1)} Si el usuario no tiene alguno de esos roles, o intenta ver una Situaci\'on Cr\'itica que no le corresponde, se notificar\'a: ``No tiene permiso para ver esta informaci\'on''.
+  \end{itemize}
+  \item \textbf{RF-16.2)} El sistema listar\'a las Situaciones Cr\'iticas visibles para el usuario, de la registrada m\'as recientemente a la m\'as antigua, mostrando por cada una: trabajador, supervisor, Tarjeta PARE asociada, referencia y condici\'on (n\'umero y texto del cat\'alogo de RF-9 E-6).
+  \item \textbf{RF-16.3)} El usuario puede aplicar los filtros E-1 a E-3, por separado o combinados; el listado mostrar\'a solo las Situaciones Cr\'iticas que cumplan todos los filtros aplicados.
+  \begin{itemize}[label={}, leftmargin=1.5em]
+    \item \textbf{RF-16.3.1)} Si un filtro no corresponde a un registro existente, se notificar\'a: ``El registro seleccionado no es v\'alido''.
+    \item \textbf{RF-16.3.2)} Si ninguna Situaci\'on Cr\'itica cumple los filtros, se desplegar\'a el mensaje: ``No se encontraron situaciones cr\'iticas''.
+  \end{itemize}
+  \item \textbf{RF-16.4)} Al seleccionar una Situaci\'on Cr\'itica (E-4), el sistema mostrar\'a su detalle y su historial de cambios (RF-14.3 y RF-15.3), del m\'as reciente al m\'as antiguo.
+\end{itemize}
+
+\textbf{Salidas:}
+\begin{itemize}[label={}, leftmargin=1.5em]
+  \item \textbf{S-1)} RF-16.1.1: ``No tiene permiso para ver esta informaci\'on''
+  \item \textbf{S-2)} RF-16.2: listado de Situaciones Cr\'iticas
+  \item \textbf{S-3)} RF-16.3.1: ``El registro seleccionado no es v\'alido''
+  \item \textbf{S-4)} RF-16.3.2: ``No se encontraron situaciones cr\'iticas''
+  \item \textbf{S-5)} RF-16.4: detalle e historial de la Situaci\'on Cr\'itica
 \end{itemize}

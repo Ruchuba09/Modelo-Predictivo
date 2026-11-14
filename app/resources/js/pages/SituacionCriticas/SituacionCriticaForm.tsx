@@ -1,23 +1,10 @@
-interface Trabajador {
-    id_trabajador: number;
-    nombre_1: string;
-    apellido_1: string;
-}
-
-interface Supervisor {
-    id_trabajador: number;
-    trabajador?: Trabajador;
-}
-
-interface Evento {
-    id_evento: number;
-    descripcion: string;
-}
+import { Link } from '@inertiajs/react';
+import { etiquetaCondicion, useCondicionesPare } from '../../lib/condicionesPare';
+import { botonPrimario, inputClass, labelClass, nombreTrabajador, type Supervisor, type Trabajador } from './tipos';
 
 interface SituacionCriticaFormData {
     id_trabajador: string;
     id_supervisor: string;
-    id_evento: string;
     referencia: string;
     condicion: string;
 }
@@ -25,38 +12,40 @@ interface SituacionCriticaFormData {
 interface SituacionCriticaFormState {
     data: SituacionCriticaFormData;
     setData: (key: keyof SituacionCriticaFormData, value: string) => void;
-    errors: Partial<Record<keyof SituacionCriticaFormData, string>>;
+    errors: Partial<Record<keyof SituacionCriticaFormData | 'general', string>>;
     processing: boolean;
 }
 
 interface SituacionCriticaFormProps {
     trabajadores: Trabajador[];
     supervisores: Supervisor[];
-    eventos: Evento[];
+    idEvento: number;
     form: SituacionCriticaFormState;
     onSubmit: (e: React.FormEvent) => void;
+    cancelarHref: string;
 }
 
-function nombreTrabajador(trabajador?: Trabajador) {
-    if (!trabajador) return '';
-    return `${trabajador.nombre_1} ${trabajador.apellido_1}`;
-}
-
-const inputClass =
-    'mt-1 block w-full rounded-lg border border-verde-3 bg-white px-3 py-2 text-sm text-gris-2 placeholder:text-gris-1 focus:border-verde-5/50 focus:outline-none focus:ring-1 focus:ring-verde-5/50';
-const labelClass = 'block text-sm font-medium text-gris-1';
-
-export default function SituacionCriticaForm({ trabajadores, supervisores, eventos, form, onSubmit }: SituacionCriticaFormProps) {
+/** Campos editables de RF-15.2. El evento asociado se muestra pero no se puede cambiar. */
+export default function SituacionCriticaForm({ trabajadores, supervisores, idEvento, form, onSubmit, cancelarHref }: SituacionCriticaFormProps) {
     const { data, setData, errors, processing } = form;
+    const condiciones = useCondicionesPare();
 
     return (
         <form onSubmit={onSubmit} className="space-y-6">
+            {errors.general && (
+                <p className="rounded-lg border border-red-400/30 bg-red-50 px-4 py-3 text-sm text-red-500">{errors.general}</p>
+            )}
+
             <div>
-                <label htmlFor="id_trabajador" className={labelClass}>
-                    Trabajador
-                </label>
+                <label htmlFor="evento" className={labelClass}>Tarjeta PARE</label>
+                <input id="evento" type="text" className={`${inputClass} bg-verde-1`} value={`Evento #${idEvento}`} readOnly disabled />
+            </div>
+
+            <div>
+                <label htmlFor="id_trabajador" className={labelClass}>Trabajador</label>
                 <select
                     id="id_trabajador"
+                    required
                     className={inputClass}
                     value={data.id_trabajador}
                     onChange={(e) => setData('id_trabajador', e.target.value)}
@@ -92,32 +81,11 @@ export default function SituacionCriticaForm({ trabajadores, supervisores, event
             </div>
 
             <div>
-                <label htmlFor="id_evento" className={labelClass}>
-                    Evento
-                </label>
-                <select
-                    id="id_evento"
-                    className={inputClass}
-                    value={data.id_evento}
-                    onChange={(e) => setData('id_evento', e.target.value)}
-                >
-                    <option value="">Selecciona un evento</option>
-                    {eventos.map((evento) => (
-                        <option key={evento.id_evento} value={evento.id_evento}>
-                            {evento.descripcion}
-                        </option>
-                    ))}
-                </select>
-                {errors.id_evento && <p className="mt-1 text-sm text-red-400">{errors.id_evento}</p>}
-            </div>
-
-            <div>
-                <label htmlFor="referencia" className={labelClass}>
-                    Referencia
-                </label>
+                <label htmlFor="referencia" className={labelClass}>Referencia</label>
                 <input
                     id="referencia"
                     type="text"
+                    required
                     className={inputClass}
                     value={data.referencia}
                     onChange={(e) => setData('referencia', e.target.value)}
@@ -127,40 +95,27 @@ export default function SituacionCriticaForm({ trabajadores, supervisores, event
             </div>
 
             <div>
-                <span className={labelClass}>Condición</span>
-                <div className="mt-2 flex gap-6">
-                    <label className="flex items-center gap-2 text-sm text-gris-2">
-                        <input
-                            type="radio"
-                            name="condicion"
-                            value="1"
-                            checked={data.condicion === '1'}
-                            onChange={(e) => setData('condicion', e.target.value)}
-                            className="accent-[#a0f700]"
-                        />
-                        Leve
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-gris-2">
-                        <input
-                            type="radio"
-                            name="condicion"
-                            value="2"
-                            checked={data.condicion === '2'}
-                            onChange={(e) => setData('condicion', e.target.value)}
-                            className="accent-[#a0f700]"
-                        />
-                        Grave
-                    </label>
-                </div>
+                <label htmlFor="condicion" className={labelClass}>Condición PARE</label>
+                <select
+                    id="condicion"
+                    required
+                    value={data.condicion}
+                    onChange={(e) => setData('condicion', e.target.value)}
+                    className={inputClass}
+                >
+                    <option value="">Seleccione la condición</option>
+                    {Object.keys(condiciones).map((num) => (
+                        <option key={num} value={num}>
+                            {etiquetaCondicion(condiciones, num)}
+                        </option>
+                    ))}
+                </select>
                 {errors.condicion && <p className="mt-1 text-sm text-red-400">{errors.condicion}</p>}
             </div>
 
-            <div className="flex justify-end">
-                <button
-                    type="submit"
-                    disabled={processing}
-                    className="rounded-lg bg-verde-5 px-5 py-2.5 text-sm font-bold text-black shadow-lg shadow-verde-5/10 transition-colors hover:bg-verde-6 disabled:opacity-50"
-                >
+            <div className="flex items-center justify-between">
+                <Link href={cancelarHref} className="text-sm text-gris-1 hover:text-gris-2">Cancelar</Link>
+                <button type="submit" disabled={processing} className={botonPrimario}>
                     Guardar
                 </button>
             </div>

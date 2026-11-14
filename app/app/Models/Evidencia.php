@@ -16,11 +16,16 @@ class Evidencia extends Model
 
     public $timestamps = false;
 
+    public const ORIGEN_REPORTE = 'reporte';
+
+    public const ORIGEN_CIERRE = 'cierre';
+
     protected $fillable = [
         'id_evento',
         'nombre',
         'ruta',
         'tipo_archivo',
+        'origen',
         'fecha_creacion',
     ];
 

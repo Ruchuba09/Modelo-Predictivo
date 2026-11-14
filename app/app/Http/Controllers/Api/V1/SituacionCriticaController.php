@@ -3,61 +3,71 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SituacionCritica\ActualizarSituacionCriticaRequest;
+use App\Http\Requests\SituacionCritica\CrearSituacionCriticaRequest;
+use App\Http\Requests\SituacionCritica\FiltroSituacionCriticaRequest;
+use App\Http\Controllers\SituacionCriticaController as Web;
 use App\Models\SituacionCritica;
+use App\Services\SituacionCriticaService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
+/** Situaciones Críticas (RF-14 a RF-16). Sin eliminación manual (RF-15.6). */
 class SituacionCriticaController extends Controller
 {
-    private const RELACIONES = ['trabajador.persona', 'supervisor.trabajador.persona', 'evento'];
+    public function __construct(private readonly SituacionCriticaService $servicio) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(FiltroSituacionCriticaRequest $request): JsonResponse
     {
-        $query = SituacionCritica::query()->with(self::RELACIONES)->orderByDesc('id');
+        Gate::authorize('viewAny', SituacionCritica::class);
+
+        $query = $this->servicio->consulta($request->user(), $request->filtros());
         $situaciones = $request->boolean('todos')
             ? $query->limit(1000)->get()
-            : $query->paginate(min(max($request->integer('per_page', 15), 1), 100));
+            : $query->paginate($request->integer('per_page', 15));
 
         return response()->json($situaciones);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(CrearSituacionCriticaRequest $request): JsonResponse
     {
-        $situacion = SituacionCritica::create($this->validar($request));
+        Gate::authorize('create', SituacionCritica::class);
 
-        return response()->json($situacion->load(self::RELACIONES), 201);
+        try {
+            $situacion = $this->servicio->registrarManual($request->evento(), $request->user());
+        } catch (Throwable $e) {
+            Log::error('Error al registrar situación crítica (API)', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => Web::MENSAJE_ERROR_REGISTRO], 500);
+        }
+
+        return response()->json($situacion->load(SituacionCriticaService::RELACIONES), 201);
     }
 
     public function show(SituacionCritica $situacionCritica): JsonResponse
     {
-        return response()->json($situacionCritica->load(self::RELACIONES));
-    }
+        Gate::authorize('view', $situacionCritica);
 
-    public function update(Request $request, SituacionCritica $situacionCritica): JsonResponse
-    {
-        $situacionCritica->update($this->validar($request, true));
-
-        return response()->json($situacionCritica->fresh(self::RELACIONES));
-    }
-
-    public function destroy(SituacionCritica $situacionCritica): Response
-    {
-        $situacionCritica->delete();
-
-        return response()->noContent();
-    }
-
-    private function validar(Request $request, bool $parcial = false): array
-    {
-        $required = $parcial ? 'sometimes|required' : 'required';
-
-        return $request->validate([
-            'id_trabajador' => [$required, 'integer', 'exists:trabajadores,id_trabajador'],
-            'id_supervisor' => ['nullable', 'integer', 'exists:supervisores,id_trabajador'],
-            'id_evento' => [$required, 'integer', 'exists:eventos,id_evento'],
-            'referencia' => [$required, 'string', 'max:255'],
-            'condicion' => [$required, 'integer', 'in:1,2'],
+        return response()->json([
+            ...$situacionCritica->load(SituacionCriticaService::RELACIONES)->toArray(),
+            'historial' => $this->servicio->historialDe($situacionCritica),
         ]);
+    }
+
+    public function update(ActualizarSituacionCriticaRequest $request, SituacionCritica $situacionCritica): JsonResponse
+    {
+        Gate::authorize('update', $situacionCritica);
+
+        try {
+            $this->servicio->editarManual($situacionCritica, $request->validated(), $request->user());
+        } catch (Throwable $e) {
+            Log::error('Error al actualizar situación crítica (API)', ['id' => $situacionCritica->id, 'error' => $e->getMessage()]);
+
+            return response()->json(['message' => Web::MENSAJE_ERROR_ACTUALIZACION], 500);
+        }
+
+        return response()->json($situacionCritica->fresh(SituacionCriticaService::RELACIONES));
     }
 }

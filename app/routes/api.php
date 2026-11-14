@@ -130,7 +130,6 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($gestion, $admin, $
             'trabajadores' => [TrabajadorController::class, 'trabajador'],
             'tipos-obrero' => [TipoObreroController::class, 'tipoObrero'],
             'tipos-evento' => [TipoEventoController::class, 'tipoEvento'],
-            'situacion-criticas' => [SituacionCriticaController::class, 'situacionCritica'],
         ];
 
         foreach ($catalogos as $recurso => [$controlador, $parametro]) {
@@ -139,6 +138,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($gestion, $admin, $
                 ->middlewareFor($lectura, $gestion)
                 ->middlewareFor($escritura, $admin);
         }
+
+        // RF-14 a RF-16: sin eliminación manual; la Situación Crítica se borra con su Tarjeta PARE.
+        Route::apiResource('situacion-criticas', SituacionCriticaController::class)
+            ->only(['index', 'show', 'store', 'update'])
+            ->parameters(['situacion-criticas' => 'situacionCritica'])
+            ->middlewareFor(['index', 'show'], $gestion)
+            ->middlewareFor(['store', 'update'], $admin);
 
         /* -------------------------- Administración -------------------------- */
         Route::middleware($admin)->group(function () {

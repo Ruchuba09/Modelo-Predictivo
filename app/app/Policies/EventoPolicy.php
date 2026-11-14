@@ -21,7 +21,7 @@ class EventoPolicy
     {
         return $this->decidir(
             $this->puedeVer($user, $evento),
-            'No tienes permisos para ver este reporte.'
+            'No tiene permiso para ver este evento.'
         );
     }
 

@@ -6,6 +6,7 @@ import { useCondicionesPare } from '../../lib/condicionesPare';
 
 interface ArchivoEvidencia {
     nombre: string;
+    nombre_original?: string;
     ruta: string;
     extension: string;
     es_imagen: boolean;
@@ -371,7 +372,7 @@ export default function Show() {
                                         <div className="py-6 text-center">
                                             <p className="text-2xl mb-1">📭</p>
                                             <p className="text-xs text-gris-1 font-medium">
-                                                Este reporte no tiene archivos o fotografías adjuntas en la base de datos.
+                                                Sin evidencias
                                             </p>
                                         </div>
                                     )}
@@ -420,8 +421,8 @@ export default function Show() {
                                                         )}
 
                                                         <div className="flex items-center justify-between gap-2 mt-auto pt-1">
-                                                            <span className="text-xs text-gris-2 truncate font-medium flex-1" title={archivo.nombre}>
-                                                                {archivo.nombre}
+                                                            <span className="text-xs text-gris-2 truncate font-medium flex-1" title={archivo.nombre_original ?? archivo.nombre}>
+                                                                {archivo.nombre_original ?? archivo.nombre}
                                                             </span>
                                                             <a
                                                                 href={archivo.ruta}
