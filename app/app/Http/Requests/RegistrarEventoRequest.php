@@ -36,7 +36,7 @@ abstract class RegistrarEventoRequest extends FormRequest
 
     protected function idTipoPare(): ?int
     {
-        return TipoEvento::where('nombre', 'Tarjeta PARE')->value('id_tipo_evento');
+        return TipoEvento::idPare();
     }
 
     public function rules(): array
@@ -44,24 +44,26 @@ abstract class RegistrarEventoRequest extends FormRequest
         $esParaMi = $this->boolean('es_para_mi', true);
 
         // El área es obligatoria solo si la faena del proyecto tiene áreas definidas.
-        $idFaena = Proyecto::whereKey($this->integer('id_proyecto'))->value('id_faena');
+        $proyecto = Proyecto::whereKey($this->integer('id_proyecto'))->first(['id_proyecto', 'id_faena']);
+        $idFaena = $proyecto?->id_faena;
         $faenaConAreas = $idFaena && Area::where('id_faena', $idFaena)->exists();
 
         return [
             'id_proyecto' => ['required', 'integer', 'exists:proyectos,id_proyecto'],
             'es_para_mi' => ['nullable', 'boolean'],
-            'id_trabajador' => [
-                $esParaMi ? 'nullable' : 'required',
-                'integer',
-                'exists:trabajadores,id_trabajador',
-            ],
+            // "Para mí" (E-2) usa el trabajador del usuario: lo que mande el
+            // cliente en E-3 se descarta sin validarlo.
+            'id_trabajador' => $esParaMi
+                ? ['exclude']
+                : ['required', 'integer', 'exists:trabajadores,id_trabajador'],
             'id_area' => [
                 'bail',
                 $faenaConAreas ? 'required' : 'nullable',
                 'integer',
                 'exists:areas,id_area',
-                function (string $campo, mixed $valor, \Closure $falla) use ($idFaena) {
-                    if ($idFaena && ! Area::whereKey($valor)->where('id_faena', $idFaena)->exists()) {
+                function (string $campo, mixed $valor, \Closure $falla) use ($proyecto, $idFaena) {
+                    // Con un proyecto sin faena tampoco se acepta un área de otra faena.
+                    if ($proyecto && ! Area::whereKey($valor)->where('id_faena', $idFaena)->exists()) {
                         $falla('El área seleccionada no pertenece a la faena del proyecto.');
                     }
                 },
@@ -104,6 +106,12 @@ abstract class RegistrarEventoRequest extends FormRequest
         return [
             'exists' => self::MENSAJE_REGISTRO_INVALIDO,
             'required' => 'Este campo es obligatorio.',
+            'integer' => self::MENSAJE_REGISTRO_INVALIDO,
+            'boolean' => 'El valor ingresado no es válido.',
+            'string' => 'El valor ingresado no es válido.',
+            'dia_ciclo.integer' => 'El día de ciclo debe estar entre 1 y 30.',
+            'evidencia.array' => 'Las evidencias no son válidas.',
+            'evidencia.*.file' => 'Las evidencias no son válidas.',
             'id_proyecto.required' => 'Debe seleccionar un proyecto.',
             'id_area.required' => 'Debe seleccionar el área donde ocurrió el evento.',
             'id_trabajador.required' => 'Debe seleccionar a la persona reportada.',

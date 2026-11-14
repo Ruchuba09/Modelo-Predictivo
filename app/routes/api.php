@@ -143,8 +143,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () use ($gestion, $admin, $
         Route::apiResource('situacion-criticas', SituacionCriticaController::class)
             ->only(['index', 'show', 'store', 'update'])
             ->parameters(['situacion-criticas' => 'situacionCritica'])
-            ->middlewareFor(['index', 'show'], $gestion)
             ->middlewareFor(['store', 'update'], $admin);
+        // La consulta la autoriza SituacionCriticaPolicy, que entrega el mensaje de RF-16.1.1.
 
         /* -------------------------- Administración -------------------------- */
         Route::middleware($admin)->group(function () {

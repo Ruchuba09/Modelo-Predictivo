@@ -64,13 +64,14 @@ Route::middleware('auth')->group(function () {
 
     });
 
+    // Situaciones Críticas: consulta (RF-16). La autoriza SituacionCriticaPolicy, que entrega
+    // el mensaje de RF-16.1.1: Administrador ve todas y Supervisor solo las suyas.
+    Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
+    Route::get('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'show'])
+        ->whereNumber('situacionCritica')->name('situacion-criticas.show');
+
     // Rutas para Administradores y Supervisores
     Route::middleware('role:Administrador,Supervisor')->group(function () {
-        // Situaciones Críticas: consulta (RF-16); el Supervisor solo ve las suyas (política).
-        Route::get('/situacion-criticas', [SituacionCriticaController::class, 'index'])->name('situacion-criticas.index');
-        Route::get('/situacion-criticas/{situacionCritica}', [SituacionCriticaController::class, 'show'])
-            ->whereNumber('situacionCritica')->name('situacion-criticas.show');
-
         // Estadísticas
         Route::get('/eventos/estadisticas', [EventoEstadisticaController::class, 'pagina'])
             ->name('eventos.estadisticas');

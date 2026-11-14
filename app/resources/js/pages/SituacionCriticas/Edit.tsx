@@ -46,7 +46,7 @@ export default function Edit({ situacionCritica, trabajadores, supervisores }: E
                         idEvento={situacionCritica.id_evento}
                         form={form}
                         onSubmit={submit}
-                        cancelarHref={`/situacion-criticas/${situacionCritica.id}`}
+                        cancelarHref="/situacion-criticas"
                     />
                 </div>
             </div>

@@ -11,7 +11,7 @@ use App\Models\SituacionCritica;
 use App\Services\SituacionCriticaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /** Situaciones Críticas (RF-14 a RF-16). Sin eliminación manual (RF-15.6). */
@@ -36,9 +36,11 @@ class SituacionCriticaController extends Controller
         Gate::authorize('create', SituacionCritica::class);
 
         try {
-            $situacion = $this->servicio->registrarManual($request->evento(), $request->user());
+            $situacion = $this->servicio->registrarManual($request->idEvento(), $request->user());
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Throwable $e) {
-            Log::error('Error al registrar situación crítica (API)', ['error' => $e->getMessage()]);
+            report($e);
 
             return response()->json(['message' => Web::MENSAJE_ERROR_REGISTRO], 500);
         }
@@ -63,7 +65,7 @@ class SituacionCriticaController extends Controller
         try {
             $this->servicio->editarManual($situacionCritica, $request->validated(), $request->user());
         } catch (Throwable $e) {
-            Log::error('Error al actualizar situación crítica (API)', ['id' => $situacionCritica->id, 'error' => $e->getMessage()]);
+            report($e);
 
             return response()->json(['message' => Web::MENSAJE_ERROR_ACTUALIZACION], 500);
         }

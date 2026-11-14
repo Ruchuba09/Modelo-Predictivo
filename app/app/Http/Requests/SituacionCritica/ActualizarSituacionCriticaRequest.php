@@ -30,6 +30,8 @@ class ActualizarSituacionCriticaRequest extends FormRequest
         return [
             'exists' => 'El registro seleccionado no es válido.',
             'required' => 'Este campo es obligatorio.',
+            'integer' => 'El registro seleccionado no es válido.',
+            'string' => 'El valor ingresado no es válido.',
             'referencia.max' => 'La referencia no puede superar los 255 caracteres.',
             'condicion.between' => 'La condición debe ser un valor del catálogo PARE (1 a 10).',
             'condicion.integer' => 'La condición debe ser un valor del catálogo PARE (1 a 10).',

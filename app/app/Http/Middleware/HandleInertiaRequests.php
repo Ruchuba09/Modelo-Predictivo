@@ -72,6 +72,11 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
             'notificaciones' => $notificaciones,
+            // Mensajes de resultado de una operación ("... registrada exitosamente", etc.).
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
             'condicionesPare' => CondicionesPare::DESCRIPCIONES,
         ];
     }

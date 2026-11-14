@@ -14,7 +14,6 @@ use App\Models\Evento;
 use App\Models\Evidencia;
 use App\Models\Obrero;
 use App\Models\Proyecto;
-use App\Models\SituacionCritica;
 use App\Models\Supervisor;
 use App\Models\TipoEvento;
 use App\Models\Trabajador;
@@ -31,8 +30,6 @@ use Illuminate\Support\Facades\Notification;
 
 class EventoService
 {
-    private const NOMBRE_TIPO_PARE = 'Tarjeta PARE';
-
     public const MENSAJE_ERROR_REGISTRO = 'No se pudo completar el registro, intente nuevamente.';
 
     /** Departamentos que reciben el aviso de PARE además del supervisor. */
@@ -48,14 +45,9 @@ class EventoService
         private readonly SituacionCriticaService $situaciones,
     ) {}
 
-    /**
-     * El id de la Tarjeta PARE cambia según cómo se cargó la base, por lo que
-     * se resuelve siempre por nombre.
-     */
     public function idTipoPare(): ?int
     {
-        return $this->idTipoPare ??= TipoEvento::where('nombre', self::NOMBRE_TIPO_PARE)
-            ->value('id_tipo_evento');
+        return $this->idTipoPare ??= TipoEvento::idPare();
     }
 
     public function obtenerDashboard(): Collection
@@ -375,10 +367,14 @@ class EventoService
         return $evento;
     }
 
-    /** Cada Tarjeta PARE es una situación crítica; así no hay que registrarla dos veces. */
+    /**
+     * RF-9.4: toda Tarjeta PARE genera su Situación Crítica. No se omite si
+     * faltan datos: la excepción revierte la tarjeta (RF-9.4.1), para que
+     * nunca quede una Tarjeta PARE sin Situación Crítica.
+     */
     private function registrarSituacionCritica(Evento $evento): void
     {
-        if ((int) $evento->id_tipo_evento === $this->idTipoPare() && $evento->id_trabajador && $evento->condicion) {
+        if ((int) $evento->id_tipo_evento === $this->idTipoPare()) {
             $this->situaciones->registrarAutomatica($evento);
         }
     }

@@ -12,6 +12,14 @@ interface ArchivoEvidencia {
     es_imagen: boolean;
 }
 
+/** RF-13.3.1: imágenes y PDF se ven en el navegador; el resto (doc, docx) se descarga. */
+const EXTENSIONES_EN_LINEA = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
+
+function seDescarga(nombreGuardado: string): boolean {
+    const extension = nombreGuardado.split('.').pop()?.toLowerCase() ?? '';
+    return !EXTENSIONES_EN_LINEA.includes(extension);
+}
+
 const ESTADO_STYLES: { [key: string]: string } = {
     abierto: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
     abierta: 'bg-verde-5/10 text-verde-6 border-verde-5/40',
@@ -142,6 +150,8 @@ export default function Show() {
     const [mostrarEvidencia, setMostrarEvidencia] = useState(false);
     const [evidenciaCargada, setEvidenciaCargada] = useState(false);
     const [evidencias, setEvidencias] = useState<ArchivoEvidencia[]>([]);
+    // Nombre original de cada evidencia de cierre, por nombre de archivo guardado.
+    const [nombresCierre, setNombresCierre] = useState<Record<string, string>>({});
     const [errorEvidencia, setErrorEvidencia] = useState<string | null>(null);
     const [imagenModal, setImagenModal] = useState<string | null>(null);
 
@@ -168,11 +178,19 @@ export default function Show() {
                 });
 
                 if (!res.ok) {
-                    throw new Error('No se pudo obtener la evidencia del servidor.');
+                    throw new Error(
+                        res.status === 403
+                            ? 'No tiene permiso para ver este evento'
+                            : 'No se pudo obtener la evidencia del servidor.'
+                    );
                 }
 
                 const json = await res.json();
                 setEvidencias(json.evidencias || []);
+                setNombresCierre(Object.fromEntries(
+                    ((json.evidencias_cierre || []) as ArchivoEvidencia[])
+                        .map((archivo) => [archivo.nombre, archivo.nombre_original ?? archivo.nombre])
+                ));
                 setEvidenciaCargada(true);
             } catch (err: any) {
                 setErrorEvidencia(err.message || 'Error al conectar con la base de datos.');
@@ -424,15 +442,25 @@ export default function Show() {
                                                             <span className="text-xs text-gris-2 truncate font-medium flex-1" title={archivo.nombre_original ?? archivo.nombre}>
                                                                 {archivo.nombre_original ?? archivo.nombre}
                                                             </span>
-                                                            <a
-                                                                href={archivo.ruta}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="text-verde-6 hover:text-verde-7 text-xs font-bold whitespace-nowrap bg-verde-5/10 hover:bg-verde-5/20 px-2 py-1 rounded transition-colors"
-                                                                title="Abrir archivo en pestaña nueva"
-                                                            >
-                                                                ↗ Abrir
-                                                            </a>
+                                                            {seDescarga(archivo.nombre) ? (
+                                                                <a
+                                                                    href={archivo.ruta}
+                                                                    className="text-verde-6 hover:text-verde-7 text-xs font-bold whitespace-nowrap bg-verde-5/10 hover:bg-verde-5/20 px-2 py-1 rounded transition-colors"
+                                                                    title="Descargar archivo"
+                                                                >
+                                                                    ↓ Descargar
+                                                                </a>
+                                                            ) : (
+                                                                <a
+                                                                    href={archivo.ruta}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-verde-6 hover:text-verde-7 text-xs font-bold whitespace-nowrap bg-verde-5/10 hover:bg-verde-5/20 px-2 py-1 rounded transition-colors"
+                                                                    title="Abrir archivo en pestaña nueva"
+                                                                >
+                                                                    ↗ Abrir
+                                                                </a>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -511,17 +539,18 @@ export default function Show() {
                                                             </button>
                                                         );
                                                     }
+                                                    const descarga = seDescarga(nombre);
                                                     return (
                                                         <a
                                                             key={idx}
                                                             href={url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
+                                                            {...(descarga ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+                                                            title={descarga ? 'Descargar archivo' : 'Abrir archivo en pestaña nueva'}
                                                             className="inline-flex items-center gap-2 bg-white dark:bg-[#1E242B] border border-verde-3 dark:border-[#2A333E] px-3 py-1.5 rounded-lg text-xs font-semibold text-gris-2 dark:text-gray-100 hover:border-verde-5 transition-colors shadow-sm"
                                                         >
                                                             <span>📎</span>
-                                                            <span className="truncate max-w-[200px]">{nombre}</span>
-                                                            <span className="text-verde-6 text-[10px]">↗</span>
+                                                            <span className="truncate max-w-[200px]">{nombresCierre[nombre] ?? nombre}</span>
+                                                            <span className="text-verde-6 text-[10px]">{descarga ? '↓' : '↗'}</span>
                                                         </a>
                                                     );
                                                 })}

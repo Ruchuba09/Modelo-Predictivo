@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { useState, useEffect, PropsWithChildren } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import ThemeToggle from '@/components/ThemeToggle';
+import AvisoFlash from '@/components/AvisoFlash';
 
 interface NavSubItem {
     href: string;
@@ -26,7 +27,7 @@ const NAV_ITEMS: NavItem[] = [
             { href: '/eventos/mis-reportes', label: 'Mis reportes' },
             { href: '/eventos/estadisticas', label: 'Estadísticas', roles: ['Administrador'] },
             { href: '/fuentes-intrava', label: 'Fuentes Intrava', roles: ['Administrador', 'Supervisor'] },
-            { href: '/situacion-criticas', label: 'Situaciones críticas', roles: ['Administrador'] },
+            { href: '/situacion-criticas', label: 'Situaciones críticas', roles: ['Administrador', 'Supervisor'] },
         ],
     },
     {
@@ -453,7 +454,10 @@ export default function MainLayout({
                 </header>
 
                 {/* Contenido Inyectado */}
-                <main className="flex-1 overflow-y-auto dark:bg-[#111417] transition-colors duration-200">{children}</main>
+                <main className="flex-1 overflow-y-auto dark:bg-[#111417] transition-colors duration-200">
+                    <AvisoFlash />
+                    {children}
+                </main>
             </div>
         </div>
     );

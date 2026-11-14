@@ -3,7 +3,6 @@
 namespace App\Http\Requests\SituacionCritica;
 
 use App\Models\Evento;
-use App\Models\SituacionCritica;
 use App\Services\SituacionCriticaService;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -24,11 +23,8 @@ class CrearSituacionCriticaRequest extends FormRequest
                 'integer',
                 'exists:eventos,id_evento',
                 function (string $campo, mixed $valor, \Closure $falla) {
-                    $idTipoPare = app(SituacionCriticaService::class)->idTipoPare();
-                    if ((int) Evento::whereKey($valor)->value('id_tipo_evento') !== (int) $idTipoPare) {
-                        $falla('El evento seleccionado no es una Tarjeta PARE.');
-                    } elseif (SituacionCritica::where('id_evento', $valor)->exists()) {
-                        $falla('La Tarjeta PARE ya tiene una Situación Crítica asociada.');
+                    if ($mensaje = app(SituacionCriticaService::class)->motivoNoRegistrable(Evento::find($valor))) {
+                        $falla($mensaje);
                     }
                 },
             ],
@@ -39,12 +35,13 @@ class CrearSituacionCriticaRequest extends FormRequest
     {
         return [
             'id_evento.required' => 'Debe seleccionar una Tarjeta PARE.',
-            'id_evento.exists' => 'El registro seleccionado no es válido.',
+            'id_evento.exists' => SituacionCriticaService::MENSAJE_REGISTRO_INVALIDO,
+            'id_evento.integer' => SituacionCriticaService::MENSAJE_REGISTRO_INVALIDO,
         ];
     }
 
-    public function evento(): Evento
+    public function idEvento(): int
     {
-        return Evento::findOrFail($this->integer('id_evento'));
+        return (int) $this->validated('id_evento');
     }
 }

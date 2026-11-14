@@ -11,7 +11,7 @@ use App\Models\Trabajador;
 use App\Services\SituacionCriticaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -70,14 +70,18 @@ class SituacionCriticaController extends Controller
         Gate::authorize('create', SituacionCritica::class);
 
         try {
-            $situacion = $this->servicio->registrarManual($request->evento(), $request->user());
+            $this->servicio->registrarManual($request->idEvento(), $request->user());
+        } catch (ValidationException $e) {
+            // La tarjeta dejó de cumplir RF-14.2 entre la validación y el registro.
+            throw $e;
         } catch (Throwable $e) {
-            Log::error('Error al registrar situación crítica', ['error' => $e->getMessage()]);
+            report($e);
 
             return back()->withInput()->withErrors(['general' => self::MENSAJE_ERROR_REGISTRO]);
         }
 
-        return redirect()->route('situacion-criticas.show', $situacion)
+        // RF-14.3.2: vuelve al listado.
+        return redirect()->route('situacion-criticas.index')
             ->with('success', 'Situación crítica registrada.');
     }
 
@@ -112,12 +116,13 @@ class SituacionCriticaController extends Controller
         try {
             $this->servicio->editarManual($situacionCritica, $request->validated(), $request->user());
         } catch (Throwable $e) {
-            Log::error('Error al actualizar situación crítica', ['id' => $situacionCritica->id, 'error' => $e->getMessage()]);
+            report($e);
 
             return back()->withInput()->withErrors(['general' => self::MENSAJE_ERROR_ACTUALIZACION]);
         }
 
-        return redirect()->route('situacion-criticas.show', $situacionCritica)
+        // RF-15.5: vuelve al listado.
+        return redirect()->route('situacion-criticas.index')
             ->with('success', 'Situación crítica actualizada.');
     }
 

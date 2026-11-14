@@ -28,6 +28,9 @@ class EvidenciaEventoService
 
     public const CARPETAS_EVIDENCIA = ['evidencias', 'evidencias_cierre'];
 
+    /** Tipos que el navegador muestra sin descargar (RF-13.3.1). */
+    private const EXTENSIONES_EN_LINEA = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
+
     private const CARPETA_POR_ORIGEN = [
         Evidencia::ORIGEN_REPORTE => 'evidencias',
         Evidencia::ORIGEN_CIERRE => 'evidencias_cierre',
@@ -63,7 +66,7 @@ class EvidenciaEventoService
 
                 Evidencia::create([
                     'id_evento' => $evento->id_evento,
-                    'nombre' => $archivo->getClientOriginalName(),
+                    'nombre' => $this->nombreSeguro($archivo, $ruta),
                     'ruta' => $ruta,
                     'tipo_archivo' => $archivo->getMimeType(),
                     'origen' => $origen,
@@ -78,6 +81,29 @@ class EvidenciaEventoService
         return $rutas;
     }
 
+    /**
+     * El nombre original lo envía el cliente: se le quita cualquier ruta y
+     * carácter de control y se recorta a lo que admite la columna, para que
+     * un nombre largo o malicioso no haga fallar el registro.
+     */
+    private function nombreSeguro(UploadedFile $archivo, string $ruta): string
+    {
+        $nombre = basename(str_replace('\\', '/', $archivo->getClientOriginalName()));
+        $nombre = trim(preg_replace('/[\x00-\x1F\x7F]/u', '', $nombre) ?? '');
+
+        if ($nombre === '') {
+            return basename($ruta);
+        }
+        if (mb_strlen($nombre) <= 255) {
+            return $nombre;
+        }
+
+        $extension = pathinfo($nombre, PATHINFO_EXTENSION);
+        $sufijo = $extension !== '' ? '.'.mb_substr($extension, 0, 10) : '';
+
+        return mb_substr($nombre, 0, 255 - mb_strlen($sufijo)).$sufijo;
+    }
+
     /** RF-13: evidencias del evento, separadas en las del reporte y las del cierre. */
     public function listar(Evento $evento): array
     {
@@ -88,7 +114,8 @@ class EvidenciaEventoService
         return [
             'total' => count($reporte),
             'evidencias' => $reporte,
-            'evidencias_cierre' => $this->describir($evento, $porOrigen->get(Evidencia::ORIGEN_CIERRE, collect())),
+            'evidencias_cierre' => $cierre = $this->describir($evento, $porOrigen->get(Evidencia::ORIGEN_CIERRE, collect())),
+            'total_cierre' => count($cierre),
         ];
     }
 
@@ -140,7 +167,8 @@ class EvidenciaEventoService
                 'extension' => $extension ?: 'archivo',
                 'tipo_archivo' => $evidencia['tipo_archivo'],
                 'fecha_creacion' => $evidencia['fecha_creacion']?->toIso8601String(),
-                'es_imagen' => in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'], true),
+                // Se decide por el archivo guardado, no por el nombre que envió el cliente.
+                'es_imagen' => in_array(strtolower(pathinfo($archivo, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true),
             ];
         })->values()->all();
     }
@@ -154,14 +182,23 @@ class EvidenciaEventoService
     {
         $nombre = basename($archivo);
 
-        $ruta = collect($this->rutas($evento))
-            ->first(fn (string $ruta) => basename($ruta) === $nombre);
+        $evidencia = $this->evidenciasDe($evento)
+            ->first(fn (array $evidencia) => basename($evidencia['ruta']) === $nombre);
 
-        abort_unless($ruta, 404, 'Archivo no encontrado');
+        abort_unless($evidencia, 404, 'Archivo no encontrado');
+
+        $ruta = $evidencia['ruta'];
+        $nombreOriginal = $evidencia['nombre'] ?: $nombre;
+        // RF-13.3.1: imágenes y PDF se ven en el navegador; el resto se descarga.
+        $enLinea = in_array(strtolower(pathinfo($ruta, PATHINFO_EXTENSION)), self::EXTENSIONES_EN_LINEA, true);
+        // El navegador no debe adivinar el tipo de un archivo subido por un usuario.
+        $cabeceras = ['X-Content-Type-Options' => 'nosniff'];
 
         foreach ([self::DISCO_EVIDENCIAS, self::DISCO_LEGADO] as $disco) {
             if (Storage::disk($disco)->exists($ruta)) {
-                return Storage::disk($disco)->response($ruta);
+                return $enLinea
+                    ? Storage::disk($disco)->response($ruta, $nombreOriginal, $cabeceras)
+                    : Storage::disk($disco)->download($ruta, $nombreOriginal, $cabeceras);
             }
         }
 

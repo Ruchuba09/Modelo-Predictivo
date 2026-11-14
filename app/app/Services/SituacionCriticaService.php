@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Situaciones Críticas (RF-14 a RF-16).
@@ -26,11 +27,17 @@ class SituacionCriticaService
 
     public const RELACIONES = ['trabajador.persona', 'supervisor.trabajador.persona', 'evento'];
 
+    public const MENSAJE_REGISTRO_INVALIDO = 'El registro seleccionado no es válido.';
+
+    public const MENSAJE_NO_ES_PARE = 'El evento seleccionado no es una Tarjeta PARE.';
+
+    public const MENSAJE_YA_REGISTRADA = 'La Tarjeta PARE ya tiene una Situación Crítica asociada.';
+
     private ?int $idTipoPare = null;
 
     public function idTipoPare(): ?int
     {
-        return $this->idTipoPare ??= TipoEvento::where('nombre', 'Tarjeta PARE')->value('id_tipo_evento');
+        return $this->idTipoPare ??= TipoEvento::idPare();
     }
 
     /* ------------------------------ RF-14 ------------------------------ */
@@ -44,10 +51,37 @@ class SituacionCriticaService
         return $this->crear($evento, $evento->id_autor);
     }
 
-    /** RF-14.2: registro manual por un Administrador, para una tarjeta que no la tenga. */
-    public function registrarManual(Evento $evento, User $usuario): SituacionCritica
+    /**
+     * RF-14.2: registro manual por un Administrador, para una tarjeta que no la tenga.
+     *
+     * La tarjeta se bloquea y se vuelve a comprobar dentro de la transacción:
+     * dos registros simultáneos de la misma tarjeta no pueden crear dos
+     * Situaciones Críticas (el índice único de id_evento es el último resguardo).
+     *
+     * @throws ValidationException si la tarjeta ya no cumple RF-14.2.1 a RF-14.2.3
+     */
+    public function registrarManual(int $idEvento, User $usuario): SituacionCritica
     {
-        return DB::transaction(fn () => $this->crear($evento, $usuario->id_user));
+        return DB::transaction(function () use ($idEvento, $usuario) {
+            $evento = Evento::whereKey($idEvento)->lockForUpdate()->first();
+
+            if ($mensaje = $this->motivoNoRegistrable($evento)) {
+                throw ValidationException::withMessages(['id_evento' => $mensaje]);
+            }
+
+            return $this->crear($evento, $usuario->id_user);
+        });
+    }
+
+    /** Por qué el evento no admite una Situación Crítica nueva (RF-14.2.1 a RF-14.2.3), o null si la admite. */
+    public function motivoNoRegistrable(?Evento $evento): ?string
+    {
+        return match (true) {
+            $evento === null => self::MENSAJE_REGISTRO_INVALIDO,
+            (int) $evento->id_tipo_evento !== (int) $this->idTipoPare() => self::MENSAJE_NO_ES_PARE,
+            SituacionCritica::where('id_evento', $evento->id_evento)->exists() => self::MENSAJE_YA_REGISTRADA,
+            default => null,
+        };
     }
 
     /** Tarjetas PARE sin Situación Crítica, para el registro manual. */
@@ -85,7 +119,8 @@ class SituacionCriticaService
      */
     public function sincronizarDesdeEvento(Evento $evento, ?User $usuario): void
     {
-        $situacion = SituacionCritica::where('id_evento', $evento->id_evento)->first();
+        // Se bloquea para no pisar una edición manual simultánea (RF-15.2).
+        $situacion = SituacionCritica::where('id_evento', $evento->id_evento)->lockForUpdate()->first();
         if (! $situacion) {
             return;
         }
@@ -100,14 +135,19 @@ class SituacionCriticaService
     public function editarManual(SituacionCritica $situacion, array $datos, User $usuario): SituacionCritica
     {
         DB::transaction(function () use ($situacion, $datos, $usuario) {
+            // Se bloquean ambas filas, primero la tarjeta (el mismo orden que
+            // la edición del evento), y se compara contra los valores vigentes:
+            // así dos ediciones simultáneas no se pisan ni falsean el historial.
+            $evento = Evento::whereKey($situacion->id_evento)->lockForUpdate()->first();
+            $vigente = SituacionCritica::whereKey($situacion->getKey())->lockForUpdate()->firstOrFail();
+
             $cambios = $this->aplicar(
-                $situacion,
+                $vigente,
                 array_intersect_key($datos, array_flip(self::CAMPOS)),
                 SituacionCriticaHistorial::ORIGEN_EDICION_MANUAL,
                 $usuario->id_user
             );
 
-            $evento = $situacion->evento;
             if ($cambios === [] || ! $evento) {
                 return;
             }
