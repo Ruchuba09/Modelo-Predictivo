@@ -2,9 +2,13 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Http\Requests\UsuarioRequest;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
+/**
+ * "Mi perfil": el usuario solo cambia su correo, con las reglas de RF-27 E-2.
+ * El RUT identifica a la persona dueña de la cuenta y no se modifica (RF-28).
+ */
 class ProfileUpdateRequest extends FormRequest
 {
     public function authorize(): bool
@@ -12,15 +16,34 @@ class ProfileUpdateRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('email'))) {
+            $this->merge(['email' => mb_strtolower(trim($this->input('email')))]);
+        }
+    }
+
     public function rules(): array
     {
         return [
-            'rut' => ['required', 'string', Rule::unique('personas', 'rut')->ignore($this->user()->trabajador?->id_persona, 'id_persona')],
             'email' => [
-                'required',
-                'email',
-                Rule::unique('usuarios.users', 'email')->ignore($this->user()->id_user, 'id_user'),
+                'bail', 'required', 'string', 'max:255', 'email',
+                function (string $campo, mixed $valor, \Closure $falla) {
+                    if (UsuarioRequest::correoEnUso($valor, $this->user())) {
+                        $falla(UsuarioRequest::MENSAJE_CORREO_DUPLICADO);
+                    }
+                },
             ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'email.required' => 'Debe ingresar el correo electrónico.',
+            'email.string' => 'El correo electrónico no es válido.',
+            'email.max' => 'El correo electrónico no puede superar los 255 caracteres.',
+            'email.email' => 'El correo electrónico no tiene un formato válido.',
         ];
     }
 }

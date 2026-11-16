@@ -122,9 +122,9 @@ const Show: React.FC<ShowProps> = ({ trabajador }) => {
 
                         <div className="bg-verde-1 border border-verde-3 rounded-xl p-4">
                             <p className="text-[11px] uppercase tracking-wider text-gris-1 font-bold">
-                                Correo electrónico
+                                Cuenta de usuario
                             </p>
-                            <p className="text-sm font-bold text-gris-2 mt-1">{trabajador.email || '—'}</p>
+                            <p className="text-sm font-bold text-gris-2 mt-1">{trabajador.email || 'Sin cuenta'}</p>
                         </div>
                     </div>
                 </div>

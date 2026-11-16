@@ -4,53 +4,40 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Http\Resources\UsuarioResource;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/**
+ * "Mi perfil". El usuario ve sus datos y cambia su correo. No puede cambiar
+ * su RUT (RF-28) ni eliminar su propia cuenta (RF-30.3.1): eso lo hace otro
+ * usuario con usuarios.gestionar.
+ */
 class ProfileController extends Controller
 {
     public function edit(Request $request): Response
     {
+        $usuario = $request->user()->load(['roles', 'trabajador.persona']);
+
         return Inertia::render('settings/profile', [
-            'usuario' => $request->user()->load('roles'),
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'usuario' => (new UsuarioResource($usuario))->resolve($request),
             'status' => $request->session()->get('status'),
         ]);
     }
 
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $validated = $request->validated();
-        $request->user()->fill(['email' => $validated['email']]);
-        $request->user()->trabajadorOrFail()->persona()->update(['rut' => $validated['rut']]);
+        $usuario = $request->user();
+        $usuario->fill(['email' => $request->validated('email')]);
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        if ($usuario->isDirty('email')) {
+            $usuario->email_verified_at = null;
         }
 
-        $request->user()->save();
+        $usuario->save();
 
-        return to_route('profile.edit');
-    }
-
-    public function destroy(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ]);
-
-        $user = $request->user();
-
-        Auth::logout();
-        $user->delete();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return redirect('/');
+        return to_route('profile.edit')->with('success', 'Perfil actualizado exitosamente.');
     }
 }

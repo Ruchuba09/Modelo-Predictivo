@@ -66,7 +66,7 @@ final class Permisos
         self::OPERACIONES_VER => ['Ver proyectos, cuadrillas, actividades, horas y asistencia.', 1, ['Supervisor']],
         self::OPERACIONES_GESTIONAR => ['Registrar y modificar proyectos, cuadrillas, actividades, asignaciones, horas y asistencia.', 2, ['Supervisor']],
         self::MODELO_VER => ['Ver las predicciones del modelo predictivo.', 1, ['Supervisor']],
-        self::MODELO_ENTRENAR => ['Reentrenar los modelos predictivos.', 2, ['Supervisor']],
+        self::MODELO_ENTRENAR => ['Entrenar la red neuronal del modelo predictivo.', 2, ['Supervisor']],
         self::CATALOGOS_VER => ['Consultar catálogos: personas, clientes, faenas, áreas, departamentos, trabajadores y tipos.', 1, ['Supervisor']],
         self::CATALOGOS_GESTIONAR => ['Registrar, modificar y eliminar catálogos: personas, clientes, faenas, áreas, departamentos, trabajadores y tipos.', 3, []],
         self::USUARIOS_GESTIONAR => ['Administrar usuarios y sus roles.', 3, []],

@@ -14,13 +14,14 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Catálogo de trabajadores. La cuenta de acceso de un trabajador no se crea,
+ * modifica ni elimina aquí: es parte de la administración de Usuarios
+ * (RF-27 a RF-30, permiso usuarios.gestionar).
+ */
 class TrabajadorService
 {
-    /**
-     * Contraseña por defecto asignada a los usuarios creados junto a un trabajador.
-     * TODO: reemplazar por un flujo de "primer ingreso" / cambio obligatorio de clave.
-     */
-    private const PASSWORD_DEFAULT = '12345678';
+    public const MENSAJE_CON_CUENTA = 'No se puede eliminar: el trabajador tiene una cuenta de usuario. Elimine primero la cuenta desde Usuarios.';
 
     private const RELACIONES = ['persona', 'usuario', 'obrero', 'supervisor', 'administrativo', 'jefeZona'];
 
@@ -60,7 +61,6 @@ class TrabajadorService
             );
 
             $this->crearSubtipo($trabajador, $datos->idTipoTrabajador, $datos->idTipoObrero);
-            $this->crearUsuario($trabajador, $datos->email);
 
             return $trabajador;
         });
@@ -83,20 +83,25 @@ class TrabajadorService
                     ->update(['id_tipo_obrero' => $datos->idTipoObrero]);
             }
 
-            if ($trabajador->usuario) {
-                $trabajador->usuario->update(['email' => $datos->email]);
-            } else {
-                $this->crearUsuario($trabajador, $datos->email);
-            }
-
             return $trabajador->refresh();
         });
     }
 
+    /**
+     * Las FKs eliminan en cascada el subtipo y los pivotes. Un trabajador con
+     * cuenta no se elimina: borrarla saltaría las reglas de RF-30 (propia
+     * cuenta, último administrador, cierre de sesiones).
+     *
+     * @throws \DomainException con MENSAJE_CON_CUENTA
+     */
     public function eliminar(Trabajador $trabajador): void
     {
-        // Las FKs hacen cascade: subtipo, user, pivotes.
         DB::transaction(function () use ($trabajador) {
+            $conCuenta = User::where('id_trabajador', $trabajador->id_trabajador)->lockForUpdate()->exists();
+            if ($conCuenta) {
+                throw new \DomainException(self::MENSAJE_CON_CUENTA);
+            }
+
             $persona = $trabajador->persona;
             $trabajador->delete();
             $persona?->delete();
@@ -136,15 +141,6 @@ class TrabajadorService
             'administrativo' => Administrativo::where('id_trabajador', $trabajador->id_trabajador)->delete(),
             default => null,
         };
-    }
-
-    private function crearUsuario(Trabajador $trabajador, string $email): User
-    {
-        return User::create([
-            'id_trabajador' => $trabajador->id_trabajador,
-            'email' => $email,
-            'password' => self::PASSWORD_DEFAULT,
-        ]);
     }
 
     private function datosPersona(TrabajadorData $datos): array

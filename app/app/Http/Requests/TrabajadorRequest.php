@@ -3,15 +3,32 @@
 namespace App\Http\Requests;
 
 use App\DataTransferObjects\TrabajadorData;
+use App\Models\Persona;
 use App\Models\Trabajador;
+use App\Support\Rut;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Catálogo de trabajadores. La cuenta de acceso (correo, contraseña y roles)
+ * se administra en Usuarios (RF-27 a RF-30), no aquí.
+ */
 class TrabajadorRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * El RUT se guarda sin puntos, con guion y K mayúscula, que es como lo
+     * buscan el registro de usuarios (RF-27 E-1) y el inicio de sesión (RF-31.2).
+     */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('rut'))) {
+            $this->merge(['rut' => Rut::clean($this->input('rut'))]);
+        }
     }
 
     public function rules(): array
@@ -36,14 +53,17 @@ class TrabajadorRequest extends FormRequest
                 'required',
                 'string',
                 'max:20',
-                Rule::unique('personas', 'rut')->ignore($trabajador?->id_persona, 'id_persona'),
+                Rule::unique(Persona::class, 'rut')->ignore($trabajador?->id_persona, 'id_persona'),
             ],
-            'email' => [
-                'required',
-                'email',
-                'max:255',
-                Rule::unique('users', 'email')->ignore($trabajador?->usuario?->id_user, 'id_user'),
-            ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'rut.required' => 'Debe ingresar el RUT.',
+            'rut.max' => 'El RUT no puede superar los 20 caracteres.',
+            'rut.unique' => 'Ya existe una persona con ese RUT.',
         ];
     }
 

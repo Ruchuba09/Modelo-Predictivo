@@ -38,7 +38,7 @@ export default function Password() {
             <div className="max-w-2xl mx-auto p-6 lg:p-8">
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-gris-2 mb-1">Cambiar Contraseña</h1>
-                    <p className="text-gris-1 text-sm">Usa una contraseña larga y única para mantener tu cuenta segura.</p>
+                    <p className="text-gris-1 text-sm">Entre 8 y 64 caracteres, con al menos una mayúscula, una minúscula y un dígito. Se cerrarán tus otras sesiones y las de la aplicación móvil.</p>
                 </div>
 
                 <div className="bg-white border border-verde-3 rounded-xl p-6 lg:p-8">

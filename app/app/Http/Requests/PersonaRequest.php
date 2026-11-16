@@ -13,6 +13,14 @@ class PersonaRequest extends FormRequest
         return true; // las Policies llegan en la Fase 4
     }
 
+    /** RUT sin puntos, con guion y K mayúscula, como lo buscan RF-27 E-1 y RF-31.2. */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('rut'))) {
+            $this->merge(['rut' => \App\Support\Rut::clean($this->input('rut'))]);
+        }
+    }
+
     public function rules(): array
     {
         $persona = $this->route('persona');

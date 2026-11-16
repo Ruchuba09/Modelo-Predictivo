@@ -147,6 +147,18 @@ class PruebasModelos(unittest.TestCase):
         self.assertIn(mt.NOMBRE_REFERENCIA, area["candidatos"])
         self.assertTrue(0 <= area["metricas"]["auc_roc"] <= 1)
 
+    @unittest.skipIf(mt.CatBoostRegressor is None, "CatBoost no está instalado")
+    def test_catboost_compite(self):
+        calidad = self.resultado["calidad"]
+        for objetivo in (mt.OBJETIVO_INCIDENTES, mt.OBJETIVO_TODOS):
+            candidato = calidad[objetivo]["area"]["candidatos"]["CatBoost de Poisson"]
+            self.assertTrue(0 <= candidato["auc_roc"] <= 1)
+        lesion = calidad[mt.OBJETIVO_LESIONES]["area"]["modelo_lesion"]
+        if "candidatos" in lesion:
+            self.assertIn("CatBoost", lesion["candidatos"])
+        modelo = mt.CatBoostPoisson().fit(np.zeros((40, 1)) + np.arange(40)[:, None], np.arange(40) % 3)
+        self.assertTrue((modelo.predict(np.arange(40)[:, None]) > 0).all(), "debe devolver tasas, no logaritmos")
+
 
 class PruebasReparto(unittest.TestCase):
     @classmethod

@@ -11,7 +11,6 @@ const Create: React.FC = () => {
         cargo: '',
         id_tipo_trabajador: '',
         rut: '',
-        email: '',
     });
 
     const submit = (e: FormEvent) => {
@@ -111,19 +110,6 @@ const Create: React.FC = () => {
                                 required
                             />
                             {errors.rut && <p className={errorClass}>{errors.rut}</p>}
-                        </div>
-
-                        <div>
-                            <label className={labelClass}>Correo electrónico *</label>
-                            <input
-                                className={inputClass}
-                                type="email"
-                                value={data.email}
-                                onChange={(e) => setData('email', e.target.value)}
-                                placeholder="nombre@ava.cl"
-                                required
-                            />
-                            {errors.email && <p className={errorClass}>{errors.email}</p>}
                         </div>
 
                         <div>

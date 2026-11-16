@@ -65,21 +65,12 @@ class UsuarioRequest extends FormRequest
             'email' => [
                 'bail', 'required', 'string', 'max:255', 'email',
                 function (string $campo, mixed $valor, \Closure $falla) use ($usuario) {
-                    $existe = User::query()
-                        ->whereRaw('LOWER(email) = ?', [$valor])
-                        ->when($usuario, fn ($q) => $q->whereKeyNot($usuario->getKey()))
-                        ->exists();
-                    if ($existe) {
+                    if (self::correoEnUso($valor, $usuario)) {
                         $falla(self::MENSAJE_CORREO_DUPLICADO);
                     }
                 },
             ],
-            'password' => [
-                $usuario ? 'nullable' : 'required',
-                'bail', 'string', 'min:8', 'max:64',
-                'regex:/\p{Lu}/u', 'regex:/\p{Ll}/u', 'regex:/\d/',
-                'confirmed',
-            ],
+            'password' => self::reglasContrasena(obligatoria: ! $usuario),
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => [
                 // Misma conexión que el modelo Rol, que usa también la regla siguiente.
@@ -124,12 +115,7 @@ class UsuarioRequest extends FormRequest
             'email.string' => 'El correo electrónico no es válido.',
             'email.max' => 'El correo electrónico no puede superar los 255 caracteres.',
             'email.email' => 'El correo electrónico no tiene un formato válido.',
-            'password.required' => 'Debe ingresar la contraseña.',
-            'password.string' => 'La contraseña no es válida.',
-            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
-            'password.max' => 'La contraseña no puede superar los 64 caracteres.',
-            'password.regex' => self::MENSAJE_COMPLEJIDAD,
-            'password.confirmed' => 'La confirmación de la contraseña no coincide.',
+            ...self::mensajesContrasena(),
             'roles.required' => $sinRoles,
             'roles.array' => self::MENSAJE_REGISTRO_INVALIDO,
             'roles.min' => $sinRoles,
@@ -137,6 +123,42 @@ class UsuarioRequest extends FormRequest
             'roles.*.distinct' => 'Un rol está repetido.',
             'roles.*.exists' => self::MENSAJE_REGISTRO_INVALIDO,
         ];
+    }
+
+    /**
+     * RF-27 E-3 y E-4: 8 a 64 caracteres, con mayúscula, minúscula y dígito,
+     * y confirmada. Es la misma regla en todo lugar donde se fija una
+     * contraseña (administración de usuarios, Ajustes y recuperación).
+     */
+    public static function reglasContrasena(bool $obligatoria = true): array
+    {
+        return [
+            $obligatoria ? 'required' : 'nullable',
+            'bail', 'string', 'min:8', 'max:64',
+            'regex:/\p{Lu}/u', 'regex:/\p{Ll}/u', 'regex:/\d/',
+            'confirmed',
+        ];
+    }
+
+    public static function mensajesContrasena(string $campo = 'password'): array
+    {
+        return [
+            "{$campo}.required" => 'Debe ingresar la contraseña.',
+            "{$campo}.string" => 'La contraseña no es válida.',
+            "{$campo}.min" => 'La contraseña debe tener al menos 8 caracteres.',
+            "{$campo}.max" => 'La contraseña no puede superar los 64 caracteres.',
+            "{$campo}.regex" => self::MENSAJE_COMPLEJIDAD,
+            "{$campo}.confirmed" => 'La confirmación de la contraseña no coincide.',
+        ];
+    }
+
+    /** RF-27 E-2: el correo es único sin distinguir mayúsculas de minúsculas. */
+    public static function correoEnUso(string $email, ?User $excepto = null): bool
+    {
+        return User::query()
+            ->whereRaw('LOWER(email) = ?', [mb_strtolower(trim($email))])
+            ->when($excepto, fn ($q) => $q->whereKeyNot($excepto->getKey()))
+            ->exists();
     }
 
     public function toData(): UsuarioData

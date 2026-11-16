@@ -1,6 +1,6 @@
 # Modelo predictivo de eventos
 
-El servicio estima la probabilidad de que un proyecto, área, cuadrilla, trabajador o actividad registre al menos un evento en un plazo de 1 a 90 días. Usa tres modelos de tasa entrenados con scikit-learn sobre las vistas de PostgreSQL; no llama a un proveedor externo.
+El servicio estima la probabilidad de que un proyecto, área, cuadrilla, trabajador o actividad registre al menos un evento en un plazo de 1 a 90 días. Usa tres modelos de tasa entrenados con scikit-learn y CatBoost sobre las vistas de PostgreSQL; no llama a un proveedor externo.
 
 ## Preparar PostgreSQL
 
@@ -42,16 +42,16 @@ En vez de un clasificador por cada objetivo, nivel y plazo, `modelos_tasa.py` en
 
 | Modelo | Predice | Candidatos |
 |---|---|---|
-| A · `incidentes_reales` | Incidentes laborales esperados por semana en cada área de cada proyecto | Regresión de Poisson y gradient boosting de Poisson |
-| B · lesión | P(lesión \| incidente) | Regresión logística |
-| C · `todos` | Eventos esperados por semana de cualquier tipo, sin Tarjetas PARE | Regresión de Poisson y gradient boosting de Poisson |
+| A · `incidentes_reales` | Incidentes laborales esperados por semana en cada área de cada proyecto | Regresión de Poisson, gradient boosting de Poisson y CatBoost de Poisson |
+| B · lesión | P(lesión \| incidente) | Regresión logística y CatBoost (log-loss) |
+| C · `todos` | Eventos esperados por semana de cualquier tipo, sin Tarjetas PARE | Regresión de Poisson, gradient boosting de Poisson y CatBoost de Poisson |
 
 - **Lesiones = A × B:** la tasa de lesiones nunca supera a la de incidentes.
 - **Unidad:** proyecto-área-semana. Los eventos sin área van a un área "sin área" del proyecto, de modo que el proyecto es la suma de sus áreas. Clientes y faenas suman sus proyectos vigentes.
 - **Plazos:** cualquier plazo sale de la misma tasa semanal: P = 1 − exp(−tasa × días / 7). Un plazo más largo nunca da menos riesgo, y no hace falta entrenar un modelo por plazo.
 - **Datos:** une `eventos`, Reporte Previene, Reportes Flash y Hallazgos. Los informes de investigación no suman, porque documentan un incidente ya contado. Un incidente es laboral si su clasificación no es de trayecto ni común; tiene lesión si su clasificación lo indica o si registra lesiones en `evento_lesion`. Las Tarjetas PARE se usan como predictor, pero no como evento.
 - **Variables:** incidentes, eventos y reportes preventivos del área y del proyecto en ventanas de 4, 13 y 26 semanas; severidad máxima; semanas desde el último incidente; tasa histórica del área; pendientes de cierre; turno noche; personas, cuadrillas y actividades asignadas; actividades de riesgo crítico; incidentes en toda la empresa; época del año; y los datos de la ampliación cuando existen (horas, clima, avance). Todas usan solo semanas anteriores a la que se predice.
-- **Selección:** cada modelo compite en validación temporal (dos tramos: del 60 % al 80 % de las semanas y del 80 % al final) con una referencia: la tasa histórica de cada área, o la proporción histórica de lesiones, suavizada. Se elige por devianza de Poisson (log-loss en el modelo B) y solo se publica si mejora a la referencia en al menos 1 %; si no, se publica la referencia e informa el motivo. Se necesitan al menos 20 semanas con eventos.
+- **Selección:** cada modelo compite en validación temporal (dos tramos: del 60 % al 80 % de las semanas y del 80 % al final) con una referencia: la tasa histórica de cada área, o la proporción histórica de lesiones, suavizada. Se elige por devianza de Poisson (log-loss en el modelo B) y solo se publica si mejora a la referencia en al menos 1 %; si no, se publica la referencia e informa el motivo. Se necesitan al menos 20 semanas con eventos. CatBoost es opcional: si el paquete no está instalado, sus candidatos no compiten y el resto funciona igual.
 - **Cuadrillas, trabajadores y actividades** no tienen modelo propio: con pocos eventos por entidad solo aprenderían ruido. `reparto.py` les asigna una parte de la tasa del proyecto proporcional a sus eventos históricos de los últimos dos años, suavizada hacia una parte según su tamaño. Las partes nunca suman más que el proyecto.
 - **Factores:** para cada proyecto y área, cuánto cambiaría la probabilidad del plazo si cada variable importante volviera a su valor típico.
 - **Caché:** un solo entrenamiento sirve a los tres objetivos y a todos los plazos. Se reutiliza (en memoria y en `MODELOS_DIR`) mientras no cambien los datos ni la semana. Se entrena al arrancar el servicio; con la base de prueba tarda menos de un minuto.

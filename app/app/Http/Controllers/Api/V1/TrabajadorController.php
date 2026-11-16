@@ -52,9 +52,13 @@ class TrabajadorController extends Controller
         return new TrabajadorResource($trabajador->load(['persona', 'usuario', 'obrero', 'supervisor', 'administrativo']));
     }
 
-    public function destroy(Trabajador $trabajador): Response
+    public function destroy(Trabajador $trabajador): Response|\Illuminate\Http\JsonResponse
     {
-        $this->servicio->eliminar($trabajador);
+        try {
+            $this->servicio->eliminar($trabajador);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 409);
+        }
 
         return response()->noContent();
     }

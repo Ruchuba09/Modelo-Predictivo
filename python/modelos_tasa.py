@@ -30,6 +30,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.inspection import permutation_importance
@@ -41,7 +42,12 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 from threadpoolctl import threadpool_limits
 
-VERSION = "tasa-1"
+try:
+    from catboost import CatBoostClassifier, CatBoostRegressor
+except ImportError:  # CatBoost es opcional: sin el paquete, sus candidatos no compiten.
+    CatBoostClassifier = CatBoostRegressor = None
+
+VERSION = "tasa-2"
 OBJETIVO_INCIDENTES = "incidentes_reales"
 OBJETIVO_LESIONES = "lesiones"
 OBJETIVO_TODOS = "todos"
@@ -240,7 +246,7 @@ def huella_datos(engine, hoy=None):
         "SELECT count(*) FROM public.evento_lesion",
         "SELECT count(*), max(codigo) FROM public.tipo_eventos WHERE es_incidente",
     ]
-    estado = [VERSION, str((hoy - pd.Timedelta(days=hoy.weekday())).date())]
+    estado = [VERSION, f"catboost={CatBoostRegressor is not None}", str((hoy - pd.Timedelta(days=hoy.weekday())).date())]
     with engine.connect() as conexion:
         estado += [list(conexion.execute(text(c)).one()) for c in consultas]
     return hashlib.sha256(json.dumps(estado, default=str).encode()).hexdigest()[:24]
@@ -417,6 +423,23 @@ class TasaReferencia:
         return np.clip(meta["unidad"].map(self.tasas).fillna(prior).to_numpy(dtype=float), 1e-6, None)
 
 
+# Parametros comunes de CatBoost: arboles poco profundos y regularizados, un hilo (como el resto del
+# entrenamiento) y sin archivos de registro en disco.
+PARAMETROS_CATBOOST = dict(depth=3, learning_rate=0.05, iterations=300, l2_leaf_reg=5.0, random_seed=0,
+                           thread_count=1, verbose=0, allow_writing_files=False)
+
+
+class CatBoostPoisson(RegressorMixin, BaseEstimator):
+    """Gradient boosting de Poisson con CatBoost. Devuelve la tasa semanal (no su logaritmo)."""
+
+    def fit(self, X, y):
+        self.modelo_ = CatBoostRegressor(loss_function="Poisson", **PARAMETROS_CATBOOST).fit(X, y)
+        return self
+
+    def predict(self, X):
+        return self.modelo_.predict(X, prediction_type="Exponent")
+
+
 CANDIDATOS_TASA = {
     "Regresión de Poisson": lambda: make_pipeline(
         SimpleImputer(strategy="median"), StandardScaler(), PoissonRegressor(alpha=1.0, max_iter=1000)),
@@ -424,6 +447,8 @@ CANDIDATOS_TASA = {
         loss="poisson", max_depth=3, learning_rate=0.05, max_iter=200, min_samples_leaf=40,
         l2_regularization=1.0, random_state=0),
 }
+if CatBoostRegressor is not None:
+    CANDIDATOS_TASA["CatBoost de Poisson"] = CatBoostPoisson
 NOMBRE_REFERENCIA = "Tasa histórica suavizada"
 
 
@@ -596,7 +621,18 @@ class LesionLogistica:
         return self.modelo.predict_proba(self._matriz(Xl))[:, 1]
 
 
+class LesionCatBoost(LesionLogistica):
+    """CatBoost (log-loss) sobre las mismas variables que la regresion logistica."""
+
+    def fit(self, Xl, y):
+        self.p0 = float(np.clip(np.mean(y), 0.01, 0.99))
+        self.modelo = CatBoostClassifier(loss_function="Logloss", **PARAMETROS_CATBOOST).fit(self._matriz(Xl), y)
+        return self
+
+
 CANDIDATOS_LESION = {"Proporción histórica suavizada": LesionReferencia, "Regresión logística": LesionLogistica}
+if CatBoostClassifier is not None:
+    CANDIDATOS_LESION["CatBoost"] = LesionCatBoost
 REFERENCIA_LESION = "Proporción histórica suavizada"
 
 
@@ -640,7 +676,7 @@ def ajustar_lesion(datos, X, meta):
             if mejor != REFERENCIA_LESION and mejora >= MARGEN_MINIMO_PCT:
                 elegido = mejor
             else:
-                motivo = f"La regresión logística no superó a la proporción histórica por al menos {MARGEN_MINIMO_PCT:.0f} % en log-loss."
+                motivo = f"Ningún modelo superó a la proporción histórica por al menos {MARGEN_MINIMO_PCT:.0f} % en log-loss."
             metricas = tabla[elegido]
             resumen.update({
                 "candidatos": tabla, "referencia": tabla[REFERENCIA_LESION], "metricas": metricas,

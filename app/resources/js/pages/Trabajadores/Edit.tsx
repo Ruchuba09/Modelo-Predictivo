@@ -12,7 +12,6 @@ interface Trabajador {
     cargo: string;
     id_tipo_trabajador: string;
     rut: string;
-    email: string;
 }
 
 interface EditProps {
@@ -30,7 +29,6 @@ const Edit: React.FC<EditProps> = ({ trabajador }) => {
         cargo: trabajador.cargo ?? '',
         id_tipo_trabajador: trabajador.id_tipo_trabajador ?? '',
         rut: trabajador.rut ?? '',
-        email: trabajador.email ?? '',
     });
 
     const submit = (e: FormEvent) => {
@@ -127,18 +125,6 @@ const Edit: React.FC<EditProps> = ({ trabajador }) => {
                                 required
                             />
                             {errors.rut && <p className={errorClass}>{errors.rut}</p>}
-                        </div>
-
-                        <div>
-                            <label className={labelClass}>Correo electrónico *</label>
-                            <input
-                                className={inputClass}
-                                type="email"
-                                value={data.email}
-                                onChange={(e) => setData('email', e.target.value)}
-                                required
-                            />
-                            {errors.email && <p className={errorClass}>{errors.email}</p>}
                         </div>
 
                         <div>

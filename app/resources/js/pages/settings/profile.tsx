@@ -5,18 +5,19 @@ import MainLayout from '../../layouts/MainLayout';
 interface Rol {
     id_rol: number;
     nombre: string;
+    estado: string;
 }
 
 interface Usuario {
     id_user: number;
-    rut: string;
+    rut: string | null;
+    nombre: string | null;
     email: string;
     roles: Rol[];
 }
 
 export default function Perfil({ usuario }: { usuario: Usuario }) {
     const { data, setData, patch, errors, processing, recentlySuccessful } = useForm({
-        rut: usuario.rut,
         email: usuario.email,
     });
 
@@ -32,24 +33,27 @@ export default function Perfil({ usuario }: { usuario: Usuario }) {
             <div className="max-w-2xl mx-auto p-6 lg:p-8">
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-gris-2 mb-1">Mi Perfil</h1>
-                    <p className="text-gris-1 text-sm">Actualiza tu información de acceso.</p>
+                    <p className="text-gris-1 text-sm">Actualiza tu correo electrónico de acceso.</p>
                 </div>
 
                 <div className="bg-white border border-verde-3 rounded-xl p-6 lg:p-8 space-y-8">
                     <form onSubmit={submit} className="space-y-6">
-                        <div>
-                            <label htmlFor="rut" className="block text-sm font-medium text-gris-1 mb-2">
-                                RUT
-                            </label>
-                            <input
-                                id="rut"
-                                type="text"
-                                value={data.rut}
-                                onChange={(e) => setData('rut', e.target.value)}
-                                className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm focus:outline-none focus:border-verde-5/50 transition-colors"
-                                autoComplete="off"
-                            />
-                            {errors.rut && <p className="mt-2 text-sm text-red-400">{errors.rut}</p>}
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <span className="block text-sm font-medium text-gris-1 mb-2">RUT</span>
+                                <p className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm opacity-60">
+                                    {usuario.rut ?? '—'}
+                                </p>
+                            </div>
+                            <div>
+                                <span className="block text-sm font-medium text-gris-1 mb-2">Nombre</span>
+                                <p className="w-full bg-verde-1 border border-verde-3 rounded-lg px-4 py-2.5 text-gris-2 text-sm opacity-60">
+                                    {usuario.nombre ?? '—'}
+                                </p>
+                            </div>
+                            <p className="sm:col-span-2 text-xs text-gris-1">
+                                El RUT identifica a la persona dueña de la cuenta y no se puede modificar.
+                            </p>
                         </div>
 
                         <div>
@@ -87,7 +91,8 @@ export default function Perfil({ usuario }: { usuario: Usuario }) {
                             {usuario.roles?.map((rol) => (
                                 <span
                                     key={rol.id_rol}
-                                    className="bg-verde-2 text-verde-6 text-xs px-2 py-1 rounded-md border border-verde-5/20"
+                                    title={rol.estado === 'activo' ? undefined : 'Rol inactivo: no otorga permisos'}
+                                    className={`bg-verde-2 text-verde-6 text-xs px-2 py-1 rounded-md border border-verde-5/20 ${rol.estado === 'activo' ? '' : 'line-through opacity-60'}`}
                                 >
                                     {rol.nombre}
                                 </span>

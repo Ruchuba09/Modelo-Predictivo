@@ -14,7 +14,6 @@ final readonly class TrabajadorData
         public ?string $estado,
         public string $idTipoTrabajador,
         public ?int $idTipoObrero,
-        public string $email,
     ) {}
 
     public static function fromArray(array $datos): self
@@ -29,7 +28,6 @@ final readonly class TrabajadorData
             estado: $datos['estado'] ?? null,
             idTipoTrabajador: $datos['id_tipo_trabajador'],
             idTipoObrero: isset($datos['id_tipo_obrero']) ? (int) $datos['id_tipo_obrero'] : null,
-            email: $datos['email'],
         );
     }
 }

@@ -70,16 +70,29 @@ class EventoController extends Controller
         );
     }
 
-    /** RF-10: registro de eventos de tipo distinto a Tarjeta PARE. */
-    public function store(CrearEventoRequest $request)
+    /**
+     * RF-10: registro de eventos de tipo distinto a Tarjeta PARE. Si llega
+     * una Tarjeta PARE (envío directo), se procesa según RF-9 (RF-10.3.3.4).
+     */
+    public function store(Request $request)
     {
         $this->authorize('create', Evento::class);
 
-        if ($error = $this->registrar($request)) {
+        $esPare = $request->filled('id_tipo_evento')
+            && $request->integer('id_tipo_evento') === $this->servicio->idTipoPare();
+
+        if ($esPare) {
+            return $this->storeTarjetaPare(app(CrearTarjetaPareRequest::class));
+        }
+
+        // Resolver el FormRequest lo valida.
+        $registro = app(CrearEventoRequest::class);
+
+        if ($error = $this->registrar($registro)) {
             return $error;
         }
 
-        $destino = $request->user()->can('viewAny', Evento::class)
+        $destino = $registro->user()->can('viewAny', Evento::class)
             ? 'eventos.index'
             : 'eventos.mis-reportes';
 

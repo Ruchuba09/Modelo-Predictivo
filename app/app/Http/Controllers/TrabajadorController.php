@@ -59,7 +59,11 @@ class TrabajadorController extends Controller
 
     public function destroy(Trabajador $trabajador)
     {
-        $this->servicio->eliminar($trabajador);
+        try {
+            $this->servicio->eliminar($trabajador);
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()
             ->route('trabajadores.index')
